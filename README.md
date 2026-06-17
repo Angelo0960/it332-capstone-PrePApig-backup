@@ -73,3 +73,56 @@ Open your browser and navigate to:
 
 http://localhost:3000
 github.com
+
+
+##Usage##
+
+##Login##
+
+Launch the application.
+Enter your username and password.
+Access the dashboard after successful authentication.
+
+##Managing Pig Records##
+Navigate to the Pig Management module.
+Add, edit, or remove pig profiles.
+Update weight and health information as needed.
+
+##Recording Feed Consumption##
+Open the Feed Monitoring module.
+Select a pig profile.
+Enter feed consumption details.
+Save the record.
+
+##Scheduling Vaccinations##
+
+Open the Vaccination Management module.
+Select a pig profile.
+Set vaccination dates and vaccine information.
+Receive reminders for upcoming schedules.
+
+##Viewing AI Predictions##
+Access the Analytics Dashboard.
+Select a pig profile.
+Review AI-generated growth forecasts and recommendations.
+
+##System Architecture##
+
+Frontend:
+
+    HTML
+    CSS
+    JavaScript
+
+Backend:
+
+    Node.js
+    Express.js
+
+Database:
+
+    MongoDB/MySQL
+
+AI Module:
+
+    Machine Learning-based Growth Prediction
