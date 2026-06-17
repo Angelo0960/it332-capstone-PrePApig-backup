@@ -31,3 +31,98 @@ Lack of predictive tools for growth assessment
 Time-consuming manual documentation
 
 PrepAPig addresses these challenges by integrating growth tracking, feed monitoring, vaccination scheduling, and AI-based prediction into a single platform.
+
+
+Installation
+Prerequisites
+
+Before installing the system, ensure the following software is installed:
+
+Node.js (v18 or later)
+npm (Node Package Manager)
+MongoDB or MySQL (depending on project configuration)
+Git
+Step 1: Clone the Repository
+git clone https://github.com/your-username/prepapig.git
+cd prepapig
+Step 2: Install Dependencies
+npm install
+Step 3: Configure Environment Variables
+
+Create a .env file in the root directory and add the required configuration:
+
+PORT=3000
+DB_URI=your_database_connection_string
+JWT_SECRET=your_secret_key
+Step 4: Start the Database
+
+Ensure your database server is running before launching the application.
+
+Step 5: Run the Application
+
+Development Mode:
+
+npm run dev
+
+Production Mode:
+
+npm start
+Step 6: Access the Application
+
+Open your browser and navigate to:
+
+http://localhost:3000
+github.com
+
+
+##Usage##
+
+##Login##
+
+Launch the application.
+Enter your username and password.
+Access the dashboard after successful authentication.
+
+##Managing Pig Records##
+Navigate to the Pig Management module.
+Add, edit, or remove pig profiles.
+Update weight and health information as needed.
+
+##Recording Feed Consumption##
+Open the Feed Monitoring module.
+Select a pig profile.
+Enter feed consumption details.
+Save the record.
+
+##Scheduling Vaccinations##
+
+Open the Vaccination Management module.
+Select a pig profile.
+Set vaccination dates and vaccine information.
+Receive reminders for upcoming schedules.
+
+##Viewing AI Predictions##
+Access the Analytics Dashboard.
+Select a pig profile.
+Review AI-generated growth forecasts and recommendations.
+
+##System Architecture##
+
+Frontend:
+
+    HTML
+    CSS
+    JavaScript
+
+Backend:
+
+    Node.js
+    Express.js
+
+Database:
+
+    MongoDB/MySQL
+
+AI Module:
+
+    Machine Learning-based Growth Prediction
