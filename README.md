@@ -213,3 +213,18 @@ AI Module:
 | report_type    | VARCHAR(100) | NOT NULL           | Report category          |
 | generated_date | DATETIME     | NOT NULL           | Date generated           |
 | file_path      | VARCHAR(255) | NOT NULL           | Report storage location  |
+
+
+| Method | Endpoint          | Description                  |
+| ------ | ----------------- | ---------------------------- |
+| POST   | /api/auth/login   | User login                   |
+| GET    | /api/batches      | Retrieve batches             |
+| POST   | /api/batches      | Create batch                 |
+| GET    | /api/feed         | Retrieve feed records        |
+| POST   | /api/feed         | Create feed record           |
+| GET    | /api/vaccinations | Retrieve vaccination records |
+| POST   | /api/vaccinations | Create vaccination record    |
+| GET    | /api/expenses     | Retrieve expenses            |
+| POST   | /api/expenses     | Create expense record        |
+Compose
+
