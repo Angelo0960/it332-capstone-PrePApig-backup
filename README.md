@@ -244,7 +244,7 @@ Notifications
 Offline support
 Deployment
 
-
+## API Endpoints (Planned)
 | Method | Endpoint          | Description                  |
 | ------ | ----------------- | ---------------------------- |
 | POST   | /api/auth/login   | User login                   |
@@ -257,3 +257,41 @@ Deployment
 | GET    | /api/expenses     | Retrieve expenses            |
 | POST   | /api/expenses     | Create expense record        |
 
+## Frontend Dependencies
+
+| Package             | Purpose                                      |
+|---------------------|----------------------------------------------|
+| react               | Frontend UI Library                          |
+| react-dom           | React DOM Rendering                          |
+| react-router-dom    | Client-Side Routing                          |
+| axios               | HTTP Requests to Backend APIs                |
+| jwt-decode          | Decode JWT Authentication Tokens             |
+| chart.js            | Data Visualization and Analytics Charts      |
+| react-chartjs-2     | React Wrapper for Chart.js                   |
+| react-icons         | User Interface Icons                         |
+| sweetalert2         | Interactive Alert and Confirmation Dialogs   |
+| react-toastify      | Toast Notification Messages                  |
+| date-fns            | Date Formatting and Manipulation             |
+| firebase            | Firebase Cloud Messaging Integration         |
+| idb                 | IndexedDB Management for Offline Storage     |
+| workbox-window      | Service Worker Communication                 |
+| vite-plugin-pwa     | Progressive Web Application Support          |
+| tailwindcss         | Utility-First CSS Framework                  |
+| @tailwindcss/vite   | Tailwind CSS Integration for Vite            |
+
+## Backend Dependencies
+
+| Package           | Purpose                         |
+| ----------------- | ------------------------------- |
+| express           | REST API Framework              |
+| mysql2            | MySQL Database Driver           |
+| cors              | Allow Frontend Requests         |
+| dotenv            | Environment Variables           |
+| jsonwebtoken      | JWT Authentication              |
+| bcryptjs          | Password Hashing                |
+| cookie-parser     | Cookie Handling                 |
+| express-validator | Request Validation              |
+| firebase-admin    | Firebase Notifications          |
+| node-cron         | Scheduled Reminder Tasks        |
+| morgan            | Request Logging                 |
+| nodemon           | Auto Restart During Development |
