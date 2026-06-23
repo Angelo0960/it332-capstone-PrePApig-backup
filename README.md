@@ -295,3 +295,18 @@ Deployment
 | node-cron         | Scheduled Reminder Tasks        |
 | morgan            | Request Logging                 |
 | nodemon           | Auto Restart During Development |
+
+## Frontend Dependencies Installations
+
+npm install express
+npm install mysql2
+npm install cors
+npm install dotenv
+npm install jsonwebtoken
+npm install bcryptjs
+npm install cookie-parser
+npm install express-validator
+npm install multer
+npm install firebase-admin
+npm install node-cron
+
