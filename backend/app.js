@@ -10,12 +10,10 @@ import expensesRouter from "./routes/expensesRoutes.js";
 import reportRouter from "./routes/reportRoutes.js";
 import notificationRouter from "./routes/notificationRoutes.js";
 
-import "./scheduler.js";  
+import "./scheduler.js";
 
-// Initialize Express
 const app = express();
 
-// Middleware
 const allowedOrigins = [
   "http://localhost:5173",
   "https://it332-capstone-pre-p-apig-backup.vercel.app",
@@ -25,7 +23,6 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests without origin (Postman, mobile apps)
       if (!origin) return callback(null, true);
 
       if (allowedOrigins.includes(origin)) {
@@ -49,9 +46,6 @@ app.use(
     ],
   })
 );
-
-// Handle preflight requests
-app.options("*", cors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -87,9 +81,8 @@ app.use((req, res) => {
   });
 });
 
-// Start Server
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
