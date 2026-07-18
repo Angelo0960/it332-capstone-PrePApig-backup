@@ -247,7 +247,8 @@ Deployment
 ## API Endpoints (Planned)
 | Method | Endpoint          | Description                  |
 | ------ | ----------------- | ---------------------------- |
-| POST   | /api/auth/login   | User login                   |
+| POST   | /auth/login   | User login                   |
+| POST   | /auth/register | User registration | 
 | GET    | /api/batches      | Retrieve batches             |
 | POST   | /api/batches      | Create batch                 |
 | GET    | /api/feed         | Retrieve feed records        |
