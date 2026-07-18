@@ -13,13 +13,10 @@ import {
   AlertTriangle,
   Calendar,
   Check,
-  BarChart3,
 } from 'lucide-react';
 import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.png';
 import BottomNav from '../components/BottomNav';
-// ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
 import { API_BASE, getAuthHeaders } from '../api.js';
-// ────────────────────────────────────────────────────────────────
 
 // Standard vaccination schedule by age
 const vaccinationSchedule = [
@@ -30,24 +27,11 @@ const vaccinationSchedule = [
 ];
 
 // Helpers
-const getNextVaccination = (day) => {
-  for (const vax of vaccinationSchedule) {
-    if (day < vax.maxDay) return vax;
-  }
-  return null;
-};
-const getCompletedVaccinations = (day) => {
-  return vaccinationSchedule.filter((vax) => day > vax.maxDay);
-};
 const isVaccinationDue = (day, vaccine) => {
   return day >= vaccine.minDay && day <= vaccine.maxDay;
 };
 const isVaccinationOverdue = (day, vaccine) => {
   return day > vaccine.maxDay;
-};
-const getDaysUntilVaccination = (day, vaccine) => {
-  if (day < vaccine.minDay) return vaccine.minDay - day;
-  return 0;
 };
 
 // Mock data fallback
@@ -119,9 +103,6 @@ export default function VaccinationScreen() {
   const [vaccinationRecords, setVaccinationRecords] = useState(MOCK_RECORDS);
   const [batches, setBatches] = useState(MOCK_BATCHES);
   const [vaccineStock, setVaccineStock] = useState([]);
-  // --- NEW: feed stock and expenses ---
-  const [feedStock, setFeedStock] = useState([]);
-  const [expenses, setExpenses] = useState([]);
 
   // Form states
   const [vaccinationForm, setVaccinationForm] = useState({
@@ -227,42 +208,10 @@ export default function VaccinationScreen() {
     }
   };
 
-  // --- NEW: Fetch feed stock ---
-  const fetchFeedStock = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/feeds/stock`, { headers: getAuthHeaders() });
-      if (!res.ok) throw new Error('Failed to fetch feed stock');
-      const json = await res.json();
-      if (json.success) {
-        setFeedStock(json.data || []);
-      }
-    } catch (err) {
-      console.warn('Could not fetch feed stock:', err.message);
-      setFeedStock([]);
-    }
-  };
-
-  // --- NEW: Fetch expenses ---
-  const fetchExpenses = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/expenses/all`, { headers: getAuthHeaders() });
-      if (!res.ok) throw new Error('Failed to fetch expenses');
-      const json = await res.json();
-      if (json.success) {
-        setExpenses(json.data || []);
-      }
-    } catch (err) {
-      console.warn('Could not fetch expenses:', err.message);
-      setExpenses([]);
-    }
-  };
-
   // Load data
   useEffect(() => {
     fetchBatches();
     fetchVaccineStock();
-    fetchFeedStock();
-    fetchExpenses();
   }, []);
 
   useEffect(() => {
@@ -424,23 +373,6 @@ export default function VaccinationScreen() {
     vaccinationRecords.map((r) => r.vaccine_name?.trim()).filter(Boolean)
   ).size;
 
-  const totalStock = vaccineStock.reduce((sum, s) => sum + (s.stock_quantity || 0), 0);
-
-  // --- Computed for feed stock ---
-  const totalFeedStock = feedStock.reduce((sum, s) => sum + (s.stock_quantity || 0), 0);
-
-  // --- Computed for expenses per batch ---
-  const expensesByBatch = expenses.reduce((acc, exp) => {
-    const batchId = exp.batch_id;
-    if (!batchId) return acc;
-    if (!acc[batchId]) acc[batchId] = 0;
-    acc[batchId] += Number(exp.amount) || 0;
-    return acc;
-  }, {});
-
-  // For total expenses across all batches when "all" is selected
-  const totalExpensesAll = Object.values(expensesByBatch).reduce((a, b) => a + b, 0);
-
   return (
     <div className="min-h-screen w-full relative overflow-hidden flex flex-col">
       <div className="absolute inset-0">
@@ -576,73 +508,6 @@ export default function VaccinationScreen() {
                   </div>
                 </div>
               </div>
-
-              {/* === NEW: Feed Stock & Expenses Summary (only when "All Batches" is selected) === */}
-              {selectedBatch === 'all' && (
-                <>
-                  {/* Feed Stock Card */}
-                  <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg mb-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-8 h-8 bg-emerald-100/80 rounded-lg flex items-center justify-center">
-                        <Package className="w-4 h-4 text-emerald-600" />
-                      </div>
-                      <h3 className="font-semibold text-gray-900">Overall Feed Stock</h3>
-                    </div>
-                    <div className="text-2xl font-bold text-gray-900 mb-1">
-                      {totalFeedStock} kg total
-                    </div>
-                    <div className="text-xs text-gray-600">{feedStock.length} feed types</div>
-                    <div className="mt-3 space-y-2">
-                      {feedStock.length === 0 ? (
-                        <div className="text-sm text-gray-500">No feed stock data</div>
-                      ) : (
-                        feedStock.map((feed) => (
-                          <div
-                            key={feed.feed_type}
-                            className="flex items-center justify-between text-sm"
-                          >
-                            <span className="text-gray-700">{feed.feed_type}</span>
-                            <span className="font-medium text-gray-900">
-                              {feed.stock_quantity} kg
-                            </span>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Expenses per Batch */}
-                  <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg mb-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-8 h-8 bg-orange-100/80 rounded-lg flex items-center justify-center">
-                        <BarChart3 className="w-4 h-4 text-orange-600" />
-                      </div>
-                      <h3 className="font-semibold text-gray-900">Total Expenses per Batch</h3>
-                    </div>
-                    <div className="text-2xl font-bold text-gray-900 mb-1">
-                      ₱{totalExpensesAll.toLocaleString('en-PH', { maximumFractionDigits: 0 })}
-                    </div>
-                    <div className="text-xs text-gray-600">Across all batches</div>
-                    <div className="mt-3 space-y-2 max-h-40 overflow-y-auto">
-                      {Object.keys(expensesByBatch).length === 0 ? (
-                        <div className="text-sm text-gray-500">No expense data</div>
-                      ) : (
-                        Object.entries(expensesByBatch).map(([batchId, amount]) => {
-                          const batchName = getBatchName(batchId);
-                          return (
-                            <div key={batchId} className="flex items-center justify-between text-sm">
-                              <span className="text-gray-700">{batchName || batchId}</span>
-                              <span className="font-medium text-gray-900">
-                                ₱{amount.toLocaleString('en-PH', { maximumFractionDigits: 0 })}
-                              </span>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
 
               {/* Vaccine Stock Table */}
               <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg mb-4">
