@@ -1,0 +1,36 @@
+* [33m35898c9[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mAngeloPatal[m[33m)[m Remove Firebase service account key
+* [33m809454a[m Add project files backup
+[31m|[m * [33m92edaf9[m[33m ([m[1;31morigin/AngeloPatal[m[33m)[m fixed minor issues
+[31m|[m [32m|[m * [33m0bd6931[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Add offline storage service
+[31m|[m [32m|[m[32m/[m  
+[31m|[m *   [33mcb9dba2[m Merge pull request #31 from Angelo0960/IsabellaElola
+[31m|[m [34m|[m[35m\[m  
+[31m|[m [34m|[m * [33m805036e[m[33m ([m[1;31morigin/IsabellaElola[m[33m)[m Add Vaccination Record
+[31m|[m [34m|[m[34m/[m  
+[31m|[m *   [33m6d9be28[m Merge pull request #30 from Angelo0960/AngeloPatal
+[31m|[m [36m|[m[1;31m\[m  
+[31m|[m [36m|[m * [33m0857837[m reports functionality initialized
+[31m|[m * [1;31m|[m [33m01a0b6a[m Merge pull request #29 from Angelo0960/AngeloPatal
+[31m|[m [1;32m|[m[1;31m\[m[1;31m|[m 
+[31m|[m [1;32m|[m *   [33mf1d7bfe[m Merge https://github.com/Angelo0960/it332-capstone-PrePApig into AngeloPatal
+[31m|[m [1;32m|[m [1;34m|[m[1;32m\[m  
+[31m|[m [1;32m|[m [1;34m|[m[1;32m/[m  
+[31m|[m [1;32m|[m[1;32m/[m[1;34m|[m   
+[31m|[m * [1;34m|[m   [33m5f2b26a[m Merge pull request #28 from Angelo0960/IsabellaElola
+[31m|[m [1;36m|[m[31m\[m [1;34m\[m  
+[31m|[m [1;36m|[m * [1;34m|[m [33m516d8ad[m Install required frontend dependencies
+[31m|[m [1;36m|[m[1;36m/[m [1;34m/[m  
+[31m|[m * [1;34m|[m [33mfc9f4fc[m Update backend controllers
+[31m|[m * [1;34m|[m [33me7ef347[m Create it332-capstone-PrePApig
+[31m|[m * [1;34m|[m   [33m909f6e4[m Merge pull request #27 from Angelo0960/AngeloPatal
+[31m|[m [32m|[m[33m\[m [1;34m\[m  
+[31m|[m [32m|[m [33m|[m * [33m80f40a1[m minor fixes
+[31m|[m [32m|[m [33m|[m[33m/[m  
+[31m|[m [32m|[m * [33m99c1425[m frontend initialized
+[31m|[m [32m|[m[32m/[m  
+[31m|[m *   [33made3e51[m Merge pull request #26 from Angelo0960/IsabellaElola
+[31m|[m [34m|[m[35m\[m  
+[31m|[m [34m|[m * [33mbd92257[m Add Report Module
+[31m|[m [34m|[m[34m/[m  
+[31m|[m *   [33m03fe6b0[m Merge pull request #25 from Angelo0960/AngeloPatal
+[31m|[m [36m|[m[1;31m\[m  
