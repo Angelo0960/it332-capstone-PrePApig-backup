@@ -1,0 +1,4 @@
+backend/node_modules/
+backend/.env
+# Firebase Admin credentials
+backend/config/*firebase-adminsdk*.json
