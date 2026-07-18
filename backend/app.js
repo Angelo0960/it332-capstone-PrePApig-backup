@@ -16,15 +16,42 @@ import "./scheduler.js";
 const app = express();
 
 // Middleware
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://it332-capstone-pre-p-apig-backup.vercel.app",
+  "https://it332-capstone-pre-p-apig-backup-7ylyz2whd-angelo0960s-projects.vercel.app",
+];
+
 app.use(
   cors({
-    origin: [
-      'http://localhost:5173',           // local dev
-      'https://it332-capstone-pre-p-apig-backup.vercel.app', // your Vercel frontend
-    ],
+    origin: function (origin, callback) {
+      // Allow requests without origin (Postman, mobile apps)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "OPTIONS",
+    ],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+    ],
   })
 );
+
+// Handle preflight requests
+app.options("*", cors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
