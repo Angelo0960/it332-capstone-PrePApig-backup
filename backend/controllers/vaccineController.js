@@ -1,5 +1,6 @@
 import supabase from '../config/supabase.js';
 import admin from '../config/firebase.js';
+import { invalidateCache, CACHE_KEYS } from '../lib/supabaseCache.js';
 
 // CREATE – inserts vaccination, deducts stock, sends notifications
 export const createVaccination = async (req, res) => {
@@ -135,6 +136,8 @@ export const createVaccination = async (req, res) => {
             success: true,
             data
         });
+
+        await invalidateCache('dashboard', CACHE_KEYS.dashboard);
 
     } catch (error) {
         console.error('Error in createVaccination:', error);

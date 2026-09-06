@@ -1,4 +1,5 @@
 import supabase from '../config/supabase.js';
+import { invalidateCache, CACHE_KEYS } from '../lib/supabaseCache.js';
 
 // CREATE
 export const createExpense = async (req, res) => {
@@ -28,6 +29,9 @@ export const createExpense = async (req, res) => {
             success: true,
             data
         });
+
+        await invalidateCache('expense_summary', CACHE_KEYS.expenseSummary);
+        await invalidateCache('dashboard', CACHE_KEYS.dashboard);
 
     } catch (error) {
         res.status(500).json({
@@ -106,6 +110,9 @@ export const updateExpense = async (req, res) => {
             data
         });
 
+        await invalidateCache('expense_summary', CACHE_KEYS.expenseSummary);
+        await invalidateCache('dashboard', CACHE_KEYS.dashboard);
+
     } catch (error) {
         res.status(500).json({
             success: false,
@@ -130,6 +137,9 @@ export const deleteExpense = async (req, res) => {
             success: true,
             message: 'Expense deleted successfully'
         });
+
+        await invalidateCache('expense_summary', CACHE_KEYS.expenseSummary);
+        await invalidateCache('dashboard', CACHE_KEYS.dashboard);
 
     } catch (error) {
         res.status(500).json({

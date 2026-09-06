@@ -1,0 +1,55 @@
+name: Scheduled Reminders
+
+on:
+  schedule:
+    # Run every 30 minutes
+    - cron: '*/30 * * * *'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  feed-reminders:
+    name: Feed Reminders
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger Feed Reminders
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "${{ secrets.API_BASE_URL }}/api/cron/feed-reminders"
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+
+  vaccination-reminders:
+    name: Vaccination Reminders
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger Vaccination Reminders
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "${{ secrets.API_BASE_URL }}/api/cron/vaccination-reminders"
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+
+  # Alternative: Single job that runs both (uses only 1 cron slot on Vercel Hobby)
+  # Uncomment this and comment out the two jobs above if you prefer single cron
+  # all-reminders:
+  #   name: All Reminders
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 10
+  #   steps:
+  #     - name: Trigger All Reminders
+  #       run: |
+  #         curl -X POST \
+  #           -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+  #           -H "Content-Type: application/json" \
+  #           "${{ secrets.API_BASE_URL }}/api/cron/run-all"
+  #       env:
+  #         CRON_SECRET: ${{ secrets.CRON_SECRET }}
+  #         API_BASE_URL: ${{ secrets.API_BASE_URL }}

@@ -1,0 +1,1 @@
+export const DEFAULT_LOCATION = "Calaca City, Batangas, Philippines";

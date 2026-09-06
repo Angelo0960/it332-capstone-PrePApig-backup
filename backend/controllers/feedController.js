@@ -1,5 +1,6 @@
 import supabase from '../config/supabase.js';
 import admin from '../config/firebase.js'; // for push notifications
+import { invalidateCache, CACHE_KEYS, invalidateReportCaches } from '../lib/supabaseCache.js';
 
 // CREATE FEED RECORD – now creates a notification
 export const createFeedRecord = async (req, res) => {
@@ -109,6 +110,9 @@ export const createFeedRecord = async (req, res) => {
             data
         });
 
+        await invalidateCache('feed_summary', CACHE_KEYS.feedSummary);
+        await invalidateCache('dashboard', CACHE_KEYS.dashboard);
+
     } catch (error) {
         console.error('Error in createFeedRecord:', error);
         res.status(500).json({
@@ -213,6 +217,9 @@ export const updateFeedRecord = async (req, res) => {
             data
         });
 
+        await invalidateCache('feed_summary', CACHE_KEYS.feedSummary);
+        await invalidateCache('dashboard', CACHE_KEYS.dashboard);
+
     } catch (error) {
         res.status(500).json({
             success: false,
@@ -237,6 +244,9 @@ export const deleteFeedRecord = async (req, res) => {
             success: true,
             message: 'Feed record deleted successfully'
         });
+
+        await invalidateCache('feed_summary', CACHE_KEYS.feedSummary);
+        await invalidateCache('dashboard', CACHE_KEYS.dashboard);
 
     } catch (error) {
         res.status(500).json({

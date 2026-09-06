@@ -1,4 +1,5 @@
 import supabase from '../config/supabase.js';
+import { invalidateCache, CACHE_KEYS, invalidateReportCaches } from '../lib/supabaseCache.js';
 
 // ===== BATCH CRUD =====
 
@@ -68,6 +69,10 @@ export const createBatch = async (req, res) => {
             success: true,
             data: newBatch,
         });
+
+        await invalidateCache('dashboard', CACHE_KEYS.dashboard);
+        await invalidateCache('batch_list', CACHE_KEYS.batchList(req.user.id));
+
     } catch (error) {
         console.error('Error creating batch:', error);
         res.status(500).json({
@@ -160,6 +165,10 @@ export const updateBatch = async (req, res) => {
             message: 'Batch updated successfully',
             data
         });
+
+        await invalidateCache('dashboard', CACHE_KEYS.dashboard);
+        await invalidateCache('batch_list', CACHE_KEYS.batchList(req.user.id));
+
     } catch (error) {
         console.error('Error updating batch:', error);
         res.status(500).json({
@@ -184,6 +193,10 @@ export const deleteBatch = async (req, res) => {
             success: true,
             message: 'Batch deleted successfully'
         });
+
+        await invalidateCache('dashboard', CACHE_KEYS.dashboard);
+        await invalidateCache('batch_list', CACHE_KEYS.batchList(req.user.id));
+
     } catch (error) {
         console.error('Error deleting batch:', error);
         res.status(500).json({
@@ -234,6 +247,9 @@ export const updateWeight = async (req, res) => {
             message: 'Weight updated successfully',
             data
         });
+
+        await invalidateCache('dashboard', CACHE_KEYS.dashboard);
+
     } catch (error) {
         console.error('Error updating weight:', error);
         res.status(500).json({

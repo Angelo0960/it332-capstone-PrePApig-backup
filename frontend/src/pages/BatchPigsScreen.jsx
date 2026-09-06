@@ -211,7 +211,27 @@ export default function BatchPigsScreen() {
         {/* Pig List */}
         <div className="flex-1 overflow-y-auto px-4 md:px-8 lg:px-12 pb-24">
           {loading ? (
-            <div className="flex items-center justify-center h-40 text-gray-600">Loading...</div>
+            // ─── SKELETON LOADING (updated) ──────────────────────────────────
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div
+                  key={i}
+                  className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg animate-pulse"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="h-5 w-16 bg-gray-300/60 rounded mb-2" />
+                      <div className="h-4 w-24 bg-gray-300/60 rounded" />
+                      <div className="h-3 w-20 bg-gray-300/60 rounded mt-2" />
+                    </div>
+                    <div className="flex gap-1">
+                      <div className="w-7 h-7 bg-gray-300/60 rounded-full" />
+                      <div className="w-7 h-7 bg-gray-300/60 rounded-full" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : error ? (
             <div className="bg-red-100/20 border border-red-300/50 rounded-xl p-4 text-red-700">
               <p>{error}</p>

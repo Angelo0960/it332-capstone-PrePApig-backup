@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Home,
@@ -18,7 +17,6 @@ import {
   Pencil,
   Users,
 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import pigImage from '../../src/assets/Gemini_Generated_Image_92oun292oun292ou-removebg-preview (1).png';
 import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.png';
 import BottomNav from '../components/BottomNav';
@@ -64,6 +62,25 @@ const getUserFromToken = () => {
   }
 };
 
+// ─── CSS for fade‑in / slide animations (lightweight) ─────────
+const animationStyles = `
+  .fade-up {
+    animation: fadeUp 0.3s ease forwards;
+  }
+  @keyframes fadeUp {
+    0% { opacity: 0; transform: translateY(12px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  .pop-in {
+    animation: popIn 0.3s ease forwards;
+  }
+  @keyframes popIn {
+    0% { transform: scale(0); opacity: 0; }
+    60% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+`;
+
 export default function DashboardScreen() {
   const navigate = useNavigate();
 
@@ -93,6 +110,34 @@ export default function DashboardScreen() {
 
   const currentBatch = batches[currentBatchIndex];
   const user = getUserFromToken();
+
+  // ─── Swipe handling (manual, no library) ─────────────────────
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+
+  const handleTouchStart = (e) => {
+    const touch = e.touches[0];
+    touchStartX.current = touch.clientX;
+    touchStartY.current = touch.clientY;
+  };
+
+  const handleTouchEnd = (e) => {
+    if (batches.length === 0) return;
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartX.current;
+    const deltaY = touch.clientY - touchStartY.current;
+    // Only swipe if horizontal movement is larger than vertical (to avoid interfering with scroll)
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+      setDragDirection(deltaX > 0 ? 1 : -1);
+      setCurrentBatchIndex((prev) => {
+        if (deltaX > 0) {
+          return prev > 0 ? prev - 1 : batches.length - 1;
+        } else {
+          return prev < batches.length - 1 ? prev + 1 : 0;
+        }
+      });
+    }
+  };
 
   // Feed stock data - mock (can be replaced later)
   const feedStocks = [
@@ -376,30 +421,62 @@ export default function DashboardScreen() {
     }
   };
 
-  // ---------- Swipe handling ----------
-  const handleDragEnd = (_event, info) => {
-    const swipeThreshold = 50;
-    if (batches.length === 0) return;
-    if (info.offset.x > swipeThreshold) {
-      setDragDirection(1);
-      setCurrentBatchIndex((prev) => (prev > 0 ? prev - 1 : batches.length - 1));
-    } else if (info.offset.x < -swipeThreshold) {
-      setDragDirection(-1);
-      setCurrentBatchIndex((prev) => (prev < batches.length - 1 ? prev + 1 : 0));
-    }
-  };
-
-  // ---------- Loading state ----------
+  // ---------- Loading state with skeleton UI ----------
   if (loading) {
     return (
       <div className="min-h-screen w-full relative overflow-hidden flex flex-col">
+        <style>{animationStyles}</style>
         <div className="absolute inset-0">
           <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover" />
         </div>
-        <div className="relative z-10 flex-1 flex items-center justify-center">
-          <div className="text-gray-700">Loading...</div>
+        <div className="relative z-10 flex flex-col flex-1 min-h-screen">
+          {/* Header skeleton */}
+          <div className="px-4 md:px-8 lg:px-12 pt-3 pb-3">
+            <div className="flex items-center justify-between">
+              <div className="h-8 w-32 bg-gray-300/60 rounded animate-pulse" />
+              <div className="flex gap-2">
+                <div className="w-8 h-8 bg-gray-300/60 rounded-full animate-pulse" />
+                <div className="w-8 h-8 bg-gray-300/60 rounded-full animate-pulse" />
+              </div>
+            </div>
+          </div>
+
+          {/* Summary cards skeleton */}
+          <div className="flex-1 overflow-y-auto px-4 md:px-8 lg:px-12 pb-24">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="bg-white/20 backdrop-blur-lg rounded-2xl p-3 border border-white/30 animate-pulse">
+                  <div className="h-4 w-3/4 bg-gray-300/60 rounded mb-2" />
+                  <div className="h-6 w-1/2 bg-gray-300/60 rounded" />
+                </div>
+              ))}
+            </div>
+
+            {/* Progress cards skeleton */}
+            <div className="space-y-2 mb-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white/20 backdrop-blur-lg rounded-xl p-3 border border-white/30 animate-pulse">
+                  <div className="flex justify-between mb-2">
+                    <div className="h-4 w-24 bg-gray-300/60 rounded" />
+                    <div className="h-4 w-16 bg-gray-300/60 rounded" />
+                  </div>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4].map((j) => (
+                      <div key={j} className="w-5 h-5 bg-gray-300/60 rounded-full" />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Pig image skeleton */}
+            <div className="flex items-center justify-center py-8 mb-4 relative min-h-[200px]">
+              <div className="w-64 h-48 bg-gray-300/40 rounded-full animate-pulse" />
+            </div>
+          </div>
+
+          <BottomNav active="Home" />
         </div>
-        <BottomNav active="Home" />
       </div>
     );
   }
@@ -426,6 +503,7 @@ export default function DashboardScreen() {
 
   return (
     <div className="min-h-screen w-full relative overflow-hidden flex flex-col">
+      <style>{animationStyles}</style>
       <div className="absolute inset-0">
         <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover" />
       </div>
@@ -466,189 +544,163 @@ export default function DashboardScreen() {
         <div className="flex-1 overflow-y-auto px-4 md:px-8 lg:px-12 pb-24">
           {batches.length > 0 && currentBatch && (
             <>
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentBatch.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3 mb-4"
-                >
-                  <div className="bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3 relative">
-                    <div className="text-xs text-gray-700 mb-1 font-medium">
-                      {currentBatch.name}: {currentBatch.pigCount} Pigs
-                      <button
-                        onClick={() => handleOpenEditPig(currentBatch.id, currentBatch.pigCount)}
-                        className="ml-1 inline-flex items-center text-blue-500 hover:text-blue-700 transition-colors"
-                        title="Edit pig count"
-                      >
-                        <Pencil className="w-3 h-3" />
-                      </button>
-                    </div>
-                    <div className="text-sm font-bold text-gray-900">Day {currentBatch.day}</div>
+              {/* ─── Summary Cards (fade‑up) ─────────────────────────────── */}
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3 mb-4">
+                <div className="bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3 relative fade-up">
+                  <div className="text-xs text-gray-700 mb-1 font-medium">
+                    {currentBatch.name}: {currentBatch.pigCount} Pigs
                     <button
-                      onClick={() => navigate(`/batch/${currentBatch.id}/pigs`)}
-                      className="absolute bottom-2 left-2 px-2 py-1 bg-blue-500 text-white text-xs rounded-lg shadow-lg hover:bg-blue-600 transition-colors flex items-center gap-1"
+                      onClick={() => handleOpenEditPig(currentBatch.id, currentBatch.pigCount)}
+                      className="ml-1 inline-flex items-center text-blue-500 hover:text-blue-700 transition-colors"
+                      title="Edit pig count"
                     >
-                      <Users className="w-3 h-3" />
-                      View Pigs
-                    </button>
-                    <button
-                      onClick={() => handleDeleteBatch(currentBatch.id, currentBatch.name)}
-                      className="absolute top-2 right-2 w-6 h-6 rounded-full bg-red-100/80 flex items-center justify-center hover:bg-red-200 transition-all"
-                      title="Delete batch"
-                    >
-                      <Trash2 className="w-3 h-3 text-red-600" />
+                      <Pencil className="w-3 h-3" />
                     </button>
                   </div>
-                  <div className="bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3">
-                    <div className="text-xs text-gray-700 mb-1 font-medium">Estimated Profit</div>
-                    <div className="text-sm font-bold text-green-600">
-                      ₱
-                      {currentBatch?.weight !== undefined &&
-                      currentBatch?.pricePerKg !== undefined &&
-                      currentBatch?.expenses !== undefined
-                        ? formatPeso(
-                            calculateProfit(
-                              currentBatch.weight,
-                              currentBatch.pricePerKg,
-                              currentBatch.expenses
-                            )
-                          )
-                        : '0'}
-                    </div>
-                  </div>
-                </motion.div>
-              </AnimatePresence>
-
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={`progress-${currentBatch.id}`}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="space-y-2 mb-4"
-                >
-                  {/* Vaccination */}
-                  <div className="bg-white/20 backdrop-blur-lg rounded-xl p-3 shadow-lg border border-white/30">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-gray-800">Vaccination</span>
-                      <span className="text-xs font-bold text-blue-600">
-                        {Math.round(currentBatch.vaccination / 25)}/4 shots
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {[1, 2, 3, 4].map((shot) => (
-                        <motion.div
-                          key={`vac-${shot}`}
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{ duration: 0.3, delay: shot * 0.1 }}
-                        >
-                          <Syringe
-                            className={`w-5 h-5 ${
-                              currentBatch.vaccination >= shot * 25
-                                ? 'text-blue-500 fill-blue-500'
-                                : 'text-gray-800/30'
-                            } transition-colors duration-300`}
-                          />
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Avg Weight */}
-                  <div className="bg-white/20 backdrop-blur-lg rounded-xl p-3 shadow-lg border border-white/30">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-gray-800">Avg Weight</span>
-                      <span className="text-xs font-bold text-purple-600">
-                        {Math.round(currentBatch.weight / currentBatch.pigCount)} kg/pig
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {[1, 2, 3, 4].map((level) => {
-                        const avgWeight = currentBatch.weight / currentBatch.pigCount;
-                        const targetWeight =
-                          currentBatch.day <= 21 ? 30 : currentBatch.day <= 49 ? 60 : 90;
-                        const weightProgress = Math.min(100, (avgWeight / targetWeight) * 100);
-                        return (
-                          <motion.div
-                            key={`weight-${level}`}
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ duration: 0.3, delay: level * 0.1 }}
-                          >
-                            <Scale
-                              className={`w-5 h-5 ${
-                                weightProgress >= level * 25
-                                  ? 'text-purple-500 fill-purple-500'
-                                  : 'text-gray-800/30'
-                              } transition-colors duration-300`}
-                            />
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Feed Level */}
-                  <div className="bg-white/20 backdrop-blur-lg rounded-xl p-3 shadow-lg border border-white/30">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-gray-800">
-                        Feed: {getFeedTypeName(getFeedTypeForAge(currentBatch.day))}
-                      </span>
-                      <span className="text-xs font-bold text-orange-600">{currentBatch.feed}%</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {[1, 2, 3, 4].map((bag) => (
-                        <motion.div
-                          key={`feed-${bag}`}
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{ duration: 0.3, delay: bag * 0.1 }}
-                        >
-                          <Package
-                            className={`w-5 h-5 ${
-                              currentBatch.feed >= bag * 25
-                                ? 'text-orange-500 fill-orange-500'
-                                : 'text-gray-800/30'
-                            } transition-colors duration-300`}
-                          />
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-                </motion.div>
-              </AnimatePresence>
-
-              {/* Pig Character */}
-              <div className="flex items-center justify-center py-8 mb-4 relative min-h-[200px] md:min-h-[240px] lg:min-h-[288px]">
-                <AnimatePresence mode="wait" custom={dragDirection}>
-                  <motion.div
-                    key={currentBatch.id}
-                    custom={dragDirection}
-                    initial={{ x: dragDirection * 300, opacity: 0, scale: 0.8 }}
-                    animate={{ x: 0, opacity: 1, scale: 1 }}
-                    exit={{ x: -dragDirection * 300, opacity: 0, scale: 0.8 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    drag="x"
-                    dragConstraints={{ left: 0, right: 0 }}
-                    dragElastic={0.2}
-                    onDragEnd={handleDragEnd}
-                    className="relative w-64 h-48 md:w-80 md:h-60 lg:w-96 lg:h-72 cursor-grab active:cursor-grabbing"
+                  <div className="text-sm font-bold text-gray-900">Day {currentBatch.day}</div>
+                  <button
+                    onClick={() => navigate(`/batch/${currentBatch.id}/pigs`)}
+                    className="absolute bottom-2 left-2 px-2 py-1 bg-blue-500 text-white text-xs rounded-lg shadow-lg hover:bg-blue-600 transition-colors flex items-center gap-1"
                   >
-                    <motion.img
-                      src={pigImage}
-                      alt="Pig Character"
-                      className="w-full h-full object-cover pointer-events-none"
-                      animate={{ scale: calculatePigScale(currentBatch.day) }}
-                      transition={{ duration: 0.5, ease: 'easeInOut' }}
-                    />
-                  </motion.div>
-                </AnimatePresence>
+                    <Users className="w-3 h-3" />
+                    View Pigs
+                  </button>
+                  <button
+                    onClick={() => handleDeleteBatch(currentBatch.id, currentBatch.name)}
+                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-red-100/80 flex items-center justify-center hover:bg-red-200 transition-all"
+                    title="Delete batch"
+                  >
+                    <Trash2 className="w-3 h-3 text-red-600" />
+                  </button>
+                </div>
+                <div className="bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3 fade-up">
+                  <div className="text-xs text-gray-700 mb-1 font-medium">Estimated Profit</div>
+                  <div className="text-sm font-bold text-green-600">
+                    ₱
+                    {currentBatch?.weight !== undefined &&
+                    currentBatch?.pricePerKg !== undefined &&
+                    currentBatch?.expenses !== undefined
+                      ? formatPeso(
+                          calculateProfit(
+                            currentBatch.weight,
+                            currentBatch.pricePerKg,
+                            currentBatch.expenses
+                          )
+                        )
+                      : '0'}
+                  </div>
+                </div>
+              </div>
 
+              {/* ─── Progress Cards (pop‑in) ────────────────────────────── */}
+              <div className="space-y-2 mb-4">
+                {/* Vaccination */}
+                <div className="bg-white/20 backdrop-blur-lg rounded-xl p-3 shadow-lg border border-white/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-gray-800">Vaccination</span>
+                    <span className="text-xs font-bold text-blue-600">
+                      {Math.round(currentBatch.vaccination / 25)}/4 shots
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {[1, 2, 3, 4].map((shot) => (
+                      <div
+                        key={`vac-${shot}`}
+                        className="pop-in"
+                        style={{ animationDelay: `${shot * 0.1}s` }}
+                      >
+                        <Syringe
+                          className={`w-5 h-5 ${
+                            currentBatch.vaccination >= shot * 25
+                              ? 'text-blue-500 fill-blue-500'
+                              : 'text-gray-800/30'
+                          } transition-colors duration-300`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Avg Weight */}
+                <div className="bg-white/20 backdrop-blur-lg rounded-xl p-3 shadow-lg border border-white/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-gray-800">Avg Weight</span>
+                    <span className="text-xs font-bold text-purple-600">
+                      {Math.round(currentBatch.weight / currentBatch.pigCount)} kg/pig
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {[1, 2, 3, 4].map((level) => {
+                      const avgWeight = currentBatch.weight / currentBatch.pigCount;
+                      const targetWeight =
+                        currentBatch.day <= 21 ? 30 : currentBatch.day <= 49 ? 60 : 90;
+                      const weightProgress = Math.min(100, (avgWeight / targetWeight) * 100);
+                      return (
+                        <div
+                          key={`weight-${level}`}
+                          className="pop-in"
+                          style={{ animationDelay: `${level * 0.1}s` }}
+                        >
+                          <Scale
+                            className={`w-5 h-5 ${
+                              weightProgress >= level * 25
+                                ? 'text-purple-500 fill-purple-500'
+                                : 'text-gray-800/30'
+                            } transition-colors duration-300`}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Feed Level */}
+                <div className="bg-white/20 backdrop-blur-lg rounded-xl p-3 shadow-lg border border-white/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-gray-800">
+                      Feed: {getFeedTypeName(getFeedTypeForAge(currentBatch.day))}
+                    </span>
+                    <span className="text-xs font-bold text-orange-600">{currentBatch.feed}%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {[1, 2, 3, 4].map((bag) => (
+                      <div
+                        key={`feed-${bag}`}
+                        className="pop-in"
+                        style={{ animationDelay: `${bag * 0.1}s` }}
+                      >
+                        <Package
+                          className={`w-5 h-5 ${
+                            currentBatch.feed >= bag * 25
+                              ? 'text-orange-500 fill-orange-500'
+                              : 'text-gray-800/30'
+                          } transition-colors duration-300`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* ─── Pig Character (swipeable) ──────────────────────────── */}
+              <div className="flex items-center justify-center py-8 mb-4 relative min-h-[200px] md:min-h-[240px] lg:min-h-[288px]">
+                <div
+                  key={currentBatch.id}
+                  className="relative w-64 h-48 md:w-80 md:h-60 lg:w-96 lg:h-72 cursor-grab active:cursor-grabbing touch-none"
+                  onTouchStart={handleTouchStart}
+                  onTouchEnd={handleTouchEnd}
+                >
+                  <img
+                    src={pigImage}
+                    alt="Pig Character"
+                    className="w-full h-full object-cover pointer-events-none transition-transform duration-500 ease-in-out"
+                    style={{
+                      transform: `scale(${calculatePigScale(currentBatch.day)})`,
+                    }}
+                  />
+                </div>
+
+                {/* Dots indicator */}
                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex gap-2">
                   {batches.map((batch, index) => (
                     <button

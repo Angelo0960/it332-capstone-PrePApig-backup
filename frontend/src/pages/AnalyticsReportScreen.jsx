@@ -302,17 +302,135 @@ export default function AnalyticsReportsScreen() {
     window.print();
   };
 
-  // ---------- Loading state ----------
+  // ---------- Loading state with skeleton UI ----------
   if (loading) {
     return (
       <div className="min-h-screen w-full relative overflow-hidden flex flex-col">
         <div className="absolute inset-0">
           <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover" />
         </div>
-        <div className="relative z-10 flex-1 flex items-center justify-center">
-          <div className="text-gray-700">Loading reports...</div>
+        <div className="relative z-10 flex flex-col flex-1 min-h-screen">
+          {/* Header skeleton */}
+          <div className="px-4 md:px-8 lg:px-12 pt-3 pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gray-300/60 rounded-full animate-pulse" />
+                <div className="h-7 w-40 bg-gray-300/60 rounded animate-pulse" />
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gray-300/60 rounded-full animate-pulse" />
+                <div className="w-5 h-5 bg-gray-300/60 rounded animate-pulse" />
+              </div>
+            </div>
+          </div>
+
+          {/* Filters skeleton */}
+          <div className="px-4 md:px-8 lg:px-12 pb-3">
+            <div className="flex gap-2">
+              <div className="flex-1 h-10 bg-gray-300/60 rounded-xl animate-pulse" />
+              <div className="flex-1 h-10 bg-gray-300/60 rounded-xl animate-pulse" />
+            </div>
+          </div>
+
+          {/* Scrollable content skeleton */}
+          <div className="flex-1 overflow-y-auto px-4 md:px-8 lg:px-12 pb-24 space-y-4">
+            {/* Alerts skeleton */}
+            <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 animate-pulse">
+              <div className="h-5 w-32 bg-gray-300/60 rounded mb-3" />
+              <div className="space-y-2">
+                <div className="h-12 bg-gray-300/60 rounded" />
+                <div className="h-12 bg-gray-300/60 rounded" />
+              </div>
+            </div>
+
+            {/* Summary cards skeleton */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 animate-pulse">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-4 h-4 bg-gray-300/60 rounded" />
+                    <div className="h-4 w-20 bg-gray-300/60 rounded" />
+                  </div>
+                  <div className="h-7 w-16 bg-gray-300/60 rounded" />
+                  <div className="h-3 w-24 bg-gray-300/60 rounded mt-1" />
+                </div>
+              ))}
+            </div>
+
+            {/* Growth chart skeleton */}
+            <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 animate-pulse">
+              <div className="h-5 w-48 bg-gray-300/60 rounded mb-3" />
+              <div className="h-44 bg-gray-300/60 rounded-xl" />
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="bg-gray-300/60 rounded-lg p-2 h-14" />
+                ))}
+              </div>
+            </div>
+
+            {/* Feed consumption chart skeleton */}
+            <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 animate-pulse">
+              <div className="h-5 w-40 bg-gray-300/60 rounded mb-3" />
+              <div className="h-36 bg-gray-300/60 rounded-xl" />
+              <div className="h-10 bg-blue-100/60 rounded-xl mt-3" />
+            </div>
+
+            {/* Feed efficiency skeleton */}
+            <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 animate-pulse">
+              <div className="h-5 w-36 bg-gray-300/60 rounded mb-3" />
+              <div className="h-20 bg-gray-300/60 rounded-xl" />
+            </div>
+
+            {/* Profit summary skeleton */}
+            <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 animate-pulse">
+              <div className="h-5 w-40 bg-gray-300/60 rounded mb-3" />
+              <div className="space-y-2">
+                <div className="h-6 bg-gray-300/60 rounded" />
+                <div className="h-6 bg-gray-300/60 rounded" />
+                <div className="h-6 bg-gray-300/60 rounded" />
+                <div className="h-12 bg-gray-300/60 rounded mt-3" />
+              </div>
+              <div className="h-32 bg-gray-300/60 rounded-xl mt-3" />
+            </div>
+
+            {/* Generate reports skeleton */}
+            <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 animate-pulse">
+              <div className="h-5 w-32 bg-gray-300/60 rounded mb-3" />
+              <div className="space-y-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-5 h-5 bg-gray-300/60 rounded" />
+                      <div className="h-4 w-48 bg-gray-300/60 rounded" />
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="w-16 h-8 bg-gray-300/60 rounded" />
+                      <div className="w-8 h-8 bg-gray-300/60 rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Recent reports skeleton */}
+            <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 animate-pulse">
+              <div className="h-5 w-32 bg-gray-300/60 rounded mb-3" />
+              <div className="space-y-3">
+                {[1, 2].map((i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <div className="h-6 w-48 bg-gray-300/60 rounded" />
+                    <div className="flex gap-2">
+                      <div className="w-16 h-8 bg-gray-300/60 rounded" />
+                      <div className="w-8 h-8 bg-gray-300/60 rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <BottomNav active="Reports" />
         </div>
-        <BottomNav active="Reports" />
       </div>
     );
   }

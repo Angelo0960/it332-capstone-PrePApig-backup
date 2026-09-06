@@ -1,6 +1,14 @@
 import express from "express";
 import cors from "cors";
 import "dotenv/config";
+import rateLimit from 'express-rate-limit';
+
+
+
+
+
+const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }); // 100 requests per 15 mins
+// Create a stricter one for /auth/login (e.g., max: 5)
 
 import authRouter from "./routes/authRoutes.js";
 import pigBatchRouter from "./routes/pigRoutes.js";
@@ -9,6 +17,9 @@ import vaccinationRouter from "./routes/vaccineRoutes.js";
 import expensesRouter from "./routes/expensesRoutes.js";
 import reportRouter from "./routes/reportRoutes.js";
 import notificationRouter from "./routes/notificationRoutes.js";
+import marketRoutes
+    from "./routes/marketRoutes.js";
+import cronRouter from "./routes/cronRoutes.js";
 
 import "./scheduler.js";
 
@@ -64,6 +75,12 @@ app.use("/vaccinations", vaccinationRouter);
 app.use("/expenses", expensesRouter);
 app.use("/reports", reportRouter);
 app.use("/notifications", notificationRouter);
+app.use(
+    "/api/market",
+    marketRoutes
+);
+app.use("/api/cron", cronRouter);
+app.use(limiter);
 
 // Root Route
 app.get("/", (req, res) => {

@@ -504,7 +504,7 @@ export default function FeedsInventoryScreen() {
           </div>
         </div>
 
-        {/* Summary Cards */}
+        {/* Summary Cards (always visible, no skeleton needed here because they derive from state) */}
         <div className="px-4 md:px-8 lg:px-12 mb-4">
           <div className="flex flex-nowrap overflow-x-auto gap-3 pb-2">
             <div className="flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
@@ -540,7 +540,7 @@ export default function FeedsInventoryScreen() {
             <div className="flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-8 h-8 bg-purple-100/80 rounded-xl flex items-center justify-center">
-                  <DollarSign className="w-5 h-5 text-purple-600" />
+                  <span className="text-purple-600 font-bold text-lg">₱</span>
                 </div>
                 <span className="text-xs text-gray-700 font-semibold">
                   {selectedBatch === 'all' ? 'All Batches' : selectedBatchData?.name}
@@ -624,8 +624,81 @@ export default function FeedsInventoryScreen() {
         {/* Main Content */}
         <div className="flex-1 overflow-y-auto px-4 md:px-8 lg:px-12 pb-24">
           {loading ? (
-            <div className="flex items-center justify-center h-40">
-              <div className="text-gray-600">Loading...</div>
+            // ─── SKELETON LOADING (updated) ──────────────────────────────────
+            <div className="space-y-4 animate-pulse">
+              {/* Stock table skeleton */}
+              <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden">
+                <div className="p-4 border-b border-white/20">
+                  <div className="h-5 w-40 bg-gray-300/60 rounded" />
+                </div>
+                <div className="divide-y divide-white/20">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="p-4 flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="h-5 w-32 bg-gray-300/60 rounded" />
+                        <div className="h-3 w-48 bg-gray-300/60 rounded mt-1" />
+                      </div>
+                      <div className="h-6 w-20 bg-gray-300/60 rounded" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action buttons skeleton */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div className="h-12 bg-gray-300/60 rounded-xl" />
+                <div className="h-12 bg-gray-300/60 rounded-xl" />
+              </div>
+
+              {/* Chart skeleton */}
+              <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4">
+                <div className="h-5 w-48 bg-gray-300/60 rounded mb-3" />
+                <div className="h-44 bg-gray-300/60 rounded-xl" />
+              </div>
+
+              {/* Schedule skeleton */}
+              <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4">
+                <div className="flex justify-between mb-3">
+                  <div className="h-5 w-48 bg-gray-300/60 rounded" />
+                  <div className="h-6 w-16 bg-gray-300/60 rounded" />
+                </div>
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="bg-white/30 backdrop-blur-sm rounded-xl p-3 border border-white/30">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="h-5 w-32 bg-gray-300/60 rounded" />
+                          <div className="h-3 w-40 bg-gray-300/60 rounded mt-1" />
+                          <div className="h-3 w-24 bg-gray-300/60 rounded mt-1" />
+                        </div>
+                        <div className="h-6 w-20 bg-gray-300/60 rounded" />
+                      </div>
+                      <div className="mt-2 h-9 w-full bg-gray-300/60 rounded-lg" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* History skeleton */}
+              <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden">
+                <div className="p-4 border-b border-white/20">
+                  <div className="h-5 w-40 bg-gray-300/60 rounded" />
+                </div>
+                <div className="divide-y divide-white/20">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="h-5 w-32 bg-gray-300/60 rounded" />
+                          <div className="h-3 w-48 bg-gray-300/60 rounded mt-1" />
+                          <div className="h-3 w-32 bg-gray-300/60 rounded mt-1" />
+                        </div>
+                        <div className="h-5 w-12 bg-gray-300/60 rounded" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           ) : error ? (
             <div className="bg-red-100/20 border border-red-300/50 rounded-xl p-4 text-red-700">
@@ -635,6 +708,7 @@ export default function FeedsInventoryScreen() {
               </button>
             </div>
           ) : (
+            // ─── ACTUAL CONTENT ──────────────────────────────────────────────
             <div className="space-y-4">
               {/* Stock / Consumption Table */}
               <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg">
