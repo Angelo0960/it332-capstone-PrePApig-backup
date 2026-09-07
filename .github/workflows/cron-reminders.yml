@@ -18,9 +18,6 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json" \
             "${{ secrets.API_BASE_URL }}/api/cron/feed-reminders"
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          API_BASE_URL: ${{ secrets.API_BASE_URL }}
 
   vaccination-reminders:
     name: Vaccination Reminders
@@ -33,9 +30,6 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json" \
             "${{ secrets.API_BASE_URL }}/api/cron/vaccination-reminders"
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          API_BASE_URL: ${{ secrets.API_BASE_URL }}
 
   # Alternative: Single job that runs both (uses only 1 cron slot on Vercel Hobby)
   # Uncomment this and comment out the two jobs above if you prefer single cron
@@ -50,6 +44,3 @@ jobs:
   #           -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
   #           -H "Content-Type: application/json" \
   #           "${{ secrets.API_BASE_URL }}/api/cron/run-all"
-  #       env:
-  #         CRON_SECRET: ${{ secrets.CRON_SECRET }}
-  #         API_BASE_URL: ${{ secrets.API_BASE_URL }}
