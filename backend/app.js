@@ -13,6 +13,7 @@ const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }); // 100 reques
 import authRouter from "./routes/authRoutes.js";
 import pigBatchRouter from "./routes/pigRoutes.js";
 import feedRouter from "./routes/feedRoutes.js";
+import feedProgramRouter from "./routes/feedProgramRoutes.js";
 import vaccinationRouter from "./routes/vaccineRoutes.js";
 import expensesRouter from "./routes/expensesRoutes.js";
 import reportRouter from "./routes/reportRoutes.js";
@@ -73,6 +74,7 @@ app.use((req, res, next) => {
 app.use("/auth", authRouter);
 app.use("/pigs", pigBatchRouter);
 app.use("/feeds", feedRouter);
+app.use("/feed-program", feedProgramRouter);
 app.use("/vaccinations", vaccinationRouter);
 app.use("/expenses", expensesRouter);
 app.use("/reports", reportRouter);
