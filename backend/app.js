@@ -27,6 +27,7 @@ const app = express();
 
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:3000",
   "https://it332-capstone-pre-p-apig-backup.vercel.app",
   "https://it332-capstone-pre-p-apig-backup-7ylyz2whd-angelo0960s-projects.vercel.app",
   "https://it332-capstone-pre-p-apig-k5b79oy02-angelo0960s-projects.vercel.app"
