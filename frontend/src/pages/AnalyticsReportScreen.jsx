@@ -34,6 +34,7 @@ import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5b
 import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
 import { API_BASE, getAuthHeaders } from '../api.js';
+import { feedProgramApi } from '../api.js';
 // ────────────────────────────────────────────────────────────────
 
 export default function AnalyticsReportsScreen() {
@@ -49,6 +50,13 @@ export default function AnalyticsReportsScreen() {
   const [expenses, setExpenses] = useState([]);
   const [feedStock, setFeedStock] = useState([]);
   const [vaccineStock, setVaccineStock] = useState([]);
+
+  // Feed Program state
+  const [feedProgram, setFeedProgram] = useState([]);
+  const [batchFeedTarget, setBatchFeedTarget] = useState(null);
+  const [feedCostForecast, setFeedCostForecast] = useState(null);
+  const [actualVsPlanned, setActualVsPlanned] = useState(null);
+  const [feedProgramLoading, setFeedProgramLoading] = useState(false);
 
   // Filters
   const [dateRange, setDateRange] = useState('Last 30 days');
@@ -71,9 +79,10 @@ export default function AnalyticsReportsScreen() {
         fetch(`${API_BASE}/expenses/all`, { headers: getAuthHeaders() }),
         fetch(`${API_BASE}/feeds/stock`, { headers: getAuthHeaders() }),
         fetch(`${API_BASE}/vaccinations/stock`, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE}/feed-program/full`),
       ]);
 
-      const [batchesRes, feedRes, vacRes, expRes, feedStockRes, vacStockRes] = results;
+      const [batchesRes, feedRes, vacRes, expRes, feedStockRes, vacStockRes, feedProgramRes] = results;
 
       if (batchesRes.status === 'fulfilled' && batchesRes.value.ok) {
         const json = await batchesRes.value.json();
@@ -99,6 +108,10 @@ export default function AnalyticsReportsScreen() {
         const json = await vacStockRes.value.json();
         if (json.success) setVaccineStock(json.data || []);
       }
+      if (feedProgramRes.status === 'fulfilled' && feedProgramRes.value.ok) {
+        const json = await feedProgramRes.value.json();
+        if (json.success) setFeedProgram(json.data || []);
+      }
     } catch (err) {
       setError('Failed to load some data. Please refresh.');
     } finally {
@@ -109,6 +122,45 @@ export default function AnalyticsReportsScreen() {
   useEffect(() => {
     fetchAllData();
   }, []);
+
+  // ---------- Fetch batch-specific feed program data ----------
+  useEffect(() => {
+    if (selectedBatch !== 'All Batches' && batches.length > 0) {
+      const batch = batches.find((b) => b.batch_code === selectedBatch);
+      if (batch) {
+        fetchBatchFeedProgram(batch.id);
+      }
+    } else {
+      setBatchFeedTarget(null);
+      setFeedCostForecast(null);
+      setActualVsPlanned(null);
+    }
+  }, [selectedBatch, batches]);
+
+  const fetchBatchFeedProgram = async (batchId) => {
+    setFeedProgramLoading(true);
+    try {
+      const [targetRes, forecastRes, comparisonRes] = await Promise.allSettled([
+        feedProgramApi.getBatchFeedTarget(batchId),
+        feedProgramApi.getBatchFeedCostForecast(batchId, 4),
+        feedProgramApi.getBatchActualVsPlanned(batchId, 4)
+      ]);
+
+      if (targetRes.status === 'fulfilled' && targetRes.value.success) {
+        setBatchFeedTarget(targetRes.value.data);
+      }
+      if (forecastRes.status === 'fulfilled' && forecastRes.value.success) {
+        setFeedCostForecast(forecastRes.value.data);
+      }
+      if (comparisonRes.status === 'fulfilled' && comparisonRes.value.success) {
+        setActualVsPlanned(comparisonRes.value.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch batch feed program:', err);
+    } finally {
+      setFeedProgramLoading(false);
+    }
+  };
 
   // ---------- Filter data by selected batch ----------
   const filterByBatch = (data, batchIdField) => {
@@ -647,7 +699,7 @@ export default function AnalyticsReportsScreen() {
             </div>
           </div>
 
-          {/* Feed Consumption */}
+{/* Feed Consumption */}
           <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg mb-4">
             <h3 className="font-semibold text-gray-900 mb-3">Feed Consumption</h3>
             <div className="bg-white/40 rounded-xl p-3 mb-3">
@@ -675,6 +727,209 @@ export default function AnalyticsReportsScreen() {
               </div>
             </div>
           </div>
+
+          {/* Feed Program Schedule */}
+          {feedProgram.length > 0 && (
+            <div className="bg-white/20 backdrop-blur-lg rounded-2xl border-4 border-green-500 p-4 shadow-lg mb-4 ring-2 ring-green-500">
+              <h3 className="font-bold text-green-800 text-lg mb-3 flex items-center gap-2">
+                <span className="bg-green-500 text-white px-2 py-0.5 rounded text-xs">TEST</span>
+                Feed Program Schedule (26 Weeks)
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/30 text-left text-gray-600">
+                      <th className="pb-2 px-2">Week</th>
+                      <th className="pb-2 px-2">Phase</th>
+                      <th className="pb-2 px-2">Ration</th>
+                      <th className="pb-2 px-2">Daily FC (kg/pig)</th>
+                      <th className="pb-2 px-2">Weekly FC (kg/pig)</th>
+                      <th className="pb-2 px-2">Bags/Pig</th>
+                      <th className="pb-2 px-2">Ref. Price/Bag</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {feedProgram.map((entry) => (
+                      <tr
+                        key={entry.week}
+                        className={`border-b border-white/20 hover:bg-white/10 transition-colors ${
+                          batchFeedTarget && batchFeedTarget.week === entry.week
+                            ? 'bg-green-100/30 font-semibold'
+                            : ''
+                        }`}
+                      >
+                        <td className="py-2 px-2 text-gray-900">W{entry.week}</td>
+                        <td className="py-2 px-2 text-gray-700">
+                          <span className={`px-2 py-0.5 rounded text-xs ${
+                            entry.phase === 'Starter' ? 'bg-green-100 text-green-800' :
+                            entry.phase === 'Grower' ? 'bg-blue-100 text-blue-800' :
+                            entry.phase === 'Finisher 1' ? 'bg-purple-100 text-purple-800' :
+                            'bg-orange-100 text-orange-800'
+                          }`}>
+                            {entry.phase}
+                          </span>
+                        </td>
+                        <td className="py-2 px-2 text-gray-900">{entry.ration}</td>
+                        <td className="py-2 px-2 text-gray-900">{entry.dailyFC}</td>
+                        <td className="py-2 px-2 text-gray-900">{entry.weeklyFC}</td>
+                        <td className="py-2 px-2 text-gray-900">{entry.bagsPerPig?.toFixed(2) || '0.00'}</td>
+                        <td className="py-2 px-2 text-gray-900">
+                          {entry.referencePricePerBag ? `₱${entry.referencePricePerBag.toLocaleString()}` : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {batchFeedTarget && (
+                <div className="mt-3 p-3 bg-green-50/50 rounded-lg border border-green-200/50">
+                  <div className="text-xs text-green-800 font-medium mb-1">Current Batch Target (Week {batchFeedTarget.week})</div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                    <div><span className="text-gray-600">Ration:</span> <span className="font-semibold text-gray-900 ml-1">{batchFeedTarget.ration}</span></div>
+                    <div><span className="text-gray-600">Daily/Pig:</span> <span className="font-semibold text-gray-900 ml-1">{batchFeedTarget.dailyPerPigKg} kg</span></div>
+                    <div><span className="text-gray-600">Weekly/Pig:</span> <span className="font-semibold text-gray-900 ml-1">{batchFeedTarget.weeklyPerPigKg} kg</span></div>
+                    <div><span className="text-gray-600">Total Weekly:</span> <span className="font-semibold text-gray-900 ml-1">{batchFeedTarget.totalWeeklyKg} kg</span></div>
+                    <div className="md:col-span-2"><span className="text-gray-600">Bags Needed:</span> <span className="font-semibold text-gray-900 ml-1">{batchFeedTarget.bagsNeeded}</span></div>
+                    <div className="md:col-span-2"><span className="text-gray-600">Est. Weekly Cost:</span> <span className="font-semibold text-gray-900 ml-1">{batchFeedTarget.estimatedWeeklyCost ? `₱${batchFeedTarget.estimatedWeeklyCost.toLocaleString()}` : 'Price not set'}</span></div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Feed Cost Forecast */}
+          {feedCostForecast && (
+            <div className="bg-white/20 backdrop-blur-lg rounded-2xl border-4 border-blue-500 p-4 shadow-lg mb-4 ring-2 ring-blue-500">
+              <h3 className="font-bold text-blue-800 text-lg mb-3 flex items-center gap-2">
+                <span className="bg-blue-500 text-white px-2 py-0.5 rounded text-xs">TEST</span>
+                Feed Cost Forecast (Next {feedCostForecast.forecastWeeks} Weeks)
+              </h3>
+              
+              <div className="mb-4 p-3 bg-blue-50/50 rounded-lg border border-blue-200/50">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                  <div><span className="text-gray-600">Total Projected Feed:</span> <span className="font-semibold text-gray-900 ml-1">{feedCostForecast.summary.totalProjectedKg.toLocaleString()} kg</span></div>
+                  <div><span className="text-gray-600">Total Projected Cost:</span> <span className="font-semibold text-gray-900 ml-1">₱{feedCostForecast.summary.totalProjectedCost.toLocaleString()}</span></div>
+                  <div><span className="text-gray-600">Pig Count:</span> <span className="font-semibold text-gray-900 ml-1">{feedCostForecast.pigCount}</span></div>
+                  <div><span className="text-gray-600">Current Week:</span> <span className="font-semibold text-gray-900 ml-1">W{feedCostForecast.currentWeek}</span></div>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto mb-4">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/30 text-left text-gray-600">
+                      <th className="pb-2 px-2">Week</th>
+                      <th className="pb-2 px-2">Phase</th>
+                      <th className="pb-2 px-2">Ration</th>
+                      <th className="pb-2 px-2">Weekly Feed (kg)</th>
+                      <th className="pb-2 px-2">Bags Needed</th>
+                      <th className="pb-2 px-2">Unit Price</th>
+                      <th className="pb-2 px-2">Weekly Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {feedCostForecast.forecast.map((entry) => (
+                      <tr key={entry.week} className="border-b border-white/20 hover:bg-white/10">
+                        <td className="py-2 px-2 text-gray-900">W{entry.week}</td>
+                        <td className="py-2 px-2">
+                          <span className={`px-2 py-0.5 rounded text-xs ${
+                            entry.phase === 'Starter' ? 'bg-green-100 text-green-800' :
+                            entry.phase === 'Grower' ? 'bg-blue-100 text-blue-800' :
+                            entry.phase === 'Finisher 1' ? 'bg-purple-100 text-purple-800' :
+                            'bg-orange-100 text-orange-800'
+                          }`}>
+                            {entry.phase}
+                          </span>
+                        </td>
+                        <td className="py-2 px-2 text-gray-900">{entry.ration}</td>
+                        <td className="py-2 px-2 text-gray-900">{entry.totalWeeklyKg.toLocaleString()}</td>
+                        <td className="py-2 px-2 text-gray-900">{entry.bagsNeeded}</td>
+                        <td className="py-2 px-2 text-gray-900">₱{entry.unitPrice.toLocaleString()}</td>
+                        <td className="py-2 px-2 font-semibold text-gray-900">₱{entry.weeklyCost.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {feedCostForecast.summary.byRation.map((ration) => (
+                  <div key={ration.ration} className="p-3 bg-white/30 rounded-lg border border-white/30">
+                    <div className="font-semibold text-gray-900 mb-1">{ration.ration} ({ration.phase})</div>
+                    <div className="text-xs text-gray-600">Total Feed: <span className="font-medium text-gray-900">{ration.totalKg.toLocaleString()} kg</span></div>
+                    <div className="text-xs text-gray-600">Bags: <span className="font-medium text-gray-900">{ration.totalBags}</span></div>
+                    <div className="text-xs text-gray-600">Avg Price/Bag: <span className="font-medium text-gray-900">₱{ration.avgUnitPrice.toLocaleString()}</span></div>
+                    <div className="text-xs text-gray-600">Total Cost: <span className="font-semibold text-green-700">₱{ration.totalCost.toLocaleString()}</span></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Actual vs Planned Feed Comparison */}
+          {actualVsPlanned && actualVsPlanned.comparison.length > 0 && (
+            <div className="bg-white/20 backdrop-blur-lg rounded-2xl border-4 border-purple-500 p-4 shadow-lg mb-4 ring-2 ring-purple-500">
+              <h3 className="font-bold text-purple-800 text-lg mb-3 flex items-center gap-2">
+                <span className="bg-purple-500 text-white px-2 py-0.5 rounded text-xs">TEST</span>
+                Actual vs Planned Feed Consumption
+              </h3>
+              
+              <div className="mb-4 p-3 bg-blue-50/50 rounded-lg border border-blue-200/50">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                  <div><span className="text-gray-600">Total Planned:</span> <span className="font-semibold text-gray-900 ml-1">{actualVsPlanned.summary.totalPlannedKg.toLocaleString()} kg</span></div>
+                  <div><span className="text-gray-600">Total Actual:</span> <span className="font-semibold text-gray-900 ml-1">{actualVsPlanned.summary.totalActualKg.toLocaleString()} kg</span></div>
+                  <div><span className="text-gray-600">Variance:</span> <span className={`font-semibold ml-1 ${actualVsPlanned.summary.totalVarianceKg >= 0 ? 'text-green-700' : 'text-red-700'}`}>{actualVsPlanned.summary.totalVarianceKg >= 0 ? '+' : ''}{actualVsPlanned.summary.totalVarianceKg.toLocaleString()} kg</span></div>
+                  <div><span className="text-gray-600">Variance %:</span> <span className={`font-semibold ml-1 ${actualVsPlanned.summary.totalVariancePercent >= 0 ? 'text-green-700' : 'text-red-700'}`}>{actualVsPlanned.summary.totalVariancePercent >= 0 ? '+' : ''}{actualVsPlanned.summary.totalVariancePercent}%</span></div>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/30 text-left text-gray-600">
+                      <th className="pb-2 px-2">Week</th>
+                      <th className="pb-2 px-2">Phase</th>
+                      <th className="pb-2 px-2">Ration</th>
+                      <th className="pb-2 px-2">Planned (kg)</th>
+                      <th className="pb-2 px-2">Actual (kg)</th>
+                      <th className="pb-2 px-2">Variance (kg)</th>
+                      <th className="pb-2 px-2">Variance %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {actualVsPlanned.comparison.map((entry) => (
+                      <tr key={entry.week} className="border-b border-white/20 hover:bg-white/10">
+                        <td className="py-2 px-2 text-gray-900">W{entry.week}</td>
+                        <td className="py-2 px-2">
+                          <span className={`px-2 py-0.5 rounded text-xs ${
+                            entry.phase === 'Starter' ? 'bg-green-100 text-green-800' :
+                            entry.phase === 'Grower' ? 'bg-blue-100 text-blue-800' :
+                            entry.phase === 'Finisher 1' ? 'bg-purple-100 text-purple-800' :
+                            'bg-orange-100 text-orange-800'
+                          }`}>
+                            {entry.phase}
+                          </span>
+                        </td>
+                        <td className="py-2 px-2 text-gray-900">{entry.ration}</td>
+                        <td className="py-2 px-2 text-gray-900">{entry.plannedKg.toLocaleString()}</td>
+                        <td className="py-2 px-2 text-gray-900">{entry.actualKg.toLocaleString()}</td>
+                        <td className="py-2 px-2">
+                          <span className={entry.varianceKg >= 0 ? 'text-green-700' : 'text-red-700'}>
+                            {entry.varianceKg >= 0 ? '+' : ''}{entry.varianceKg.toLocaleString()}
+                          </span>
+                        </td>
+                        <td className="py-2 px-2">
+                          <span className={entry.variancePercent >= 0 ? 'text-green-700' : 'text-red-700'}>
+                            {entry.variancePercent >= 0 ? '+' : ''}{entry.variancePercent}%
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* Feed Efficiency */}
           <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg mb-4">
