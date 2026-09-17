@@ -21,10 +21,7 @@ export const generateToken = async () => {
       console.log("❌ Notification permission denied");
       return null;
     }
-    const registration = await navigator.serviceWorker.register(
-      "/firebase-messaging-sw.js"
-    );
-    await navigator.serviceWorker.ready;
+    const registration = await navigator.serviceWorker.ready;
     const token = await getToken(messaging, {
       vapidKey: import.meta.env.VITE_VAPID_KEY,
       serviceWorkerRegistration: registration,
@@ -47,7 +44,7 @@ export const onMessageListener = () => {
 
       const title = payload.notification?.title || "PrepAPig Notification";
       const body = payload.notification?.body || "You have a new update.";
-      const icon = `${window.location.origin}/vite.svg`;
+      const icon = `${window.location.origin}/icons/icon-192x192.png`;
 
       if (Notification.permission !== "granted") {
         console.warn("⚠️ Permission not granted.");
@@ -55,7 +52,6 @@ export const onMessageListener = () => {
         return;
       }
 
-      // ✅ Use service worker to show notification (most reliable)
       if (navigator.serviceWorker.controller) {
         console.log("✅ Sending notification via service worker");
         navigator.serviceWorker.controller.postMessage({
@@ -65,8 +61,7 @@ export const onMessageListener = () => {
           icon,
         });
       } else {
-        console.warn("⚠️ No service worker controller, registering...");
-        // Fallback: try to get a controller
+        console.warn("⚠️ No service worker controller, using ready promise...");
         navigator.serviceWorker.ready.then(registration => {
           if (registration.active) {
             registration.active.postMessage({

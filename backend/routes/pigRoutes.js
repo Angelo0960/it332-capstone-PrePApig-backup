@@ -10,6 +10,10 @@ pigBatchRouter.get('/all', pigBatchController.getAllBatches);
 pigBatchRouter.get('/active', pigBatchController.getActiveBatches);
 pigBatchRouter.get('/summary', pigBatchController.getBatchSummary);
 
+// Feed schedule endpoints
+pigBatchRouter.get('/:id/feed-schedule', pigBatchController.getBatchFeedSchedule);
+pigBatchRouter.post('/:id/validate-ration', pigBatchController.validateBatchFeedRation);
+
 // Individual pig management – MUST COME BEFORE the generic :id
 pigBatchRouter.get('/batch/:batchId/pigs', pigBatchController.getPigsByBatch);
 pigBatchRouter.post('/pig', pigBatchController.createPig);

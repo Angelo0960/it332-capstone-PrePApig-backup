@@ -1,5 +1,12 @@
 import supabase from '../config/supabase.js';
 import { invalidateCache, CACHE_KEYS, invalidateReportCaches } from '../lib/supabaseCache.js';
+import { 
+  getCurrentFeedProgram, 
+  getNextFeedChange, 
+  getFeedScheduleStatus,
+  getAllFeedChanges,
+  getCompleteFeedSchedule 
+} from '../lib/feedScheduleService.js';
 
 // ===== BATCH CRUD =====
 
@@ -92,10 +99,26 @@ export const getAllBatches = async (req, res) => {
 
         if (error) throw error;
 
+        // Add feed schedule info to each batch
+        const dataWithFeed = data.map(batch => {
+            const currentFeed = getCurrentFeedProgram(batch);
+            const nextChange = getNextFeedChange(batch);
+            const status = getFeedScheduleStatus(batch);
+            
+            return {
+                ...batch,
+                currentFeed,
+                nextFeedChange,
+                feedStatus: status?.status || 'unknown',
+                daysUntilFeedChange: status?.daysUntil,
+                feedMessage: status?.message
+            };
+        });
+
         res.status(200).json({
             success: true,
-            count: data.length,
-            data
+            count: dataWithFeed.length,
+            data: dataWithFeed
         });
     } catch (error) {
         console.error('Error fetching batches:', error);
@@ -118,13 +141,85 @@ export const getBatchById = async (req, res) => {
 
         if (error) throw error;
 
+        // Add complete feed schedule
+        const schedule = getCompleteFeedSchedule(data);
+
         res.status(200).json({
             success: true,
-            data
+            data: {
+                ...data,
+                feedSchedule: schedule
+            }
         });
     } catch (error) {
         console.error('Error fetching batch:', error);
         res.status(404).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+export const getBatchFeedSchedule = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { data, error } = await supabase
+            .from('pig_batches')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) throw error;
+
+        const schedule = getCompleteFeedSchedule(data);
+
+        res.status(200).json({
+            success: true,
+            data: schedule
+        });
+    } catch (error) {
+        console.error('Error fetching batch feed schedule:', error);
+        res.status(404).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+export const validateBatchFeedRation = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { feed_type, override = false } = req.body;
+
+        if (!feed_type) {
+            return res.status(400).json({
+                success: false,
+                message: 'feed_type is required'
+            });
+        }
+
+        const { data, error } = await supabase
+            .from('pig_batches')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) throw error;
+
+        const validation = validateFeedRation(data, feed_type);
+        
+        // Check if user has manual override (could be stored in localStorage or DB)
+        // For now, just return validation with override flag
+        validation.overrideUsed = override;
+
+        res.status(200).json({
+            success: true,
+            data: validation
+        });
+    } catch (error) {
+        console.error('Error validating feed ration:', error);
+        res.status(400).json({
             success: false,
             message: error.message
         });

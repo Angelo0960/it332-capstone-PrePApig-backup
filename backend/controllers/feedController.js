@@ -1,6 +1,7 @@
 import supabase from '../config/supabase.js';
 import admin from '../config/firebase.js'; // for push notifications
 import { invalidateCache, CACHE_KEYS, invalidateReportCaches } from '../lib/supabaseCache.js';
+import { validateFeedRation } from '../lib/feedScheduleService.js';
 
 // CREATE FEED RECORD – now creates a notification
 export const createFeedRecord = async (req, res) => {
@@ -11,8 +12,24 @@ export const createFeedRecord = async (req, res) => {
             quantity_kg,
             feeding_date,
             feeding_time,
-            notes
+            notes,
+            override = false
         } = req.body;
+
+        // Validate feed ration if batch_id provided
+        let validation = null;
+        if (batch_id && feed_type) {
+            const { data: batchData, error: batchError } = await supabase
+                .from('pig_batches')
+                .select('*')
+                .eq('id', batch_id)
+                .single();
+
+            if (!batchError && batchData) {
+                validation = validateFeedRation(batchData, feed_type);
+                validation.overrideUsed = override;
+            }
+        }
 
         // 1. Insert the feed record
         const { data, error } = await supabase
@@ -38,7 +55,7 @@ export const createFeedRecord = async (req, res) => {
 
         if (batchError) {
             console.warn('Could not fetch batch owner:', batchError.message);
-            return res.status(201).json({ success: true, data });
+            return res.status(201).json({ success: true, data, validation });
         }
 
         const ownerId = batchData?.owner_id;
@@ -47,7 +64,7 @@ export const createFeedRecord = async (req, res) => {
         // 3. Skip notification if no owner or admin
         if (!ownerId || ownerId === 'admin') {
             console.log('Skipping notification – no real owner');
-            return res.status(201).json({ success: true, data });
+            return res.status(201).json({ success: true, data, validation });
         }
 
         // 4. Get user's FCM tokens (if push notifications are used)
@@ -107,7 +124,8 @@ export const createFeedRecord = async (req, res) => {
 
         res.status(201).json({
             success: true,
-            data
+            data,
+            validation
         });
 
         await invalidateCache('feed_summary', CACHE_KEYS.feedSummary);

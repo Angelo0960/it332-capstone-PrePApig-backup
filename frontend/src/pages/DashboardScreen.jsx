@@ -103,7 +103,7 @@ export default function DashboardScreen() {
   const [newBatch, setNewBatch] = useState({
     pig_count: '',
     breed: '',
-    start_weight: '',
+    start_weight: '1.4',
     date_acquired: '',
     status: 'Active',
   });
@@ -255,6 +255,14 @@ export default function DashboardScreen() {
           const vaccination = Math.min(100, Math.floor((day / 50) * 100));
           const health = 80;
           const feed = Math.max(0, 100 - Math.floor(day / 1.2));
+          
+          // Feed schedule info from backend
+          const currentFeed = batch.currentFeed;
+          const nextFeedChange = batch.nextFeedChange;
+          const feedStatus = batch.feedStatus || 'unknown';
+          const daysUntilFeedChange = batch.daysUntilFeedChange;
+          const feedMessage = batch.feedMessage;
+          
           return {
             id: batch.id,
             name: name,
@@ -268,6 +276,12 @@ export default function DashboardScreen() {
             weight: batch.current_weight || batch.start_weight || 0,
             pricePerKg: 180,
             expenses: (batch.pig_count || 0) * 1000,
+            // Feed schedule info
+            currentFeed,
+            nextFeedChange,
+            feedStatus,
+            daysUntilFeedChange,
+            feedMessage
           };
         });
         setBatches(mapped);
@@ -394,6 +408,9 @@ export default function DashboardScreen() {
     const batchCode = generateBatchCode();
 
     try {
+      const perPigWeight = parseFloat(newBatch.start_weight);
+      const totalWeight = perPigWeight * parseInt(newBatch.pig_count);
+
       const res = await fetch(`${API_BASE}/pigs/create`, {
         method: 'POST',
         headers: getAuthHeaders(),
@@ -401,8 +418,8 @@ export default function DashboardScreen() {
           batch_code: batchCode,
           pig_count: parseInt(newBatch.pig_count),
           breed: newBatch.breed || 'Unknown',
-          start_weight: parseFloat(newBatch.start_weight),
-          current_weight: parseFloat(newBatch.start_weight),
+          start_weight: perPigWeight,
+          current_weight: totalWeight,
           date_acquired: newBatch.date_acquired,
           status: 'Active',
         }),
@@ -412,7 +429,7 @@ export default function DashboardScreen() {
       if (json.success) {
         await fetchBatches();
         setShowAddBatch(false);
-        setNewBatch({ pig_count: '', breed: '', start_weight: '', date_acquired: '', status: 'Active' });
+        setNewBatch({ pig_count: '', breed: '', start_weight: '1.4', date_acquired: '', status: 'Active' });
       } else {
         throw new Error(json.message || 'Unknown error');
       }
@@ -658,8 +675,21 @@ export default function DashboardScreen() {
                 <div className="bg-white/20 backdrop-blur-lg rounded-xl p-3 shadow-lg border border-white/30">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-semibold text-gray-800">
-                      Feed: {getFeedTypeName(getFeedTypeForAge(currentBatch.day))}
+                      Feed: {currentBatch.currentFeed?.feedType || getFeedTypeName(getFeedTypeForAge(currentBatch.day))}
                     </span>
+                    {currentBatch.feedStatus && currentBatch.feedStatus !== 'unknown' && (
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        currentBatch.feedStatus === 'overdue' ? 'bg-red-100 text-red-800' :
+                        currentBatch.feedStatus === 'soon' ? 'bg-orange-100 text-orange-800' :
+                        currentBatch.feedStatus === 'complete' ? 'bg-green-100 text-green-800' :
+                        'bg-green-100 text-green-800'
+                      }`}>
+                        {currentBatch.feedStatus === 'overdue' && `⚠️ Overdue`}
+                        {currentBatch.feedStatus === 'soon' && `⏳ ${currentBatch.daysUntilFeedChange}d`}
+                        {currentBatch.feedStatus === 'ok' && '✅ On track'}
+                        {currentBatch.feedStatus === 'complete' && '✅ Complete'}
+                      </span>
+                    )}
                     <span className="text-xs font-bold text-orange-600">{currentBatch.feed}%</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -740,7 +770,7 @@ export default function DashboardScreen() {
                     setNewBatch({
                       pig_count: '',
                       breed: '',
-                      start_weight: '',
+                      start_weight: '1.4',
                       date_acquired: '',
                       status: 'Active',
                     });
@@ -787,16 +817,24 @@ export default function DashboardScreen() {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-2">
-                    Start Weight (kg)
+                    Weight Per Pig (kg)
                   </label>
                   <input
                     type="number"
                     value={newBatch.start_weight}
                     onChange={(e) => setNewBatch({ ...newBatch, start_weight: e.target.value })}
-                    placeholder="15"
+                    placeholder="1.4"
                     step="0.1"
+                    min="0.5"
+                    max="3"
                     className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
                   />
+                  <p className="mt-1 text-xs text-gray-500">Typical newborn weight: 1.0–1.8 kg (avg 1.4 kg)</p>
+                  {newBatch.pig_count && newBatch.start_weight && (
+                    <p className="mt-1 text-sm text-gray-700 font-medium">
+                      Total batch weight: {(parseFloat(newBatch.start_weight) * parseInt(newBatch.pig_count)).toFixed(1)} kg
+                    </p>
+                  )}
                 </div>
 
                 <div>

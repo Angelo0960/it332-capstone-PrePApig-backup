@@ -355,3 +355,132 @@ backend/
 ├── package.json                    # Dependencies
 ├── README.md                       # Backend documentation
 └── server.js                       # Entry point
+
+## Data Pipeline Technical Metadata Documentation
+
+### 1. Pipeline Overview
+
+**Pipeline Name:** Pig Growth Analytics Pipeline
+
+**Brief Explanation:** ETL pipeline that ingests manually-entered pig growth, vaccination, and health records; cleans and validates data; transforms into analytics-ready aggregates (daily growth rates, feed conversion ratios, vaccination compliance); loads into PostgreSQL for dashboard visualization and AI model consumption.
+
+**Problem/Use Case:** Enables historical trend analysis, AI growth prediction model training, and regulatory compliance reporting for pig farm operations.
+
+### 2. Pipeline Architecture
+
+```mermaid
+flowchart LR
+    A[Web Forms\n(Growth, Vaccination,\nHealth Records)] --> B[Python Ingestion\n(pandas, sqlalchemy)]
+    B --> C[SQL Transformation\n(PostgreSQL Functions/CTEs)]
+    C --> D[Apache Airflow\nOrchestration]
+    D --> E[(PostgreSQL\nAnalytics Tables)]
+    E --> F[Dashboard &\nAI Models]
+```
+
+**Description:** Users submit pig growth, vaccination, and health records through web forms. Python scripts ingest and validate the raw data. SQL transformations aggregate daily metrics and compute KPIs. Apache Airflow orchestrates the daily workflow. Results are stored in PostgreSQL analytics tables for dashboard consumption and AI model training.
+
+### 3. Pipeline Metadata
+
+| Metadata | Description |
+|----------|-------------|
+| Pipeline Name | Pig Growth Analytics Pipeline |
+| Purpose | Process pig growth, vaccination, health data for analytics & AI |
+| Ingestion Tool | Python (pandas, sqlalchemy, pydantic) |
+| Transformation Tool | SQL (PostgreSQL functions, CTEs, window functions) |
+| Orchestration Tool | Apache Airflow |
+| Data Storage | PostgreSQL |
+| Schedule | Daily at 12:00 AM |
+| Dependencies | Manual entry forms submitted; Database connectivity; Airflow scheduler running |
+| Configurations | Airflow DAG parameters, DB connection strings, validation rules, weight thresholds |
+| Connections | Web Forms → Python API → PostgreSQL Staging → SQL Transform → PostgreSQL Analytics → Airflow DAG |
+
+### 4. Data Lineage
+
+**Timeline Diagram:**
+
+```mermaid
+timeline
+    title Pig Growth Analytics Pipeline - Data Lineage
+    section Source
+        Web Forms : Growth, Vaccination, Health Records
+    section Ingestion
+        Python API : Validate, Type Cast, Stage
+    section Cleaning
+        Python Scripts : Deduplicate, Range Check, Date Logic
+    section Transformation
+        SQL/PostgreSQL : Aggregate, Compute KPIs, Join
+    section Storage
+        PostgreSQL : Analytics Tables for Dashboard/AI
+```
+
+**Transformation Table:**
+
+| Stage | Input | Process | Output |
+|-------|-------|---------|--------|
+| Source | Web forms (growth, vaccination, health) | User submits records via frontend | Raw JSON/CSV payload |
+| Ingestion | Raw payload | Python validation, type casting, schema enforcement | Validated raw records in staging |
+| Cleaning | Validated records | Remove duplicates, validate weight ranges (0.5-500kg), check date logic, handle missing values | Clean records |
+| Transformation | Clean records | Aggregate daily growth per batch, compute FCR, vaccination compliance rates, feed efficiency | Analytics aggregates |
+| Storage | Analytics aggregates | Upsert into PostgreSQL analytics tables | `growth_analytics`, `vaccination_compliance`, `feed_efficiency` tables |
+
+### 5. Schema Metadata
+
+**Existing Operational Tables (from Database Schema section):**
+
+- `pig_batches` - Batch information (PK: batch_id)
+- `growth_records` - Weight measurements (PK: growth_id, FK: batch_id)
+- `vaccination_records` - Vaccination schedules (PK: vaccination_id, FK: batch_id)
+- `feed_records` - Feed consumption (PK: feed_id, FK: batch_id)
+
+**New Analytics Tables:**
+
+**growth_analytics**
+| Column | Data Type | Constraints | Description |
+|--------|-----------|-------------|-------------|
+| analytics_id | INT | PK, AUTO_INCREMENT | Unique analytics record |
+| batch_id | INT | FK, NOT NULL | References pig_batches |
+| record_date | DATE | NOT NULL | Date of aggregation |
+| avg_daily_gain | DECIMAL(8,3) | NOT NULL | Average daily weight gain (kg) |
+| total_weight_gain | DECIMAL(8,2) | NOT NULL | Total weight gain since arrival |
+| current_avg_weight | DECIMAL(8,2) | NOT NULL | Current average batch weight |
+| growth_rate_pct | DECIMAL(5,2) | NULL | Growth rate percentage |
+| created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | Record creation |
+
+**vaccination_compliance**
+| Column | Data Type | Constraints | Description |
+|--------|-----------|-------------|-------------|
+| compliance_id | INT | PK, AUTO_INCREMENT | Unique compliance record |
+| batch_id | INT | FK, NOT NULL | References pig_batches |
+| vaccine_name | VARCHAR(100) | NOT NULL | Vaccine identifier |
+| scheduled_count | INT | NOT NULL | Total scheduled vaccinations |
+| completed_count | INT | NOT NULL | Completed vaccinations |
+| overdue_count | INT | NOT NULL | Overdue vaccinations |
+| compliance_rate | DECIMAL(5,2) | NOT NULL | Compliance percentage |
+| report_date | DATE | NOT NULL | Reporting date |
+
+**feed_efficiency**
+| Column | Data Type | Constraints | Description |
+|--------|-----------|-------------|-------------|
+| efficiency_id | INT | PK, AUTO_INCREMENT | Unique efficiency record |
+| batch_id | INT | FK, NOT NULL | References pig_batches |
+| record_date | DATE | NOT NULL | Reporting date |
+| total_feed_consumed | DECIMAL(10,2) | NOT NULL | Total feed (kg) |
+| total_weight_gain | DECIMAL(8,2) | NOT NULL | Weight gain (kg) |
+| fcr | DECIMAL(6,3) | NULL | Feed Conversion Ratio |
+| feed_cost_per_kg_gain | DECIMAL(10,2) | NULL | Cost efficiency metric |
+
+**Relationships:**
+| Parent Table | Relationship | Child Table |
+|--------------|--------------|-------------|
+| pig_batches | 1 : Many | growth_analytics |
+| pig_batches | 1 : Many | vaccination_compliance |
+| pig_batches | 1 : Many | feed_efficiency |
+
+### 6. Technology Justification
+
+| Technology | Why Selected | Role in Pipeline |
+|------------|--------------|------------------|
+| Python (pandas, sqlalchemy, pydantic) | Rich data science ecosystem; strong validation libraries; easy Airflow integration | Ingestion, validation, cleaning, staging load |
+| SQL / PostgreSQL | ACID compliance; complex analytical queries; window functions; JSONB support; existing stack | Transformation, aggregation, analytics storage |
+| Apache Airflow | DAG-based scheduling; monitoring UI; retry logic; SLA alerts; Python-native | Orchestration, scheduling, dependency management |
+| PostgreSQL | Relational integrity; mature ecosystem; supports both OLTP and OLAP workloads | Primary storage (operational + analytics) |

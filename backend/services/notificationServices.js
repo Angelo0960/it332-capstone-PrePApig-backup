@@ -306,3 +306,162 @@ export const triggerVaccinationReminders = async (req, res) => {
         res.status(500).json({ success: false, message: err.message });
     }
 };
+
+// ============================================
+// FEED CHANGE NOTIFICATIONS
+// ============================================
+
+import { 
+  getNextFeedChange, 
+  isFeedChangeDue, 
+  isFeedChangeSoon,
+  getCurrentFeedProgram,
+  getAllFeedChanges 
+} from '../lib/feedScheduleService.js';
+
+/**
+ * Check for feed changes and send notifications
+ * Runs daily via cron
+ */
+export const checkFeedChanges = async () => {
+    console.log('🔍 Checking for feed changes...');
+
+    // Get all active batches
+    const { data: batches, error } = await supabase
+        .from('pig_batches')
+        .select('id, batch_code, date_acquired, owner_id, pig_count, breed')
+        .eq('status', 'Active');
+
+    if (error) {
+        console.error('❌ Error fetching batches for feed change check:', error);
+        return;
+    }
+
+    if (!batches || batches.length === 0) {
+        console.log('ℹ️ No active batches to check for feed changes.');
+        return;
+    }
+
+    console.log(`📋 Checking ${batches.length} active batches for feed changes...`);
+
+    let notificationsSent = 0;
+
+    for (const batch of batches) {
+        if (!batch.owner_id || batch.owner_id === 'admin') continue;
+
+        // Skip if no owner devices
+        const { data: devices } = await supabase
+            .from('user_devices')
+            .select('fcm_token')
+            .eq('user_id', batch.owner_id);
+
+        const tokens = devices?.map(d => d.fcm_token).filter(Boolean) || [];
+        if (tokens.length === 0) continue;
+
+        // Check if feed change is due or coming soon
+        const isDue = isFeedChangeDue(batch);
+        const isSoon = isFeedChangeSoon(batch, 3);
+        const nextChange = getNextFeedChange(batch);
+        const currentFeed = getCurrentFeedProgram(batch);
+
+        if (!nextChange) continue; // No more changes
+
+        let notificationType = null;
+        let title = '';
+        let body = '';
+        let notificationData = {
+            type: 'feed_change',
+            batchId: batch.id,
+            batchCode: batch.batch_code
+        };
+
+        // Check if we already sent a notification for this change today
+        const today = new Date().toISOString().split('T')[0];
+        const { data: existingNotif } = await supabase
+            .from('notifications')
+            .select('id')
+            .eq('user_id', batch.owner_id)
+            .eq('type', 'feed_change')
+            .gte('created_at', `${today}T00:00:00`)
+            .lte('created_at', `${today}T23:59:59`)
+            .maybeSingle();
+
+        if (existingNotif) {
+            // Already sent notification for this batch today
+            continue;
+        }
+
+        if (isFeedChangeDue(batch)) {
+            notificationType = 'feed_change_due';
+            title = '🔄 Feed Change Due Today';
+            body = `Batch ${batch.batch_code} should transition from ${nextChange.fromFeedType} (${nextChange.fromPhase}) to ${nextChange.toFeedType} (${nextChange.toPhase}) today.`;
+            notificationData = {
+                ...notificationData,
+                changeType: 'due',
+                fromFeedType: nextChange.fromFeedType,
+                toFeedType: nextChange.toFeedType,
+                fromPhase: nextChange.fromPhase,
+                toPhase: nextChange.toPhase,
+                changeDate: nextChange.date
+            };
+        } else if (isFeedChangeSoon(batch, 3)) {
+            notificationType = 'feed_change_upcoming';
+            title = '⏰ Feed Change Coming Soon';
+            body = `Batch ${batch.batch_code} will change from ${nextChange.fromFeedType} (${nextChange.fromPhase}) to ${nextChange.toFeedType} (${nextChange.toPhase}) in ${nextChange.daysUntil} day${nextChange.daysUntil !== 1 ? 's' : ''}.`;
+            notificationData = {
+                ...notificationData,
+                changeType: 'upcoming',
+                fromFeedType: nextChange.fromFeedType,
+                toFeedType: nextChange.toFeedType,
+                fromPhase: nextChange.fromPhase,
+                toPhase: nextChange.toPhase,
+                changeDate: nextChange.date,
+                daysUntil: nextChange.daysUntil
+            };
+        } else {
+            continue; // No notification needed
+        }
+
+        // Save notification in database
+        await supabase
+            .from('notifications')
+            .insert([{
+                user_id: batch.owner_id,
+                title,
+                message: body,
+                type: notificationType,
+                is_read: false,
+            }]);
+
+        // Send push notification
+        const sendPromises = tokens.map(token =>
+            admin.messaging().send({
+                token,
+                notification: { title, body },
+                data: notificationData,
+            }).catch(async err => {
+                if (err.code === 'messaging/invalid-registration-token') {
+                    await supabase.from('user_devices').delete().eq('fcm_token', token);
+                }
+                return null;
+            })
+        );
+
+        await Promise.allSettled(sendPromises);
+        console.log(`✅ Sent ${notificationType} for batch ${batch.batch_code} to user ${batch.owner_id}`);
+        notificationsSent++;
+    }
+
+    console.log(`✅ Feed change check complete. Sent ${notificationsSent} notifications.`);
+};
+
+// ----- Manual trigger for testing -----
+export const triggerFeedChangeCheck = async (req, res) => {
+    try {
+        await checkFeedChanges();
+        res.json({ success: true, message: 'Feed change check triggered manually.' });
+    } catch (err) {
+        console.error('Manual trigger error:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+};

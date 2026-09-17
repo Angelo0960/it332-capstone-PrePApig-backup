@@ -929,17 +929,7 @@ export default function AnalyticsReportsScreen() {
                 </table>
               </div>
             </div>
-          )}
-
-          {/* Feed Efficiency */}
-          <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg mb-4">
-            <h3 className="font-semibold text-gray-900 mb-3">Feed Efficiency</h3>
-            <div className="bg-white/40 rounded-xl p-4 text-center">
-              <div className="text-sm text-gray-600 mb-1">Feed Conversion Ratio</div>
-              <div className="text-4xl font-bold text-green-600">2.8</div>
-              <div className="text-xs text-gray-600 mt-1">Good (Target: &lt; 3.0)</div>
-            </div>
-          </div>
+)}
 
           {/* Profit Analysis */}
           <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg mb-4">

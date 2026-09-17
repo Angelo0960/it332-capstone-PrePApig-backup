@@ -20,6 +20,7 @@ import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5b
 import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
 import { API_BASE, getAuthHeaders } from '../api.js';
+import { feedScheduleApi } from '../api.js';
 // ────────────────────────────────────────────────────────────────
 
 // Mock data
@@ -106,9 +107,9 @@ const getDailyFeedPerPig = (day) => {
 };
 
 const FEED_TYPE_MAP = {
-  starter: 'Starter Mash',
-  grower: 'Grower Pellet',
-  finisher: 'Finisher',
+  starter: 'Tmpbcs (Starter Mash)',
+  grower: 'HGPSM (Grower Pellet)',
+  finisher: 'HS-Premium / HG-Premium (Finisher)',
 };
 
 export default function FeedsInventoryScreen() {
@@ -126,6 +127,11 @@ export default function FeedsInventoryScreen() {
   const [error, setError] = useState(null);
   const [useMock, setUseMock] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Feed validation state
+  const [feedValidation, setFeedValidation] = useState(null);
+  const [showValidationDialog, setShowValidationDialog] = useState(false);
+  const [pendingFeedPayload, setPendingFeedPayload] = useState(null);
 
   const [feedRecords, setFeedRecords] = useState(MOCK_FEED_RECORDS);
   const [batches, setBatches] = useState(MOCK_BATCHES);
@@ -289,6 +295,33 @@ export default function FeedsInventoryScreen() {
     handleSaveFeedUsage(payload);
   };
 
+  // ----- Validate feed ration before saving -----
+  const validateAndSaveFeed = async (payload, override = false) => {
+    try {
+      const validation = await feedScheduleApi.validateBatchFeedRation(
+        payload.batch_id,
+        payload.feed_type,
+        override
+      );
+      
+      if (!validation.data.valid && !override) {
+        // Show validation dialog
+        setFeedValidation(validation.data);
+        setPendingFeedPayload(payload);
+        setShowValidationDialog(true);
+        return;
+      }
+      
+      // Valid or overridden - save
+      const finalPayload = { ...payload, override };
+      handleSaveFeedUsage(finalPayload);
+    } catch (err) {
+      console.error('Validation error:', err);
+      // If validation fails, still allow save but warn
+      handleSaveFeedUsage({ ...payload, override: true });
+    }
+  };
+
   // ----- Modal submit -----
   const handleUsageSubmit = () => {
     if (!usageForm.batch || !usageForm.feedType || !usageForm.amount) {
@@ -308,7 +341,7 @@ export default function FeedsInventoryScreen() {
       feeding_time: new Date().toLocaleTimeString(),
       notes: usageForm.notes,
     };
-    handleSaveFeedUsage(payload);
+    validateAndSaveFeed(payload);
   };
 
   // ----- Restock -----
@@ -916,9 +949,10 @@ export default function FeedsInventoryScreen() {
                         Feed types auto-adjust by age:
                       </p>
                       <ul className="text-xs text-blue-800 mt-1 space-y-0.5 ml-2">
-                        <li>• Days 1-21: Starter Mash</li>
-                        <li>• Days 22-49: Grower Pellet</li>
-                        <li>• Days 50+: Finisher</li>
+                        <li>• Days 1-21: Tmpbcs (Starter Mash)</li>
+                        <li>• Days 22-49: HGPSM (Grower Pellet)</li>
+                        <li>• Days 50-105: HS-Premium (Finisher)</li>
+                        <li>• Days 106+: HG-Premium (Finisher)</li>
                       </ul>
                     </div>
                   </div>
@@ -1004,7 +1038,24 @@ export default function FeedsInventoryScreen() {
                   <label className="block text-sm font-semibold text-gray-800 mb-2">Batch</label>
                   <select
                     value={usageForm.batch}
-                    onChange={(e) => setUsageForm({ ...usageForm, batch: e.target.value })}
+                    onChange={(e) => {
+                      const batchId = e.target.value;
+                      setUsageForm({ ...usageForm, batch: batchId });
+                      
+                      // Auto-suggest feed type based on batch age
+                      if (batchId) {
+                        const batch = batches.find(b => b.id === batchId);
+                        if (batch && batch.day !== undefined) {
+                          const currentFeed = getCurrentFeedProgram({ date_acquired: new Date(Date.now() - batch.day * 24 * 60 * 60 * 1000).toISOString().split('T')[0] });
+                          if (currentFeed) {
+                            const suggestedFeedType = currentFeed.ration === 'Tmpbcs' ? 'starter' :
+                                                      currentFeed.ration === 'HGPSM' ? 'grower' : 'finisher';
+                            setUsageForm(prev => ({ ...prev, feedType: suggestedFeedType }));
+                          }
+                        }
+                      }
+                      setUsageForm({ ...usageForm, batch: batchId });
+                    }}
                     className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
                   >
                     <option value="">Select batch...</option>
@@ -1024,10 +1075,15 @@ export default function FeedsInventoryScreen() {
                     className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
                   >
                     <option value="">Select feed type...</option>
-                    <option value="starter">Starter Mash</option>
-                    <option value="grower">Grower Pellet</option>
-                    <option value="finisher">Finisher</option>
+                    <option value="starter">Tmpbcs (Starter Mash)</option>
+                    <option value="grower">HGPSM (Grower Pellet)</option>
+                    <option value="finisher">HS-Premium / HG-Premium (Finisher)</option>
                   </select>
+                  {usageForm.batch && (
+                    <p className="mt-1 text-xs text-blue-600">
+                      Auto-suggested based on batch age
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -1212,7 +1268,58 @@ export default function FeedsInventoryScreen() {
           </div>
         )}
 
-        <BottomNav active="Feeds" />
+        {/* Validation Dialog */}
+        {showValidationDialog && feedValidation && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-md">
+              <div className="flex items-center justify-between p-5 border-b border-white/30">
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-orange-500" />
+                  Feed Type Mismatch
+                </h2>
+              </div>
+              <div className="p-5 space-y-4">
+                <div className="bg-orange-50/50 border border-orange-200/50 rounded-xl p-4">
+                  <p className="text-sm text-orange-900 font-medium mb-2">
+                    Expected: <span className="font-bold">{feedValidation.expected}</span> ({feedValidation.expectedRation})
+                  </p>
+                  <p className="text-sm text-orange-900">
+                    Provided: <span className="font-bold">{feedValidation.provided || 'none'}</span>
+                  </p>
+                  <p className="text-sm text-orange-900 mt-2">
+                    Batch is in Week {feedValidation.currentWeek} ({feedValidation.currentPhase} phase).
+                  </p>
+                  <p className="text-xs text-orange-700 mt-2">
+                    {feedValidation.message}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setShowValidationDialog(false);
+                      validateAndSaveFeed(pendingFeedPayload, true);
+                    }}
+                    className="flex-1 bg-orange-500 text-white font-semibold py-3 rounded-xl shadow-lg active:scale-95"
+                  >
+                    Continue Anyway
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowValidationDialog(false);
+                      setPendingFeedPayload(null);
+                      setFeedValidation(null);
+                    }}
+                    className="flex-1 bg-gray-200/80 text-gray-800 font-semibold py-3 rounded-xl active:scale-95"
+                  >
+                    Change Feed Type
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+<BottomNav active="Feeds" />
       </div>
     </div>
   );
