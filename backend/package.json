@@ -29,6 +29,7 @@
     "firebase-admin": "^14.1.0",
     "jsonwebtoken": "^9.0.3",
     "node-cron": "^4.6.0",
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "simple-statistics": "^7.12.0"
   }
 }
