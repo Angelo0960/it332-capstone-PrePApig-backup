@@ -44,6 +44,10 @@ app.use(
         return callback(null, true);
       }
 
+      if (origin && origin.endsWith('.vercel.app') && origin.includes('it332-capstone-pre-p-apig')) {
+        return callback(null, true);
+      }
+
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,

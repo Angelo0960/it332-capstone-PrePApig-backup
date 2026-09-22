@@ -2,6 +2,45 @@
 
 export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
+let isRefreshing = false;
+let refreshPromise = null;
+
+const refreshToken = async () => {
+  if (refreshPromise) return refreshPromise;
+  
+  isRefreshing = true;
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        if (data.token) {
+          localStorage.setItem('token', data.token);
+          return data.token;
+        }
+      }
+      
+      localStorage.removeItem('token');
+      window.location.href = '/';
+      return null;
+    } catch (err) {
+      localStorage.removeItem('token');
+      window.location.href = '/';
+      return null;
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
+    }
+  })();
+  
+  return refreshPromise;
+};
+
 // Helper to get the auth token from localStorage
 export const getAuthHeaders = () => {
   const token = localStorage.getItem('token');
@@ -14,6 +53,28 @@ export const getAuthHeaders = () => {
     : {
         'Content-Type': 'application/json',
       };
+};
+
+// Wrapper for fetch that handles 401 errors
+export const apiFetch = async (url, options = {}) => {
+  const headers = {
+    ...getAuthHeaders(),
+    ...options.headers,
+  };
+  
+  let res = await fetch(url, { ...options, headers });
+  
+  if (res.status === 401 && !url.includes('/auth/')) {
+    const newToken = await refreshToken();
+    if (newToken) {
+      res = await fetch(url, {
+        ...options,
+        headers: { ...headers, Authorization: `Bearer ${newToken}` }
+      });
+    }
+  }
+  
+  return res;
 };
 
 export const api = {
@@ -120,6 +181,48 @@ export const feedScheduleApi = {
       body: JSON.stringify({ feed_type: feedType, override }),
     });
     if (!res.ok) throw new Error('Failed to validate feed ration');
+    return res.json();
+  }
+};
+
+// Weight & FCR API
+export const weightApi = {
+  // Get weight history for a batch
+  async getWeightHistory(batchId) {
+    const res = await fetch(`${API_BASE}/pigs/${batchId}/weight-history`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to fetch weight history');
+    return res.json();
+  },
+
+  // Log manual weight entry
+  async logWeight(batchId, weight, notes = '') {
+    const res = await fetch(`${API_BASE}/pigs/${batchId}/weight-log`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ weight, notes }),
+    });
+    if (!res.ok) throw new Error('Failed to log weight');
+    return res.json();
+  },
+
+  // Get FCR for a batch
+  async getFCR(batchId) {
+    const res = await fetch(`${API_BASE}/pigs/${batchId}/fcr`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to fetch FCR');
+    return res.json();
+  },
+
+  // Recalculate FCR for a batch
+  async recalculateFCR(batchId) {
+    const res = await fetch(`${API_BASE}/pigs/${batchId}/fcr/recalculate`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to recalculate FCR');
     return res.json();
   }
 };

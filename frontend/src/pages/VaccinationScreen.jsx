@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.png';
 import BottomNav from '../components/BottomNav';
-import { API_BASE, getAuthHeaders } from '../api.js';
+import { API_BASE, getAuthHeaders, apiFetch } from '../api.js';
 
 // Standard vaccination schedule by age
 const vaccinationSchedule = [
@@ -123,8 +123,15 @@ export default function VaccinationScreen() {
   // Fetch batches
   const fetchBatches = async () => {
     try {
-      const res = await fetch(`${API_BASE}/pigs/all`, { headers: getAuthHeaders() });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const res = await apiFetch(`${API_BASE}/pigs/all`, { headers: getAuthHeaders() });
+      if (!res.ok) {
+        if (res.status === 401) {
+          setUseMock(true);
+          setBatches(MOCK_BATCHES);
+          return;
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
       const json = await res.json();
       if (json.success && json.data.length > 0) {
         const mapped = json.data.map((batch) => {
@@ -171,8 +178,20 @@ export default function VaccinationScreen() {
       if (selectedBatch !== 'all') {
         url = `${API_BASE}/vaccinations/batch/${selectedBatch}`;
       }
-      const res = await fetch(url, { headers: getAuthHeaders() });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const res = await apiFetch(url, { headers: getAuthHeaders() });
+      if (!res.ok) {
+        if (res.status === 401) {
+          setUseMock(true);
+          if (selectedBatch === 'all') {
+            setVaccinationRecords(MOCK_RECORDS);
+          } else {
+            setVaccinationRecords(MOCK_RECORDS.filter((r) => r.batch_id === selectedBatch));
+          }
+          setLoading(false);
+          return;
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
       const json = await res.json();
       if (json.success) {
         setVaccinationRecords(json.data || []);
@@ -196,7 +215,7 @@ export default function VaccinationScreen() {
   // Fetch vaccine stock
   const fetchVaccineStock = async () => {
     try {
-      const res = await fetch(`${API_BASE}/vaccinations/stock`, { headers: getAuthHeaders() });
+      const res = await apiFetch(`${API_BASE}/vaccinations/stock`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed to fetch stock');
       const json = await res.json();
       if (json.success) {
@@ -221,12 +240,16 @@ export default function VaccinationScreen() {
   // Save vaccination (used by both modal and direct marking)
   const handleSaveVaccination = async (formData) => {
     try {
-      const res = await fetch(`${API_BASE}/vaccinations/create`, {
+      const res = await apiFetch(`${API_BASE}/vaccinations/create`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(formData),
       });
       if (!res.ok) {
+        if (res.status === 401) {
+          alert('Session expired. Please log in again.');
+          return false;
+        }
         const errorText = await res.text();
         throw new Error(`Failed to save: ${errorText}`);
       }
@@ -299,7 +322,7 @@ export default function VaccinationScreen() {
     }
     const price = parseFloat(restockForm.cost) || 0;
     try {
-      const res = await fetch(`${API_BASE}/vaccinations/stock/update`, {
+      const res = await apiFetch(`${API_BASE}/vaccinations/stock/update`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -309,7 +332,13 @@ export default function VaccinationScreen() {
           price_per_dose: price,
         }),
       });
-      if (!res.ok) throw new Error('Failed to restock');
+      if (!res.ok) {
+        if (res.status === 401) {
+          alert('Session expired. Please log in again.');
+          return;
+        }
+        throw new Error('Failed to restock');
+      }
       const json = await res.json();
       if (json.success) {
         alert('Stock updated successfully!');

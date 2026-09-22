@@ -16,23 +16,49 @@ export const messaging = getMessaging(app);
 
 export const generateToken = async () => {
   try {
+    if (!('serviceWorker' in navigator)) {
+      console.warn('Service Worker not supported');
+      return null;
+    }
+    
     const permission = await Notification.requestPermission();
     if (permission !== "granted") {
       console.log("❌ Notification permission denied");
       return null;
     }
+    
     const registration = await navigator.serviceWorker.ready;
+    if (!registration.pushManager) {
+      console.warn('Push Manager not supported');
+      return null;
+    }
+    
+    const vapidKey = import.meta.env.VITE_VAPID_KEY;
+    if (!vapidKey) {
+      console.error('VAPID key not configured');
+      return null;
+    }
+
     const token = await getToken(messaging, {
-      vapidKey: import.meta.env.VITE_VAPID_KEY,
+      vapidKey,
       serviceWorkerRegistration: registration,
     });
+    
     if (token) {
       console.log("✅ FCM Token:", token);
       return token;
     }
+    
+    console.warn('No FCM token received');
     return null;
   } catch (err) {
-    console.error("FCM Error:", err);
+    if (err.name === 'AbortError') {
+      console.warn('FCM registration aborted - push service unavailable or VAPID key mismatch');
+    } else if (err.name === 'NotAllowedError') {
+      console.warn('FCM permission denied');
+    } else {
+      console.error("FCM Error:", err);
+    }
     return null;
   }
 };

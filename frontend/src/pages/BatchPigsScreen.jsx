@@ -4,7 +4,7 @@ import { ArrowLeft, Plus, Trash2, Pencil, X, Check, Home, Package, Syringe, Tren
 import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.png';
 import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
-import { API_BASE, getAuthHeaders } from '../api.js';
+import { API_BASE, getAuthHeaders, apiFetch } from '../api.js';
 // ────────────────────────────────────────────────────────────────
 
 export default function BatchPigsScreen() {
@@ -29,10 +29,16 @@ export default function BatchPigsScreen() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/pigs/batch/${batchId}/pigs`, {
+      const res = await apiFetch(`${API_BASE}/pigs/batch/${batchId}/pigs`, {
         headers: getAuthHeaders(),
       });
-      if (!res.ok) throw new Error('Failed to fetch pigs');
+      if (!res.ok) {
+        if (res.status === 401) {
+          setError('Session expired. Please log in again.');
+          return;
+        }
+        throw new Error('Failed to fetch pigs');
+      }
       const json = await res.json();
       if (json.success) {
         setPigs(json.data);
@@ -49,10 +55,13 @@ export default function BatchPigsScreen() {
   // Fetch batch name
   const fetchBatchName = async () => {
     try {
-      const res = await fetch(`${API_BASE}/pigs/${batchId}`, {
+      const res = await apiFetch(`${API_BASE}/pigs/${batchId}`, {
         headers: getAuthHeaders(),
       });
-      if (!res.ok) throw new Error('Failed to fetch batch');
+      if (!res.ok) {
+        if (res.status === 401) return;
+        throw new Error('Failed to fetch batch');
+      }
       const json = await res.json();
       if (json.success) {
         setBatchName(json.data.batch_code || 'Batch');
@@ -74,7 +83,7 @@ export default function BatchPigsScreen() {
       return;
     }
     try {
-      const res = await fetch(`${API_BASE}/pigs/pig`, {
+      const res = await apiFetch(`${API_BASE}/pigs/pig`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -115,7 +124,7 @@ export default function BatchPigsScreen() {
       return;
     }
     try {
-      const res = await fetch(`${API_BASE}/pigs/pig/${editingPig.id}`, {
+      const res = await apiFetch(`${API_BASE}/pigs/pig/${editingPig.id}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -124,7 +133,13 @@ export default function BatchPigsScreen() {
           notes: editPig.notes || '',
         }),
       });
-      if (!res.ok) throw new Error('Failed to update pig');
+      if (!res.ok) {
+        if (res.status === 401) {
+          alert('Session expired. Please log in again.');
+          return;
+        }
+        throw new Error('Failed to update pig');
+      }
       const json = await res.json();
       if (json.success) {
         await fetchPigs();
@@ -143,11 +158,17 @@ export default function BatchPigsScreen() {
   const handleDeletePig = async (pigId) => {
     if (!window.confirm('Are you sure you want to delete this pig?')) return;
     try {
-      const res = await fetch(`${API_BASE}/pigs/pig/${pigId}`, {
+      const res = await apiFetch(`${API_BASE}/pigs/pig/${pigId}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
       });
-      if (!res.ok) throw new Error('Failed to delete pig');
+      if (!res.ok) {
+        if (res.status === 401) {
+          alert('Session expired. Please log in again.');
+          return;
+        }
+        throw new Error('Failed to delete pig');
+      }
       const json = await res.json();
       if (json.success) {
         await fetchPigs();

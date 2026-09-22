@@ -1,0 +1,619 @@
+{
+  "info": {
+    "name": "FCR API Tests",
+    "description": "Test collection for FCR (Feed Conversion Ratio) implementation",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "batchId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testBatchId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Setup - Login",
+      "item": [
+        {
+          "name": "Login to get token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"test123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.success && json.token) {",
+                  "    pm.collectionVariables.set('token', json.token);",
+                  "    console.log('Token saved:', json.token.substring(0, 20) + '...');",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "FCR Endpoints",
+      "item": [
+        {
+          "name": "GET /pigs/:id/fcr - Get FCR for batch",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pigs/{{batchId}}/fcr",
+              "host": ["{{baseUrl}}"],
+              "path": ["pigs", "{{batchId}}", "fcr"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response has success=true', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "});",
+                  "pm.test('Has FCR data', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.data).to.have.property('current_fcr');",
+                  "  pm.expect(json.data).to.have.property('fcr_source');",
+                  "  pm.expect(json.data).to.have.property('confidence');",
+                  "  pm.expect(json.data).to.have.property('data_points');",
+                  "  pm.expect(json.data).to.have.property('phase');",
+                  "  pm.expect(json.data).to.have.property('target_fcr');",
+                  "  pm.expect(json.data).to.have.property('trend');",
+                  "  pm.expect(json.data).to.have.property('history');",
+                  "});",
+                  "pm.test('FCR source is valid', () => {",
+                  "  const json = pm.response.json();",
+                  "  const validSources = ['default', 'calculated', 'manual'];",
+                  "  pm.expect(validSources).to.include(json.data.fcr_source);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /pigs/:id/weight-history - Get weight history",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pigs/{{batchId}}/weight-history",
+              "host": ["{{baseUrl}}"],
+              "path": ["pigs", "{{batchId}}", "weight-history"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns array', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data).to.be.an('array');",
+                  "});",
+                  "pm.test('Entries have required fields', () => {",
+                  "  const json = pm.response.json();",
+                  "  json.data.forEach(entry => {",
+                  "    pm.expect(entry).to.have.property('date');",
+                  "    pm.expect(entry).to.have.property('weight');",
+                  "    pm.expect(entry).to.have.property('source');",
+                  "    pm.expect(['manual', 'auto_feed']).to.include(entry.source);",
+                  "  });",
+                  "});",
+                  "pm.test('Sorted by date ascending', () => {",
+                  "  const json = pm.response.json();",
+                  "  const dates = json.data.map(d => new Date(d.date).getTime());",
+                  "  for (let i = 1; i < dates.length; i++) {",
+                  "    pm.expect(dates[i]).to.be.gte(dates[i-1]);",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /pigs/:id/weight-log - Manual weight entry",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pigs/{{batchId}}/weight-log",
+              "host": ["{{baseUrl}}"],
+              "path": ["pigs", "{{batchId}}", "weight-log"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight\": 55.5,\n  \"notes\": \"Weekly weigh-in\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns updated weight', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data).to.have.property('new_weight', 55.5);",
+                  "  pm.expect(json.data).to.have.property('source', 'manual');",
+                  "  pm.expect(json.data).to.have.property('weight_gain');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /pigs/:id/fcr/recalculate - Recalculate FCR",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pigs/{{batchId}}/fcr/recalculate",
+              "host": ["{{baseUrl}}"],
+              "path": ["pigs", "{{batchId}}", "fcr", "recalculate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns calculated FCR', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data).to.have.property('current_fcr');",
+                  "  pm.expect(json.data).to.have.property('fcr_source', 'calculated');",
+                  "  pm.expect(json.data).to.have.property('fcr_confidence');",
+                  "  pm.expect(json.data).to.have.property('fcr_data_points');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Feed Logging (Auto Weight Gain)",
+      "item": [
+        {
+          "name": "POST /feeds/create - Log feed (Starter phase)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/feeds/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["feeds", "create"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"batch_id\": \"{{testBatchId}}\",\n  \"feed_type\": \"Starter Mash\",\n  \"quantity_kg\": 10,\n  \"feeding_date\": \"2026-09-15\",\n  \"notes\": \"Test feed log\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Returns weightUpdate with gain', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json).to.have.property('weightUpdate');",
+                  "  pm.expect(json.weightUpdate.success).to.be.true;",
+                  "  pm.expect(json.weightUpdate.data).to.have.property('weight_gain');",
+                  "  pm.expect(json.weightUpdate.data.weight_gain).to.be.greaterThan(0);",
+                  "  pm.expect(json.weightUpdate.data).to.have.property('new_weight');",
+                  "  pm.expect(json.weightUpdate.data).to.have.property('fcr', 2.0);",
+                  "  pm.expect(json).to.have.property('expectedGain');",
+                  "  pm.expect(json).to.have.property('fcr');",
+                  "});",
+                  "pm.test('Gain matches FCR 2.0', () => {",
+                  "  const json = pm.response.json();",
+                  "  const expectedGain = 10 / 2.0;",
+                  "  pm.expect(json.weightUpdate.data.weight_gain).to.be.closeTo(expectedGain, 0.01);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /feeds/create - Log feed (Grower phase)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/feeds/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["feeds", "create"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"batch_id\": \"{{testBatchId}}\",\n  \"feed_type\": \"Grower Pellet\",\n  \"quantity_kg\": 28,\n  \"feeding_date\": \"2026-09-22\",\n  \"notes\": \"Test feed log\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Uses FCR 2.8 for Grower', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.weightUpdate.data.fcr).to.equal(2.8);",
+                  "  const expectedGain = 28 / 2.8;",
+                  "  pm.expect(json.weightUpdate.data.weight_gain).to.be.closeTo(expectedGain, 0.01);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /feeds/create - Wrong feed type (should fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/feeds/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["feeds", "create"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"batch_id\": \"{{testBatchId}}\",\n  \"feed_type\": \"Finisher\",\n  \"quantity_kg\": 10,\n  \"feeding_date\": \"2026-09-15\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Returns validation error', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.false;",
+                  "  pm.expect(json.message).to.include('Feed type does not match');",
+                  "  pm.expect(json).to.have.property('validation');",
+                  "  pm.expect(json.validation.valid).to.be.false;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /feeds/create - Wrong feed type with override",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/feeds/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["feeds", "create"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"batch_id\": \"{{testBatchId}}\",\n  \"feed_type\": \"Finisher\",\n  \"quantity_kg\": 10,\n  \"feeding_date\": \"2026-09-15\",\n  \"override\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201 with override', () => pm.response.to.have.status(201));",
+                  "pm.test('Validation shows override used', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.validation.overrideUsed).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Test Batch Management",
+      "item": [
+        {
+          "name": "POST /pigs/create - Create test batch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pigs/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["pigs", "create"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"batch_code\": \"TEST-FCR-{{$timestamp}}\",\n  \"pig_count\": 10,\n  \"breed\": \"Landrace\",\n  \"start_weight\": 1.4,\n  \"current_weight\": 14.0,\n  \"date_acquired\": \"2026-09-15\",\n  \"status\": \"Active\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Batch created with weight history', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data).to.have.property('id');",
+                  "  pm.collectionVariables.set('testBatchId', json.data.id);",
+                  "  console.log('Test batch created:', json.data.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /pigs/all - List all batches",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pigs/all",
+              "host": ["{{baseUrl}}"],
+              "path": ["pigs", "all"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns batches array', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Validation & Edge Cases",
+      "item": [
+        {
+          "name": "GET /pigs/:id/validate-ration - Validate feed ration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pigs/{{batchId}}/validate-ration",
+              "host": ["{{baseUrl}}"],
+              "path": ["pigs", "{{batchId}}", "validate-ration"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"feed_type\": \"Starter Mash\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns validation result', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data).to.have.property('valid');",
+                  "  pm.expect(json.data).to.have.property('expected');",
+                  "  pm.expect(json.data).to.have.property('expectedRation');",
+                  "  pm.expect(json.data).to.have.property('currentWeek');",
+                  "  pm.expect(json.data).to.have.property('currentPhase');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /pigs/:id/feed-schedule - Get complete feed schedule",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pigs/{{batchId}}/feed-schedule",
+              "host": ["{{baseUrl}}"],
+              "path": ["pigs", "{{batchId}}", "feed-schedule"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns feed schedule', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data).to.have.property('currentWeek');",
+                  "  pm.expect(json.data).to.have.property('currentFeed');",
+                  "  pm.expect(json.data).to.have.property('nextChange');",
+                  "  pm.expect(json.data).to.have.property('allChanges');",
+                  "  pm.expect(json.data).to.have.property('status');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "// Auto-set auth header from token variable",
+          "pm.request.headers.add({",
+          "  key: 'Authorization',",
+          "  value: `Bearer ${pm.collectionVariables.get('token')}`",
+          "});"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ]
+}

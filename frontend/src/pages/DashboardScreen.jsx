@@ -21,7 +21,7 @@ import pigImage from '../../src/assets/Gemini_Generated_Image_92oun292oun292ou-r
 import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.png';
 import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
-import { API_BASE, getAuthHeaders } from '../api.js';
+import { API_BASE, getAuthHeaders, apiFetch } from '../api.js';
 import { eventBus, EVENTS } from '../utils/eventBus.js';
 // ────────────────────────────────────────────────────────────────
 
@@ -209,7 +209,7 @@ export default function DashboardScreen() {
   // ---------- Fetch notifications ----------
   const fetchNotifications = async () => {
     try {
-      const res = await fetch(`${API_BASE}/notifications/all`, { headers: getAuthHeaders() });
+      const res = await apiFetch(`${API_BASE}/notifications/all`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed to fetch notifications');
       const json = await res.json();
       if (json.success) {
@@ -228,7 +228,7 @@ export default function DashboardScreen() {
     try {
       await Promise.all(
         unread.map(async (n) => {
-          await fetch(`${API_BASE}/notifications/${n.id}/read`, {
+          await apiFetch(`${API_BASE}/notifications/${n.id}/read`, {
             method: 'PATCH',
             headers: getAuthHeaders(),
           });
@@ -245,8 +245,14 @@ export default function DashboardScreen() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/pigs/all`, { headers: getAuthHeaders() });
-      if (!res.ok) throw new Error('Failed to fetch batches');
+      const res = await apiFetch(`${API_BASE}/pigs/all`, { headers: getAuthHeaders() });
+      if (!res.ok) {
+        if (res.status === 401) {
+          setError('Session expired. Please log in again.');
+          return;
+        }
+        throw new Error('Failed to fetch batches');
+      }
       const json = await res.json();
       if (json.success) {
         const batchesWithFCR = json.data.map((batch) => {
@@ -320,7 +326,7 @@ export default function DashboardScreen() {
     
     setFcrLoading(true);
     try {
-      const fcrRes = await fetch(`${API_BASE}/pigs/${batchId}/fcr`, {
+      const fcrRes = await apiFetch(`${API_BASE}/pigs/${batchId}/fcr`, {
         headers: getAuthHeaders(),
       });
       if (fcrRes.ok) {
@@ -348,11 +354,17 @@ export default function DashboardScreen() {
       return;
     }
     try {
-      const res = await fetch(`${API_BASE}/pigs/${batchId}`, {
+      const res = await apiFetch(`${API_BASE}/pigs/${batchId}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
       });
-      if (!res.ok) throw new Error('Failed to delete batch');
+      if (!res.ok) {
+        if (res.status === 401) {
+          alert('Session expired. Please log in again.');
+          return;
+        }
+        throw new Error('Failed to delete batch');
+      }
       const json = await res.json();
       if (json.success) {
         await fetchBatches();
@@ -384,12 +396,18 @@ export default function DashboardScreen() {
       return;
     }
     try {
-      const res = await fetch(`${API_BASE}/pigs/${editBatchId}`, {
+      const res = await apiFetch(`${API_BASE}/pigs/${editBatchId}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify({ pig_count: newCount }),
       });
-      if (!res.ok) throw new Error('Failed to update pig count');
+      if (!res.ok) {
+        if (res.status === 401) {
+          alert('Session expired. Please log in again.');
+          return;
+        }
+        throw new Error('Failed to update pig count');
+      }
       const json = await res.json();
       if (json.success) {
         await fetchBatches();
@@ -470,7 +488,7 @@ export default function DashboardScreen() {
       const perPigWeight = parseFloat(newBatch.start_weight);
       const totalWeight = perPigWeight * parseInt(newBatch.pig_count);
 
-      const res = await fetch(`${API_BASE}/pigs/create`, {
+      const res = await apiFetch(`${API_BASE}/pigs/create`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -483,7 +501,13 @@ export default function DashboardScreen() {
           status: 'Active',
         }),
       });
-      if (!res.ok) throw new Error('Failed to create batch');
+      if (!res.ok) {
+        if (res.status === 401) {
+          alert('Session expired. Please log in again.');
+          return;
+        }
+        throw new Error('Failed to create batch');
+      }
       const json = await res.json();
       if (json.success) {
         await fetchBatches();

@@ -110,3 +110,44 @@
       });
     }
   };
+
+  // Refresh token
+  export const refreshToken = async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({
+          success: false,
+          message: 'No token provided'
+        });
+      }
+
+      const token = authHeader.split(' ')[1];
+      
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET, { ignoreExpiration: true });
+        
+        const newToken = jwt.sign(
+          { id: decoded.id, email: decoded.email },
+          process.env.JWT_SECRET,
+          { expiresIn: '1d' }
+        );
+
+        res.status(200).json({
+          success: true,
+          token: newToken
+        });
+      } catch (err) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid token'
+        });
+      }
+    } catch (err) {
+      console.error('Refresh Token Error:', err);
+      res.status(500).json({
+        success: false,
+        message: err.message
+      });
+    }
+  };

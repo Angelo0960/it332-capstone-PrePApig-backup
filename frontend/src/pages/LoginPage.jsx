@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { User, Lock } from "lucide-react";
-import { api, API_BASE } from '../api.js';          // ← import API_BASE
+import { api, API_BASE, registerFcmToken } from '../api.js';
 import { generateToken } from '../services/firebase.js';
 import pigImage from "../../src/assets/2e388bda-a6fa-4911-bcea-0e3aaa26ed7f-removebg-preview.png";
 import backgroundImage from "../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.png";
@@ -19,18 +19,11 @@ export function LoginScreen({ onLogin }) {
       const data = await api.login(farmerId, password);
       localStorage.setItem('token', data.token);
       
-      // Register FCM token after login – using dynamic API_BASE
+      // Register FCM token after login
       try {
         const fcmToken = await generateToken();
         if (fcmToken) {
-          await fetch(`${API_BASE}/notifications/register-token`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${data.token}`,
-            },
-            body: JSON.stringify({ token: fcmToken }),
-          });
+          await registerFcmToken(fcmToken);
           console.log('✅ FCM token registered');
         }
       } catch (fcmErr) {

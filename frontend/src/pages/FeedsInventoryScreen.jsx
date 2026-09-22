@@ -19,7 +19,7 @@ import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianG
 import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.png';
 import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
-import { API_BASE, getAuthHeaders } from '../api.js';
+import { API_BASE, getAuthHeaders, apiFetch } from '../api.js';
 import { feedScheduleApi } from '../api.js';
 import { eventBus, EVENTS } from '../utils/eventBus.js';
 // ────────────────────────────────────────────────────────────────
@@ -160,8 +160,15 @@ export default function FeedsInventoryScreen() {
   // ─── Fetch functions ─────────────────────────────────────────
   const fetchBatches = async () => {
     try {
-      const res = await fetch(`${API_BASE}/pigs/all`, { headers: getAuthHeaders() });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const res = await apiFetch(`${API_BASE}/pigs/all`, { headers: getAuthHeaders() });
+      if (!res.ok) {
+        if (res.status === 401) {
+          setUseMock(true);
+          setBatches(MOCK_BATCHES);
+          return;
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
       const json = await res.json();
       if (json.success && json.data.length > 0) {
         const mapped = json.data.map((batch) => {
@@ -202,8 +209,16 @@ export default function FeedsInventoryScreen() {
       if (selectedBatch !== 'all') {
         url = `${API_BASE}/feeds/batch/${selectedBatch}`;
       }
-      const res = await fetch(url, { headers: getAuthHeaders() });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const res = await apiFetch(url, { headers: getAuthHeaders() });
+      if (!res.ok) {
+        if (res.status === 401) {
+          setUseMock(true);
+          setFeedRecords(MOCK_RECORDS);
+          setLoading(false);
+          return;
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
       const json = await res.json();
       if (json.success) {
         setFeedRecords(json.data || []);
@@ -226,7 +241,7 @@ export default function FeedsInventoryScreen() {
 
   const fetchFeedStock = async () => {
     try {
-      const res = await fetch(`${API_BASE}/feeds/stock`, { headers: getAuthHeaders() });
+      const res = await apiFetch(`${API_BASE}/feeds/stock`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed to fetch stock');
       const json = await res.json();
       if (json.success) {
@@ -265,7 +280,7 @@ export default function FeedsInventoryScreen() {
       }
 
       // Try to get batch-specific FCR from backend
-      const res = await fetch(`${API_BASE}/pigs/${usageForm.batch}/fcr`, {
+      const res = await apiFetch(`${API_BASE}/pigs/${usageForm.batch}/fcr`, {
         headers: getAuthHeaders(),
       });
 
@@ -307,13 +322,17 @@ export default function FeedsInventoryScreen() {
   const handleSaveFeedUsage = async (formData) => {
     try {
       console.log('📤 Saving feed usage:', formData);
-      const res = await fetch(`${API_BASE}/feeds/create`, {
+      const res = await apiFetch(`${API_BASE}/feeds/create`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(formData),
       });
 
       if (!res.ok) {
+        if (res.status === 401) {
+          alert('Session expired. Please log in again.');
+          return;
+        }
         const errorText = await res.text();
         throw new Error(`Server error: ${res.status} - ${errorText}`);
       }
@@ -440,7 +459,7 @@ export default function FeedsInventoryScreen() {
     }
     const unitCost = parseFloat(purchaseForm.unitCost) || 0;
     try {
-      const res = await fetch(`${API_BASE}/feeds/stock/update`, {
+      const res = await apiFetch(`${API_BASE}/feeds/stock/update`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -450,7 +469,13 @@ export default function FeedsInventoryScreen() {
           last_updated: purchaseForm.date,
         }),
       });
-      if (!res.ok) throw new Error('Failed to update stock');
+      if (!res.ok) {
+        if (res.status === 401) {
+          alert('Session expired. Please log in again.');
+          return;
+        }
+        throw new Error('Failed to update stock');
+      }
       const json = await res.json();
       if (json.success) {
         alert('Stock updated successfully!');
@@ -480,7 +505,7 @@ export default function FeedsInventoryScreen() {
   const handleSavePrice = async () => {
     if (!editingFeed || !newPrice) return;
     try {
-      const res = await fetch(`${API_BASE}/feeds/stock/update`, {
+      const res = await apiFetch(`${API_BASE}/feeds/stock/update`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -488,7 +513,13 @@ export default function FeedsInventoryScreen() {
           unit_price: parseFloat(newPrice),
         }),
       });
-      if (!res.ok) throw new Error('Failed to update price');
+      if (!res.ok) {
+        if (res.status === 401) {
+          alert('Session expired. Please log in again.');
+          return;
+        }
+        throw new Error('Failed to update price');
+      }
       const json = await res.json();
       if (json.success) {
         alert('Price updated successfully!');

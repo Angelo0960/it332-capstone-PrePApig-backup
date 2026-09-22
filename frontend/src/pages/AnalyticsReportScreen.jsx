@@ -33,7 +33,7 @@ import {
 import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.png';
 import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
-import { API_BASE, getAuthHeaders } from '../api.js';
+import { API_BASE, getAuthHeaders, apiFetch } from '../api.js';
 import { feedProgramApi } from '../api.js';
 import { weightApi } from '../api.js';
 // ────────────────────────────────────────────────────────────────
@@ -72,18 +72,18 @@ export default function AnalyticsReportsScreen() {
   // --- Report modal state ---
   const [reportModal, setReportModal] = useState(null); // null or report name
 
-  // ---------- Fetch all data ----------
+// ---------- Fetch all data ----------
   const fetchAllData = async () => {
     setLoading(true);
     setError(null);
     try {
       const results = await Promise.allSettled([
-        fetch(`${API_BASE}/pigs/all`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE}/feeds/all`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE}/vaccinations/all`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE}/expenses/all`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE}/feeds/stock`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE}/vaccinations/stock`, { headers: getAuthHeaders() }),
+        apiFetch(`${API_BASE}/pigs/all`, { headers: getAuthHeaders() }),
+        apiFetch(`${API_BASE}/feeds/all`, { headers: getAuthHeaders() }),
+        apiFetch(`${API_BASE}/vaccinations/all`, { headers: getAuthHeaders() }),
+        apiFetch(`${API_BASE}/expenses/all`, { headers: getAuthHeaders() }),
+        apiFetch(`${API_BASE}/feeds/stock`, { headers: getAuthHeaders() }),
+        apiFetch(`${API_BASE}/vaccinations/stock`, { headers: getAuthHeaders() }),
         fetch(`${API_BASE}/feed-program/full`),
       ]);
 
@@ -92,6 +92,9 @@ export default function AnalyticsReportsScreen() {
       if (batchesRes.status === 'fulfilled' && batchesRes.value.ok) {
         const json = await batchesRes.value.json();
         if (json.success) setBatches(json.data || []);
+      } else if (batchesRes.status === 'fulfilled' && batchesRes.value.status === 401) {
+        setError('Session expired. Please log in again.');
+        return;
       }
       if (feedRes.status === 'fulfilled' && feedRes.value.ok) {
         const json = await feedRes.value.json();
@@ -599,6 +602,15 @@ export default function AnalyticsReportsScreen() {
             </div>
           </div>
         </div>
+
+        {error && (
+          <div className="px-4 md:px-8 lg:px-12 pb-3">
+            <div className="bg-red-100/80 border border-red-300/50 text-red-800 px-4 py-3 rounded-xl flex items-center justify-between">
+              <span>{error}</span>
+              <button onClick={fetchAllData} className="text-sm font-semibold underline">Retry</button>
+            </div>
+          </div>
+        )}
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto px-4 md:px-8 lg:px-12 pb-24">
