@@ -16,10 +16,12 @@ import {
   Trash2,
   Pencil,
   Users,
+  MonitorSmartphone,
 } from 'lucide-react';
 import pigImage from '../../src/assets/Gemini_Generated_Image_92oun292oun292ou-removebg-preview (1).png';
 import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.png';
 import BottomNav from '../components/BottomNav';
+import { PWAAddToHomeButton } from '../components/PWAComponents.jsx';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
 import { API_BASE, getAuthHeaders, apiFetch } from '../api.js';
 import { eventBus, EVENTS } from '../utils/eventBus.js';
@@ -616,6 +618,7 @@ export default function DashboardScreen() {
               Prep<span className="text-pink-500">A</span>Pig
             </h1>
             <div className="flex items-center gap-2">
+              <PWAAddToHomeButton variant="secondary" className="hide-in-standalone" />
               <button
                 onClick={() => {
                   setShowNotifications(!showNotifications);

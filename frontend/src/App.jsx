@@ -5,9 +5,10 @@ import DashboardScreen from './pages/DashboardScreen.jsx';
 import FeedsInventoryScreen from './pages/FeedsInventoryScreen.jsx';
 import AnalyticsReportsScreen from './pages/AnalyticsReportScreen.jsx';
 import VaccinationScreen from './pages/VaccinationScreen.jsx';
-import BatchPigsScreen from './pages/BatchPigsScreen.jsx'; // ✅ Import the new screen
+import BatchPigsScreen from './pages/BatchPigsScreen.jsx';
 import { generateToken, onMessageListener } from './services/firebase.js';
 import { registerFcmToken } from './api.js';
+import { PWAInstallPrompt, PWAUpdateBanner, PWAOfflineIndicator } from './components/PWAComponents.jsx';
 import './App.css';
 
 function App() {
@@ -56,59 +57,65 @@ function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        <Route
-          path="/"
-          element={
-            isLoggedIn ? (
-              <Navigate to="/dashboard" replace />
-            ) : (
-              <LoginScreen onLogin={() => setIsLoggedIn(true)} />
-            )
-          }
-        />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <DashboardScreen />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/feeds"
-          element={
-            <ProtectedRoute>
-              <FeedsInventoryScreen />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/reports"
-          element={
-            <ProtectedRoute>
-              <AnalyticsReportsScreen />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/vaccination"
-          element={
-            <ProtectedRoute>
-              <VaccinationScreen />
-            </ProtectedRoute>
-          }
-        />
-        {/* ✅ New route – make sure it's INSIDE <Routes> */}
-        <Route
-          path="/batch/:batchId/pigs"
-          element={
-            <ProtectedRoute>
-              <BatchPigsScreen />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
+      <div className="relative">
+        <Routes>
+          <Route
+            path="/"
+            element={
+              isLoggedIn ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
+                <LoginScreen onLogin={() => setIsLoggedIn(true)} />
+              )
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardScreen />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/feeds"
+            element={
+              <ProtectedRoute>
+                <FeedsInventoryScreen />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute>
+                <AnalyticsReportsScreen />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vaccination"
+            element={
+              <ProtectedRoute>
+                <VaccinationScreen />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/batch/:batchId/pigs"
+            element={
+              <ProtectedRoute>
+                <BatchPigsScreen />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+
+        {/* PWA UI Components */}
+        <PWAInstallPrompt />
+        <PWAUpdateBanner />
+        <PWAOfflineIndicator />
+      </div>
     </BrowserRouter>
   );
 }
