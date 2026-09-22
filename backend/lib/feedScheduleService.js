@@ -351,3 +351,18 @@ export function getWeekDateRange(batch, week) {
     endDate: endDate.toISOString().split('T')[0]
   };
 }
+
+/**
+ * Get default FCR for a feed phase
+ * @param {string} phase - Phase name (Starter, Grower, Finisher 1, Finisher 2)
+ * @returns {number} Default FCR value
+ */
+export function getPhaseFCR(phase) {
+  const defaults = {
+    'Starter': 2.0,
+    'Grower': 2.8,
+    'Finisher 1': 2.5,
+    'Finisher 2': 2.5
+  };
+  return defaults[phase] || 2.8;
+}

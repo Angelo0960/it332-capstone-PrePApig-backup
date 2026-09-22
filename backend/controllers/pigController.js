@@ -5,8 +5,17 @@ import {
   getNextFeedChange, 
   getFeedScheduleStatus,
   getAllFeedChanges,
-  getCompleteFeedSchedule 
+  getCompleteFeedSchedule,
+  getPhaseFCR,
+  validateFeedRation
 } from '../lib/feedScheduleService.js';
+import { 
+  getEffectiveFCR, 
+  calculateFCR, 
+  getFCRTrend,
+  addManualWeightEntry,
+  recalculateBatchFCR
+} from '../lib/fcrService.js';
 
 // ===== BATCH CRUD =====
 
@@ -108,7 +117,7 @@ export const getAllBatches = async (req, res) => {
             return {
                 ...batch,
                 currentFeed,
-                nextFeedChange,
+                nextFeedChange: nextChange || null,
                 feedStatus: status?.status || 'unknown',
                 daysUntilFeedChange: status?.daysUntil,
                 feedMessage: status?.message
@@ -561,6 +570,163 @@ export const deletePig = async (req, res) => {
         res.status(500).json({
             success: false,
             message: error.message,
+        });
+    }
+};
+
+// ===== WEIGHT HISTORY & FCR ENDPOINTS =====
+
+export const getWeightHistory = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { data, error } = await supabase
+            .from('pig_batches')
+            .select('weight_history, current_weight')
+            .eq('id', id)
+            .single();
+
+        if (error) throw error;
+
+        const history = data?.weight_history || [];
+        const sortedHistory = [...history].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        res.status(200).json({
+            success: true,
+            data: sortedHistory
+        });
+    } catch (error) {
+        console.error('Error fetching weight history:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+export const logWeight = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { weight, notes } = req.body;
+
+        if (weight === undefined || weight === null) {
+            return res.status(400).json({
+                success: false,
+                message: 'Weight is required'
+            });
+        }
+
+        const result = await addManualWeightEntry(supabase, id, Number(weight), notes || '');
+
+        if (!result.success) {
+            return res.status(400).json(result);
+        }
+
+        await invalidateCache('dashboard', CACHE_KEYS.dashboard);
+
+        res.status(200).json({
+            success: true,
+            data: result.data
+        });
+    } catch (error) {
+        console.error('Error logging weight:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+export const getFCR = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { data: batch, error: batchError } = await supabase
+            .from('pig_batches')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (batchError || !batch) {
+            return res.status(404).json({
+                success: false,
+                message: 'Batch not found'
+            });
+        }
+
+        const { data: feedRecords } = await supabase
+            .from('feed_records')
+            .select('quantity_kg, feeding_date')
+            .eq('batch_id', id);
+
+        const effectiveFCR = getEffectiveFCR(batch, feedRecords || []);
+        const trend = getFCRTrend(feedRecords || [], batch.weight_history || []);
+
+        // Get target FCR for current phase
+        const phase = effectiveFCR.phase;
+        const targetFCR = getPhaseFCR(phase);
+
+        // Determine trend direction
+        let trendDirection = 'stable';
+        if (trend.length >= 2) {
+            const recent = trend.slice(-3);
+            const avgRecent = recent.reduce((sum, t) => sum + t.fcr, 0) / recent.length;
+            const older = trend.slice(-6, -3);
+            if (older.length > 0) {
+                const avgOlder = older.reduce((sum, t) => sum + t.fcr, 0) / older.length;
+                if (avgRecent < avgOlder - 0.1) trendDirection = 'improving';
+                else if (avgRecent > avgOlder + 0.1) trendDirection = 'worsening';
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            data: {
+                current_fcr: effectiveFCR.fcr,
+                fcr_source: effectiveFCR.source,
+                confidence: effectiveFCR.confidence,
+                data_points: effectiveFCR.dataPoints,
+                phase: effectiveFCR.phase,
+                target_fcr: targetFCR,
+                trend: trendDirection,
+                history: trend.map(t => ({ week: t.week, fcr: t.fcr }))
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching FCR:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+export const recalculateFCR = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { data: feedRecords } = await supabase
+            .from('feed_records')
+            .select('quantity_kg, feeding_date')
+            .eq('batch_id', id);
+
+        const result = await recalculateBatchFCR(supabase, id, feedRecords || []);
+
+        if (!result.success) {
+            return res.status(400).json(result);
+        }
+
+        await invalidateCache('dashboard', CACHE_KEYS.dashboard);
+
+        res.status(200).json({
+            success: true,
+            data: result.data
+        });
+    } catch (error) {
+        console.error('Error recalculating FCR:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
         });
     }
 };

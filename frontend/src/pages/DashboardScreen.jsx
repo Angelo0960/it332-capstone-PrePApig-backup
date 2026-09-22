@@ -22,6 +22,7 @@ import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5b
 import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
 import { API_BASE, getAuthHeaders } from '../api.js';
+import { eventBus, EVENTS } from '../utils/eventBus.js';
 // ────────────────────────────────────────────────────────────────
 
 // Calculate profit in pesos
@@ -99,6 +100,8 @@ export default function DashboardScreen() {
   const [editPigCount, setEditPigCount] = useState('');
 
   const [notifications, setNotifications] = useState([]);
+  const [batchFCR, setBatchFCR] = useState({}); // FCR cache keyed by batch ID
+  const [fcrLoading, setFcrLoading] = useState(false);
 
   const [newBatch, setNewBatch] = useState({
     pig_count: '',
@@ -246,7 +249,7 @@ export default function DashboardScreen() {
       if (!res.ok) throw new Error('Failed to fetch batches');
       const json = await res.json();
       if (json.success) {
-        const mapped = json.data.map((batch) => {
+        const batchesWithFCR = json.data.map((batch) => {
           const acquired = new Date(batch.date_acquired);
           const now = new Date();
           const day = Math.max(0, Math.floor((now - acquired) / (1000 * 60 * 60 * 24)));
@@ -262,6 +265,17 @@ export default function DashboardScreen() {
           const feedStatus = batch.feedStatus || 'unknown';
           const daysUntilFeedChange = batch.daysUntilFeedChange;
           const feedMessage = batch.feedMessage;
+          
+          // Get cached FCR or use phase default
+          const cachedFCR = batchFCR[batch.id];
+          let fcr = cachedFCR?.fcr ?? null;
+          let targetFcr = cachedFCR?.targetFcr ?? 2.8;
+          
+          // Determine target FCR based on phase
+          let phaseTargetFcr = 2.8;
+          if (day <= 28) phaseTargetFcr = 2.0;
+          else if (day <= 70) phaseTargetFcr = 2.8;
+          else phaseTargetFcr = 2.5;
           
           return {
             id: batch.id,
@@ -281,10 +295,13 @@ export default function DashboardScreen() {
             nextFeedChange,
             feedStatus,
             daysUntilFeedChange,
-            feedMessage
+            feedMessage,
+            // FCR info
+            fcr,
+            targetFcr: fcr ? targetFcr : phaseTargetFcr
           };
         });
-        setBatches(mapped);
+        setBatches(batchesWithFCR);
       } else {
         throw new Error(json.message || 'Unknown error');
       }
@@ -294,6 +311,34 @@ export default function DashboardScreen() {
       setBatches([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ---------- Fetch FCR for single batch (on demand) ----------
+  const fetchFCRForBatch = async (batchId) => {
+    if (batchFCR[batchId]) return; // Already cached
+    
+    setFcrLoading(true);
+    try {
+      const fcrRes = await fetch(`${API_BASE}/pigs/${batchId}/fcr`, {
+        headers: getAuthHeaders(),
+      });
+      if (fcrRes.ok) {
+        const fcrJson = await fcrRes.json();
+        if (fcrJson.success && fcrJson.data) {
+          setBatchFCR(prev => ({
+            ...prev,
+            [batchId]: {
+              fcr: fcrJson.data.current_fcr,
+              targetFcr: fcrJson.data.target_fcr || 2.8
+            }
+          }));
+        }
+      }
+    } catch (fcrErr) {
+      console.warn('Could not fetch FCR for batch', batchId, fcrErr);
+    } finally {
+      setFcrLoading(false);
     }
   };
 
@@ -363,7 +408,21 @@ export default function DashboardScreen() {
   useEffect(() => {
     fetchBatches();
     fetchNotifications();
+
+    // Listen for batch updates from other screens
+    const unsubscribe = eventBus.on(EVENTS.BATCH_UPDATED, () => {
+      fetchBatches();
+    });
+
+    return () => unsubscribe();
   }, []);
+
+  // ---------- Fetch FCR when current batch changes ----------
+  useEffect(() => {
+    if (currentBatch?.id) {
+      fetchFCRForBatch(currentBatch.id);
+    }
+  }, [currentBatch?.id]);
 
   // ---------- Logout ----------
   const handleLogout = () => {
@@ -605,6 +664,27 @@ export default function DashboardScreen() {
                           )
                         )
                       : '0'}
+                  </div>
+                </div>
+                {/* FCR Badge */}
+                <div className="bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3 fade-up">
+                  <div className="text-xs text-gray-700 mb-1 font-medium">FCR (Feed Conversion)</div>
+                  <div className="flex items-center gap-2">
+                    <div className={`text-sm font-bold ${
+                      currentBatch.fcr <= 2.5 ? 'text-green-600' : 
+                      currentBatch.fcr <= 3.0 ? 'text-orange-600' : 'text-red-600'
+                    }`}>
+                      {currentBatch.fcr ? currentBatch.fcr.toFixed(1) : '—'}
+                    </div>
+                    <span className="text-xs text-gray-500">target: {currentBatch.targetFcr || 2.8}</span>
+                    <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden ml-2">
+                      <div 
+                        className="h-full bg-gradient-to-r from-green-500 to-red-500 rounded-full"
+                        style={{ 
+                          width: `${Math.min(100, Math.max(0, 100 - ((currentBatch.fcr || 2.8) - 2.0) / 1.5 * 100))}%` 
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

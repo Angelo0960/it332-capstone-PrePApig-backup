@@ -21,6 +21,7 @@ import notificationRouter from "./routes/notificationRoutes.js";
 import marketRoutes
     from "./routes/marketRoutes.js";
 import cronRouter from "./routes/cronRoutes.js";
+import forecastRouter from "./routes/forecastRoutes.js";
 
 import "./scheduler.js";
 
@@ -84,6 +85,7 @@ app.use(
     marketRoutes
 );
 app.use("/api/cron", cronRouter);
+app.use("/api/forecast", forecastRouter);
 app.use(limiter);
 
 // Root Route

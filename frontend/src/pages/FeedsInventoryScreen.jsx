@@ -21,9 +21,10 @@ import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
 import { API_BASE, getAuthHeaders } from '../api.js';
 import { feedScheduleApi } from '../api.js';
+import { eventBus, EVENTS } from '../utils/eventBus.js';
 // ────────────────────────────────────────────────────────────────
 
-// Mock data
+// Mock data (fallback when API fails)
 const MOCK_BATCHES = [
   { id: 'A', name: 'Batch A', day: 34, pigCount: 12 },
   { id: 'B', name: 'Batch B', day: 21, pigCount: 8 },
@@ -107,9 +108,9 @@ const getDailyFeedPerPig = (day) => {
 };
 
 const FEED_TYPE_MAP = {
-  starter: 'Tmpbcs (Starter Mash)',
-  grower: 'HGPSM (Grower Pellet)',
-  finisher: 'HS-Premium / HG-Premium (Finisher)',
+  starter: 'Starter Mash',
+  grower: 'Grower Pellet',
+  finisher: 'Finisher',
 };
 
 export default function FeedsInventoryScreen() {
@@ -145,6 +146,10 @@ export default function FeedsInventoryScreen() {
     notes: '',
   });
 
+  // Expected weight gain state
+  const [expectedGain, setExpectedGain] = useState(null);
+  const [expectedGainLoading, setExpectedGainLoading] = useState(false);
+
   const [purchaseForm, setPurchaseForm] = useState({
     feedType: '',
     quantity: '',
@@ -152,7 +157,7 @@ export default function FeedsInventoryScreen() {
     date: new Date().toISOString().split('T')[0],
   });
 
-  // Fetch functions
+  // ─── Fetch functions ─────────────────────────────────────────
   const fetchBatches = async () => {
     try {
       const res = await fetch(`${API_BASE}/pigs/all`, { headers: getAuthHeaders() });
@@ -244,7 +249,61 @@ export default function FeedsInventoryScreen() {
     fetchFeedRecords();
   }, [selectedBatch, refreshKey]);
 
-  // ----- Core: Save feed usage -----
+  // ─── Expected weight gain calculation ───────────────────────
+  const calculateExpectedGain = async () => {
+    if (!usageForm.batch || !usageForm.amount || parseFloat(usageForm.amount) <= 0) {
+      setExpectedGain(null);
+      return;
+    }
+
+    setExpectedGainLoading(true);
+    try {
+      const batch = batches.find((b) => b.id === usageForm.batch);
+      if (!batch) {
+        setExpectedGain(null);
+        return;
+      }
+
+      // Try to get batch-specific FCR from backend
+      const res = await fetch(`${API_BASE}/pigs/${usageForm.batch}/fcr`, {
+        headers: getAuthHeaders(),
+      });
+
+      const feedKg = parseFloat(usageForm.amount);
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data.current_fcr) {
+          const fcr = json.data.current_fcr;
+          const gain = feedKg / fcr;
+          setExpectedGain(Math.round(gain * 100) / 100);
+          return;
+        }
+      }
+
+      // Fallback to phase default FCR
+      const day = batch.day || 0;
+      let defaultFCR = 2.8;
+      if (day <= 28) defaultFCR = 2.0;
+      else if (day <= 70) defaultFCR = 2.8;
+      else defaultFCR = 2.5;
+
+      const gain = feedKg / defaultFCR;
+      setExpectedGain(Math.round(gain * 100) / 100);
+    } catch (err) {
+      console.error('Error calculating expected gain:', err);
+      setExpectedGain(null);
+    } finally {
+      setExpectedGainLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    calculateExpectedGain();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usageForm.batch, usageForm.amount]);
+
+  // ─── Core: Save feed usage ──────────────────────────────────
   const handleSaveFeedUsage = async (formData) => {
     try {
       console.log('📤 Saving feed usage:', formData);
@@ -261,6 +320,16 @@ export default function FeedsInventoryScreen() {
 
       const json = await res.json();
       if (json.success) {
+        console.log('✅ Feed saved:', json);
+
+        // Surface weight-update issues to the user
+        if (json.weightUpdate && !json.weightUpdate.success) {
+          console.warn('⚠️ Weight update failed:', json.weightUpdate.message);
+          alert('Feed saved, but weight update failed: ' + json.weightUpdate.message);
+        } else if (json.weightUpdate?.data) {
+          console.log('📈 Weight gain applied:', json.weightUpdate.data);
+        }
+
         setRefreshKey((prev) => prev + 1);
         setShowRecordUsage(false);
         setUsageForm({
@@ -270,7 +339,20 @@ export default function FeedsInventoryScreen() {
           date: new Date().toISOString().split('T')[0],
           notes: '',
         });
+        setExpectedGain(null);
+
         await fetchFeedStock();
+        await fetchFeedRecords();
+
+        // Notify other screens (Dashboard, etc.) that batch data changed
+        if (formData.batch_id) {
+          eventBus.emit(EVENTS.BATCH_UPDATED, { batchId: formData.batch_id });
+          eventBus.emit(EVENTS.FEED_LOGGED, {
+            batchId: formData.batch_id,
+            weightGain: json.weightUpdate?.data?.weight_gain,
+          });
+        }
+
         return true;
       } else {
         throw new Error(json.message || 'Unknown error');
@@ -282,7 +364,7 @@ export default function FeedsInventoryScreen() {
     }
   };
 
-  // ----- Direct Mark as Done -----
+  // ─── Direct Mark as Done (from schedule card) ───────────────
   const handleDirectMarkAsDone = (batchId, feedType, amount) => {
     const payload = {
       batch_id: batchId,
@@ -295,7 +377,7 @@ export default function FeedsInventoryScreen() {
     handleSaveFeedUsage(payload);
   };
 
-  // ----- Validate feed ration before saving -----
+  // ─── Validate feed ration before saving ─────────────────────
   const validateAndSaveFeed = async (payload, override = false) => {
     try {
       const validation = await feedScheduleApi.validateBatchFeedRation(
@@ -303,26 +385,26 @@ export default function FeedsInventoryScreen() {
         payload.feed_type,
         override
       );
-      
-      if (!validation.data.valid && !override) {
-        // Show validation dialog
+
+      // If validation returns but says invalid AND user hasn't overridden → show dialog
+      if (validation?.data && !validation.data.valid && !override) {
         setFeedValidation(validation.data);
         setPendingFeedPayload(payload);
         setShowValidationDialog(true);
         return;
       }
-      
+
       // Valid or overridden - save
       const finalPayload = { ...payload, override };
       handleSaveFeedUsage(finalPayload);
     } catch (err) {
-      console.error('Validation error:', err);
-      // If validation fails, still allow save but warn
+      // Validation endpoint failed — safest is to still attempt save with override
+      console.error('Validation error (falling back to save with override):', err);
       handleSaveFeedUsage({ ...payload, override: true });
     }
   };
 
-  // ----- Modal submit -----
+  // ─── Modal submit ───────────────────────────────────────────
   const handleUsageSubmit = () => {
     if (!usageForm.batch || !usageForm.feedType || !usageForm.amount) {
       alert('Please fill in all required fields');
@@ -344,7 +426,7 @@ export default function FeedsInventoryScreen() {
     validateAndSaveFeed(payload);
   };
 
-  // ----- Restock -----
+  // ─── Restock ────────────────────────────────────────────────
   const handleAddPurchase = async () => {
     const feedType = FEED_TYPE_MAP[purchaseForm.feedType];
     if (!feedType) {
@@ -388,7 +470,7 @@ export default function FeedsInventoryScreen() {
     }
   };
 
-  // ----- Edit price -----
+  // ─── Edit price ─────────────────────────────────────────────
   const handleEditPrice = (feedType, currentPrice) => {
     setEditingFeed(feedType);
     setNewPrice(currentPrice.toString());
@@ -422,7 +504,7 @@ export default function FeedsInventoryScreen() {
     }
   };
 
-  // ----- Computed -----
+  // ─── Computed ───────────────────────────────────────────────
   const getBatchName = (batchId) => {
     const batch = batches.find((b) => b.id === batchId);
     return batch ? batch.name : 'Unknown';
@@ -461,7 +543,7 @@ export default function FeedsInventoryScreen() {
     return acc;
   }, {});
 
-  // ----- Today's date for checking existing feedings -----
+  // Today's date for checking existing feedings
   const todayStr = new Date().toISOString().split('T')[0];
 
   return (
@@ -537,7 +619,7 @@ export default function FeedsInventoryScreen() {
           </div>
         </div>
 
-        {/* Summary Cards (always visible, no skeleton needed here because they derive from state) */}
+        {/* Summary Cards */}
         <div className="px-4 md:px-8 lg:px-12 mb-4">
           <div className="flex flex-nowrap overflow-x-auto gap-3 pb-2">
             <div className="flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
@@ -657,9 +739,8 @@ export default function FeedsInventoryScreen() {
         {/* Main Content */}
         <div className="flex-1 overflow-y-auto px-4 md:px-8 lg:px-12 pb-24">
           {loading ? (
-            // ─── SKELETON LOADING (updated) ──────────────────────────────────
+            // ─── SKELETON LOADING ─────────────────────────────────
             <div className="space-y-4 animate-pulse">
-              {/* Stock table skeleton */}
               <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden">
                 <div className="p-4 border-b border-white/20">
                   <div className="h-5 w-40 bg-gray-300/60 rounded" />
@@ -677,19 +758,16 @@ export default function FeedsInventoryScreen() {
                 </div>
               </div>
 
-              {/* Action buttons skeleton */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 <div className="h-12 bg-gray-300/60 rounded-xl" />
                 <div className="h-12 bg-gray-300/60 rounded-xl" />
               </div>
 
-              {/* Chart skeleton */}
               <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4">
                 <div className="h-5 w-48 bg-gray-300/60 rounded mb-3" />
                 <div className="h-44 bg-gray-300/60 rounded-xl" />
               </div>
 
-              {/* Schedule skeleton */}
               <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4">
                 <div className="flex justify-between mb-3">
                   <div className="h-5 w-48 bg-gray-300/60 rounded" />
@@ -712,7 +790,6 @@ export default function FeedsInventoryScreen() {
                 </div>
               </div>
 
-              {/* History skeleton */}
               <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden">
                 <div className="p-4 border-b border-white/20">
                   <div className="h-5 w-40 bg-gray-300/60 rounded" />
@@ -741,7 +818,7 @@ export default function FeedsInventoryScreen() {
               </button>
             </div>
           ) : (
-            // ─── ACTUAL CONTENT ──────────────────────────────────────────────
+            // ─── ACTUAL CONTENT ───────────────────────────────────
             <div className="space-y-4">
               {/* Stock / Consumption Table */}
               <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg">
@@ -813,7 +890,10 @@ export default function FeedsInventoryScreen() {
               {/* Action Buttons */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 <button
-                  onClick={() => setShowRecordUsage(true)}
+                  onClick={() => {
+                    setExpectedGain(null);
+                    setShowRecordUsage(true);
+                  }}
                   className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold py-3 rounded-xl shadow-[6px_6px_12px_rgba(16,185,129,0.3),-6px_-6px_12px_rgba(255,255,255,0.5)] active:shadow-[inset_3px_3px_6px_rgba(5,150,105,0.4),inset_-3px_-3px_6px_rgba(110,231,183,0.4)] transition-all"
                 >
                   Record Feed Usage
@@ -883,7 +963,6 @@ export default function FeedsInventoryScreen() {
                       );
                       const isDone = existingToday;
 
-                      const status = isDone ? 'completed' : 'pending';
                       const scheduleTime =
                         index === 0
                           ? 'Today, 5:00 PM'
@@ -1019,6 +1098,7 @@ export default function FeedsInventoryScreen() {
                 <button
                   onClick={() => {
                     setShowRecordUsage(false);
+                    setExpectedGain(null);
                     setUsageForm({
                       batch: '',
                       feedType: '',
@@ -1040,21 +1120,7 @@ export default function FeedsInventoryScreen() {
                     value={usageForm.batch}
                     onChange={(e) => {
                       const batchId = e.target.value;
-                      setUsageForm({ ...usageForm, batch: batchId });
-                      
-                      // Auto-suggest feed type based on batch age
-                      if (batchId) {
-                        const batch = batches.find(b => b.id === batchId);
-                        if (batch && batch.day !== undefined) {
-                          const currentFeed = getCurrentFeedProgram({ date_acquired: new Date(Date.now() - batch.day * 24 * 60 * 60 * 1000).toISOString().split('T')[0] });
-                          if (currentFeed) {
-                            const suggestedFeedType = currentFeed.ration === 'Tmpbcs' ? 'starter' :
-                                                      currentFeed.ration === 'HGPSM' ? 'grower' : 'finisher';
-                            setUsageForm(prev => ({ ...prev, feedType: suggestedFeedType }));
-                          }
-                        }
-                      }
-                      setUsageForm({ ...usageForm, batch: batchId });
+                      setUsageForm((prev) => ({ ...prev, batch: batchId }));
                     }}
                     className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
                   >
@@ -1079,11 +1145,6 @@ export default function FeedsInventoryScreen() {
                     <option value="grower">HGPSM (Grower Pellet)</option>
                     <option value="finisher">HS-Premium / HG-Premium (Finisher)</option>
                   </select>
-                  {usageForm.batch && (
-                    <p className="mt-1 text-xs text-blue-600">
-                      Auto-suggested based on batch age
-                    </p>
-                  )}
                 </div>
 
                 <div>
@@ -1096,6 +1157,26 @@ export default function FeedsInventoryScreen() {
                     className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
                   />
                 </div>
+
+                {expectedGain !== null && (
+                  <div className="bg-green-50/50 border border-green-200/50 rounded-xl p-3">
+                    <div className="flex items-center gap-2 text-green-800">
+                      <span className="text-lg">⚖️</span>
+                      <div>
+                        <p className="text-sm font-semibold">Expected Weight Gain</p>
+                        <p className="text-xl font-bold">{expectedGain} kg</p>
+                        <p className="text-xs text-green-700">
+                          Based on {usageForm.amount} kg feed ÷ FCR
+                        </p>
+                      </div>
+                    </div>
+                    {expectedGainLoading && (
+                      <div className="mt-2 h-1 bg-green-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-green-500 animate-pulse" style={{ width: '100%' }} />
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-2">Date</label>
@@ -1319,7 +1400,7 @@ export default function FeedsInventoryScreen() {
           </div>
         )}
 
-<BottomNav active="Feeds" />
+        <BottomNav active="Feeds" />
       </div>
     </div>
   );

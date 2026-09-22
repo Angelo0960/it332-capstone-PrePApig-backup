@@ -1,10 +1,11 @@
 import * as feedController from '../controllers/feedController.js';
 import express from 'express';
+import { authMiddleware } from '../middlewares/authMiddleware.js';
 
 const feedRouter = express.Router();
 
 // Feed record routes
-feedRouter.post('/create', feedController.createFeedRecord);
+feedRouter.post('/create', authMiddleware, feedController.createFeedRecord);
 feedRouter.get('/all', feedController.getAllFeedRecords);
 feedRouter.get('/batch/:batchId', feedController.getFeedByBatch);
 feedRouter.get('/summary', feedController.getFeedSummary);

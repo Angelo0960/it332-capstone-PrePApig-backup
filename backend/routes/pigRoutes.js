@@ -6,7 +6,7 @@ const pigBatchRouter = express.Router();
 
 // Batch CRUD
 pigBatchRouter.post('/create', authMiddleware, pigBatchController.createBatch);
-pigBatchRouter.get('/all', pigBatchController.getAllBatches);
+pigBatchRouter.get('/all', authMiddleware, pigBatchController.getAllBatches);
 pigBatchRouter.get('/active', pigBatchController.getActiveBatches);
 pigBatchRouter.get('/summary', pigBatchController.getBatchSummary);
 
@@ -19,6 +19,12 @@ pigBatchRouter.get('/batch/:batchId/pigs', pigBatchController.getPigsByBatch);
 pigBatchRouter.post('/pig', pigBatchController.createPig);
 pigBatchRouter.put('/pig/:id', pigBatchController.updatePig);
 pigBatchRouter.delete('/pig/:id', pigBatchController.deletePig);
+
+// Weight history & FCR endpoints – MUST COME BEFORE generic :id
+pigBatchRouter.get('/:id/weight-history', pigBatchController.getWeightHistory);
+pigBatchRouter.post('/:id/weight-log', pigBatchController.logWeight);
+pigBatchRouter.get('/:id/fcr', pigBatchController.getFCR);
+pigBatchRouter.post('/:id/fcr/recalculate', pigBatchController.recalculateFCR);
 
 // Batch by ID – MUST COME LAST
 pigBatchRouter.get('/:id', pigBatchController.getBatchById);

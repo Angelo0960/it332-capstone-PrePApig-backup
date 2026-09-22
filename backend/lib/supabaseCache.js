@@ -143,7 +143,7 @@ export const CACHE_KEYS = {
     dashboard: 'dashboard',
     feedSummary: 'feed_summary',
     expenseSummary: 'expense_summary',
-    batchList: (ownerId) => `batches_${ownerId}`,
+    batchList: (ownerId) => `batches_${ownerId || 'anonymous'}`,
     batchSummary: 'batch_summary',
     feedByBatch: (batchId) => `feed_batch_${batchId}`,
     expenseByBatch: (batchId) => `expense_batch_${batchId}`,

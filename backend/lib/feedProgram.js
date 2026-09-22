@@ -491,7 +491,15 @@ export function mapRationToFeedType(ration) {
     'Tmpbcs': 'Starter Mash',
     'HGPSM': 'Grower Pellet',
     'HS-Premium': 'Finisher',
-    'HG-Premium': 'Finisher'
+    'HG-Premium': 'Finisher',
+    // Common aliases
+    'Starter': 'Starter Mash',
+    'Starter Feed': 'Starter Mash',
+    'Grower': 'Grower Pellet',
+    'Grower Feed': 'Grower Pellet',
+    'Finisher Feed': 'Finisher',
+    'Finisher 1': 'Finisher',
+    'Finisher 2': 'Finisher'
   };
   return mapping[ration] || ration;
 }

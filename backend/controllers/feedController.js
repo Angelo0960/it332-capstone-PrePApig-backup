@@ -1,9 +1,11 @@
 import supabase from '../config/supabase.js';
-import admin from '../config/firebase.js'; // for push notifications
+import admin from '../config/firebase.js';
 import { invalidateCache, CACHE_KEYS, invalidateReportCaches } from '../lib/supabaseCache.js';
 import { validateFeedRation } from '../lib/feedScheduleService.js';
+import { getEffectiveFCR, updateBatchWeightFromFeed } from '../lib/fcrService.js';
 
-// CREATE FEED RECORD – now creates a notification
+// CREATE FEED RECORD – now creates a notification + auto weight gain
+// CREATE FEED RECORD – now creates a notification + auto weight gain
 export const createFeedRecord = async (req, res) => {
     try {
         const {
@@ -16,17 +18,48 @@ export const createFeedRecord = async (req, res) => {
             override = false
         } = req.body;
 
+        console.log('🟢 [createFeedRecord] incoming:', {
+            batch_id, feed_type, quantity_kg, feeding_date, override
+        });
+
         // Validate feed ration if batch_id provided
         let validation = null;
+        let batchData = null;
+
         if (batch_id && feed_type) {
-            const { data: batchData, error: batchError } = await supabase
+            const { data, error: batchError } = await supabase
                 .from('pig_batches')
                 .select('*')
                 .eq('id', batch_id)
                 .single();
 
-            if (!batchError && batchData) {
+            if (batchError) {
+                console.warn('⚠️ [createFeedRecord] batch fetch error:', batchError.message);
+            }
+
+            if (!batchError && data) {
+                batchData = data;
+
+                console.log('🔍 [createFeedRecord] batch loaded:', {
+                    id: data.id,
+                    batch_code: data.batch_code,
+                    current_weight: data.current_weight,
+                    pig_count: data.pig_count,
+                    fcr_source: data.fcr_source,
+                    current_fcr: data.current_fcr,
+                    weight_history_len: (data.weight_history || []).length
+                });
+
                 validation = validateFeedRation(batchData, feed_type);
+
+                // BLOCK if feed type doesn't match expected ration (no override allowed)
+                if (!validation.valid && !override) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Feed type does not match expected ration for this batch phase',
+                        validation
+                    });
+                }
                 validation.overrideUsed = override;
             }
         }
@@ -46,53 +79,82 @@ export const createFeedRecord = async (req, res) => {
 
         if (error) throw error;
 
-        // 2. Get the batch owner and batch code
-        const { data: batchData, error: batchError } = await supabase
-            .from('pig_batches')
-            .select('owner_id, batch_code')
-            .eq('id', batch_id)
-            .single();
+        console.log('✅ [createFeedRecord] feed inserted:', data?.[0]?.id);
 
-        if (batchError) {
-            console.warn('Could not fetch batch owner:', batchError.message);
-            return res.status(201).json({ success: true, data, validation });
+        // 2. Auto-calculate weight gain if batch_id provided
+        let weightUpdate = null;
+        if (batch_id && batchData) {
+            const { data: feedRecords } = await supabase
+                .from('feed_records')
+                .select('quantity_kg, feeding_date')
+                .eq('batch_id', batch_id);
+
+            const effectiveFCR = getEffectiveFCR(batchData, feedRecords || []);
+
+            console.log('📊 [createFeedRecord] effective FCR:', effectiveFCR);
+
+            weightUpdate = await updateBatchWeightFromFeed(
+                supabase,
+                batch_id,
+                Number(quantity_kg),
+                effectiveFCR.fcr
+            );
+
+            console.log('📈 [createFeedRecord] weight update result:', weightUpdate);
+        } else {
+            console.warn('⚠️ [createFeedRecord] skipping weight update — batch_id or batchData missing', {
+                batch_id,
+                hasBatchData: !!batchData
+            });
         }
 
-        const ownerId = batchData?.owner_id;
-        const batchCode = batchData?.batch_code || 'Batch';
+        // 3. Get batch owner + code for notification
+        let ownerId = null;
+        let batchCode = 'Batch';
+        if (batch_id) {
+            const { data: batchInfo } = await supabase
+                .from('pig_batches')
+                .select('owner_id, batch_code')
+                .eq('id', batch_id)
+                .single();
 
-        // 3. Skip notification if no owner or admin
+            if (batchInfo) {
+                ownerId = batchInfo.owner_id;
+                batchCode = batchInfo.batch_code || 'Batch';
+            }
+        }
+
+        // 4. Skip notification if no owner or admin
         if (!ownerId || ownerId === 'admin') {
             console.log('Skipping notification – no real owner');
-            return res.status(201).json({ success: true, data, validation });
+            return res.status(201).json({
+                success: true,
+                data,
+                validation,
+                weightUpdate,
+                expectedGain: weightUpdate?.data?.weight_gain || 0,
+                fcr: weightUpdate?.data?.fcr || null
+            });
         }
 
-        // 4. Get user's FCM tokens (if push notifications are used)
-        const { data: devices, error: deviceError } = await supabase
+        // 5. Get user's FCM tokens
+        const { data: devices } = await supabase
             .from('user_devices')
             .select('fcm_token')
             .eq('user_id', ownerId);
 
-        if (deviceError) {
-            console.warn('Could not fetch user devices:', deviceError.message);
-            // Continue without push, but we'll still save the notification
-        }
-
         const tokens = devices ? devices.map(d => d.fcm_token).filter(Boolean) : [];
 
-        // 5. Build notification title and body
+        // 6. Build notification
         const title = `🐖 Feeding Recorded`;
         const body = `${feed_type} (${quantity_kg} kg) for ${batchCode} has been recorded.`;
 
-        // 6. Send push notifications (fire-and-forget)
+        // 7. Send push (fire-and-forget)
         if (tokens.length > 0) {
             const messages = tokens.map(token => ({
                 notification: { title, body },
                 token,
-                data: {
-                    type: 'feed',
-                    batchId: batch_id,
-                },
+                data: { type: 'feed', batchId: batch_id },
             }));
 
             Promise.allSettled(
@@ -110,7 +172,7 @@ export const createFeedRecord = async (req, res) => {
             });
         }
 
-        // 7. Save notification in database for history
+        // 8. Save notification in DB
         await supabase
             .from('notifications')
             .insert([{
@@ -119,20 +181,27 @@ export const createFeedRecord = async (req, res) => {
                 message: body,
                 type: 'feed',
                 is_read: false,
-            }])
-            .select();
+            }]);
+
+        await invalidateCache('feed_summary', CACHE_KEYS.feedSummary);
+        await invalidateCache('dashboard', CACHE_KEYS.dashboard);
+        await invalidateCache('batch_list', CACHE_KEYS.batchList(req.user?.id || 'anonymous'));
+        await invalidateCache('batch_list', CACHE_KEYS.batchSummary);
+        if (batch_id) {
+            await invalidateCache('feed_summary', CACHE_KEYS.feedByBatch(batch_id));
+        }
 
         res.status(201).json({
             success: true,
             data,
-            validation
+            validation,
+            weightUpdate,
+            expectedGain: weightUpdate?.data?.weight_gain || 0,
+            fcr: weightUpdate?.data?.fcr || null
         });
 
-        await invalidateCache('feed_summary', CACHE_KEYS.feedSummary);
-        await invalidateCache('dashboard', CACHE_KEYS.dashboard);
-
     } catch (error) {
-        console.error('Error in createFeedRecord:', error);
+        console.error('❌ [createFeedRecord] error:', error);
         res.status(500).json({
             success: false,
             message: error.message
@@ -229,7 +298,7 @@ export const updateFeedRecord = async (req, res) => {
 
         if (error) throw error;
 
-        res.status(200).json({
+res.status(200).json({
             success: true,
             message: 'Feed record updated successfully',
             data
@@ -237,8 +306,9 @@ export const updateFeedRecord = async (req, res) => {
 
         await invalidateCache('feed_summary', CACHE_KEYS.feedSummary);
         await invalidateCache('dashboard', CACHE_KEYS.dashboard);
+        await invalidateCache('batch_list', CACHE_KEYS.batchList(req.user.id));
 
-    } catch (error) {
+        } catch (error) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -258,15 +328,16 @@ export const deleteFeedRecord = async (req, res) => {
 
         if (error) throw error;
 
-        res.status(200).json({
+res.status(200).json({
             success: true,
             message: 'Feed record deleted successfully'
         });
 
         await invalidateCache('feed_summary', CACHE_KEYS.feedSummary);
         await invalidateCache('dashboard', CACHE_KEYS.dashboard);
+        await invalidateCache('batch_list', CACHE_KEYS.batchList(req.user.id));
 
-    } catch (error) {
+        } catch (error) {
         res.status(500).json({
             success: false,
             message: error.message
