@@ -1,4 +1,5 @@
 import express from "express";
+import { authMiddleware } from '../middlewares/authMiddleware.js';
 
 import {
     getPigMarketPrice,
@@ -14,6 +15,7 @@ const router = express.Router();
  */
 router.get(
     "/pig-price",
+    authMiddleware,
     getPigMarketPrice
 );
 
@@ -23,6 +25,7 @@ router.get(
  */
 router.post(
     "/pig-price/refresh",
+    authMiddleware,
     refreshPigMarketPrice
 );
 

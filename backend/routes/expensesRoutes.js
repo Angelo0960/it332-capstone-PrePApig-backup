@@ -1,19 +1,20 @@
 import * as expenseController from '../controllers/expensesController.js';
 import express from 'express';
+import { authMiddleware } from '../middlewares/authMiddleware.js';
 
 const expensesRouter = express.Router();
 
-expensesRouter.post('/create', expenseController.createExpense);
+expensesRouter.post('/create', authMiddleware, expenseController.createExpense);
 
-expensesRouter.get('/all', expenseController.getAllExpenses);
+expensesRouter.get('/all', authMiddleware, expenseController.getAllExpenses);
 
 // Summary must come before :id
-expensesRouter.get('/summary', expenseController.getExpenseSummary);
+expensesRouter.get('/summary', authMiddleware, expenseController.getExpenseSummary);
 
-expensesRouter.get('/:id', expenseController.getExpenseById);
+expensesRouter.get('/:id', authMiddleware, expenseController.getExpenseById);
 
-expensesRouter.put('/:id', expenseController.updateExpense);
+expensesRouter.put('/:id', authMiddleware, expenseController.updateExpense);
 
-expensesRouter.delete('/:id', expenseController.deleteExpense);
+expensesRouter.delete('/:id', authMiddleware, expenseController.deleteExpense);
 
 export default expensesRouter;

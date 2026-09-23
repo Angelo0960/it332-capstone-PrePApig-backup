@@ -35,6 +35,15 @@ const allowedOrigins = [
   "https://it332-capstone-pre-p-apig-k5b79oy02-angelo0960s-projects.vercel.app"
 ];
 
+// Common deployment patterns for automatic CORS approval
+const allowedPatterns = [
+  /^https:\/\/.*\.vercel\.app$/,
+  /^https:\/\/.*\.onrender\.com$/,
+  /^https:\/\/.*\.netlify\.app$/,
+  /^https:\/\/.*\.firebaseapp\.com$/,
+  /^https:\/\/.*\.web\.app$/
+];
+
 app.use(
   cors({
     origin: function (origin, callback) {
@@ -44,6 +53,12 @@ app.use(
         return callback(null, true);
       }
 
+      // Check against allowed patterns for preview deployments
+      if (origin && allowedPatterns.some(pattern => pattern.test(origin))) {
+        return callback(null, true);
+      }
+
+      // Specific project name matching for Vercel
       if (origin && origin.endsWith('.vercel.app') && origin.includes('it332-capstone-pre-p-apig')) {
         return callback(null, true);
       }

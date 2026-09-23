@@ -34,17 +34,17 @@ const isVaccinationOverdue = (day, vaccine) => {
   return day > vaccine.maxDay;
 };
 
-// Mock data fallback
+// Mock data fallback - using UUID format to match backend
 const MOCK_BATCHES = [
-  { id: 'A', name: 'Batch A', day: 34, pigCount: 12 },
-  { id: 'B', name: 'Batch B', day: 21, pigCount: 8 },
-  { id: 'C', name: 'Batch C', day: 48, pigCount: 15 },
+  { id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', name: 'Batch A', batch_code: 'BATCH-001', day: 34, pigCount: 12 },
+  { id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', name: 'Batch B', batch_code: 'BATCH-002', day: 21, pigCount: 8 },
+  { id: 'cccccccc-cccc-cccc-cccc-cccccccccccc', name: 'Batch C', batch_code: 'BATCH-003', day: 48, pigCount: 15 },
 ];
 
 const MOCK_RECORDS = [
   {
-    id: '1',
-    batch_id: 'A',
+    id: '11111111-1111-1111-1111-111111111111',
+    batch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
     batch_name: 'Batch A',
     vaccine_name: 'Swine Fever',
     dosage: 12,
@@ -52,8 +52,8 @@ const MOCK_RECORDS = [
     notes: 'Booster shot',
   },
   {
-    id: '2',
-    batch_id: 'B',
+    id: '22222222-2222-2222-2222-222222222222',
+    batch_id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
     batch_name: 'Batch B',
     vaccine_name: 'E. Coli',
     dosage: 8,
@@ -61,8 +61,8 @@ const MOCK_RECORDS = [
     notes: '',
   },
   {
-    id: '3',
-    batch_id: 'A',
+    id: '33333333-3333-3333-3333-333333333333',
+    batch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
     batch_name: 'Batch A',
     vaccine_name: 'PRRS',
     dosage: 12,

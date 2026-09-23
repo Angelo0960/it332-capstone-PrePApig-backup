@@ -76,6 +76,7 @@ export const getDashboardReport = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 report: cached,
+                count: cached.totalBatches,
                 cached: true
             });
         }
@@ -86,6 +87,7 @@ export const getDashboardReport = async (req, res) => {
         res.status(200).json({
             success: true,
             report,
+            count: report.totalBatches,
             cached: false
         });
 
@@ -104,6 +106,7 @@ export const getFeedReport = async (req, res) => {
             return res.json({
                 success: true,
                 ...cached,
+                count: cached.totalFeedRecords,
                 cached: true
             });
         }
@@ -114,6 +117,7 @@ export const getFeedReport = async (req, res) => {
         res.json({
             success: true,
             ...summary,
+            count: summary.totalFeedRecords,
             cached: false
         });
 
@@ -132,6 +136,7 @@ export const getExpenseReport = async (req, res) => {
             return res.json({
                 success: true,
                 ...cached,
+                count: cached.totalRecords,
                 cached: true
             });
         }
@@ -142,6 +147,7 @@ export const getExpenseReport = async (req, res) => {
         res.json({
             success: true,
             ...summary,
+            count: summary.totalRecords,
             cached: false
         });
 

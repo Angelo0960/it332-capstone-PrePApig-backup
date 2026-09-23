@@ -24,17 +24,17 @@ import { feedScheduleApi } from '../api.js';
 import { eventBus, EVENTS } from '../utils/eventBus.js';
 // ────────────────────────────────────────────────────────────────
 
-// Mock data (fallback when API fails)
+// Mock data (fallback when API fails) - using UUID format to match backend
 const MOCK_BATCHES = [
-  { id: 'A', name: 'Batch A', day: 34, pigCount: 12 },
-  { id: 'B', name: 'Batch B', day: 21, pigCount: 8 },
-  { id: 'C', name: 'Batch C', day: 48, pigCount: 15 },
+  { id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', name: 'Batch A', batch_code: 'BATCH-001', day: 34, pigCount: 12 },
+  { id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', name: 'Batch B', batch_code: 'BATCH-002', day: 21, pigCount: 8 },
+  { id: 'cccccccc-cccc-cccc-cccc-cccccccccccc', name: 'Batch C', batch_code: 'BATCH-003', day: 48, pigCount: 15 },
 ];
 
 const MOCK_FEED_RECORDS = [
   {
-    id: '1',
-    batch_id: 'A',
+    id: '11111111-1111-1111-1111-111111111111',
+    batch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
     batch_name: 'Batch A',
     feed_type: 'Grower Pellet',
     quantity_kg: 48,
@@ -42,8 +42,8 @@ const MOCK_FEED_RECORDS = [
     notes: 'Regular feeding',
   },
   {
-    id: '2',
-    batch_id: 'B',
+    id: '22222222-2222-2222-2222-222222222222',
+    batch_id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
     batch_name: 'Batch B',
     feed_type: 'Starter Mash',
     quantity_kg: 32,
@@ -51,8 +51,8 @@ const MOCK_FEED_RECORDS = [
     notes: '',
   },
   {
-    id: '3',
-    batch_id: 'A',
+    id: '33333333-3333-3333-3333-333333333333',
+    batch_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
     batch_name: 'Batch A',
     feed_type: 'Grower Pellet',
     quantity_kg: 45,
@@ -60,8 +60,8 @@ const MOCK_FEED_RECORDS = [
     notes: '',
   },
   {
-    id: '4',
-    batch_id: 'C',
+    id: '44444444-4444-4444-4444-444444444444',
+    batch_id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
     batch_name: 'Batch C',
     feed_type: 'Grower Pellet',
     quantity_kg: 60,

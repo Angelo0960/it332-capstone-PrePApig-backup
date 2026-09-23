@@ -1,22 +1,22 @@
 import { useState } from "react";
-import { User, Lock } from "lucide-react";
+import { User, Lock, Mail } from "lucide-react";
 import { api, API_BASE, registerFcmToken } from '../api.js';
 import { generateToken } from '../services/firebase.js';
 import pigImage from "../../src/assets/2e388bda-a6fa-4911-bcea-0e3aaa26ed7f-removebg-preview.png";
 import backgroundImage from "../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.png";
 
 export function LoginScreen({ onLogin }) {
-  const [farmerId, setFarmerId] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!farmerId || !password) return;
+    if (!email || !password) return;
     setLoading(true);
     setError('');
     try {
-      const data = await api.login(farmerId, password);
+      const data = await api.login(email, password);
       localStorage.setItem('token', data.token);
       
       // Register FCM token after login
@@ -111,25 +111,25 @@ export function LoginScreen({ onLogin }) {
             </div>
 
             <div className="space-y-4">
-              {/* Farmer ID Field */}
+              {/* Email Field */}
               <div>
                 <label
-                  htmlFor="farmerId"
+                  htmlFor="email"
                   className="block text-sm font-medium text-gray-700 mb-1.5"
                   style={{ fontFamily: "'Erica One', cursive" }}
                 >
-                  Farmer ID
+                  Email
                 </label>
                 <div className="relative">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
-                    <User className="w-5 h-5 text-[#E91E63]" />
+                    <Mail className="w-5 h-5 text-[#E91E63]" />
                   </div>
                   <input
-                    id="farmerId"
-                    type="text"
-                    placeholder="Enter your Farmer ID"
-                    value={farmerId}
-                    onChange={(e) => setFarmerId(e.target.value)}
+                    id="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     onKeyPress={handleKeyPress}
                     className="w-full pl-12 pr-4 py-3.5 text-gray-800 placeholder-gray-400 focus:outline-none transition-all"
                     style={{

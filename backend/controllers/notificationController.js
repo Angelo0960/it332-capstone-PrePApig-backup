@@ -90,6 +90,7 @@ export const getAllNotifications = async (req, res) => {
 
         res.json({
             success: true,
+            count: data?.length || 0,
             data
         });
     } catch (error) {

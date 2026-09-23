@@ -7,29 +7,29 @@ const pigBatchRouter = express.Router();
 // Batch CRUD
 pigBatchRouter.post('/create', authMiddleware, pigBatchController.createBatch);
 pigBatchRouter.get('/all', authMiddleware, pigBatchController.getAllBatches);
-pigBatchRouter.get('/active', pigBatchController.getActiveBatches);
-pigBatchRouter.get('/summary', pigBatchController.getBatchSummary);
+pigBatchRouter.get('/active', authMiddleware, pigBatchController.getActiveBatches);
+pigBatchRouter.get('/summary', authMiddleware, pigBatchController.getBatchSummary);
 
 // Feed schedule endpoints
-pigBatchRouter.get('/:id/feed-schedule', pigBatchController.getBatchFeedSchedule);
-pigBatchRouter.post('/:id/validate-ration', pigBatchController.validateBatchFeedRation);
+pigBatchRouter.get('/:id/feed-schedule', authMiddleware, pigBatchController.getBatchFeedSchedule);
+pigBatchRouter.post('/:id/validate-ration', authMiddleware, pigBatchController.validateBatchFeedRation);
 
 // Individual pig management – MUST COME BEFORE the generic :id
-pigBatchRouter.get('/batch/:batchId/pigs', pigBatchController.getPigsByBatch);
-pigBatchRouter.post('/pig', pigBatchController.createPig);
-pigBatchRouter.put('/pig/:id', pigBatchController.updatePig);
-pigBatchRouter.delete('/pig/:id', pigBatchController.deletePig);
+pigBatchRouter.get('/batch/:batchId/pigs', authMiddleware, pigBatchController.getPigsByBatch);
+pigBatchRouter.post('/pig', authMiddleware, pigBatchController.createPig);
+pigBatchRouter.put('/pig/:id', authMiddleware, pigBatchController.updatePig);
+pigBatchRouter.delete('/pig/:id', authMiddleware, pigBatchController.deletePig);
 
 // Weight history & FCR endpoints – MUST COME BEFORE generic :id
-pigBatchRouter.get('/:id/weight-history', pigBatchController.getWeightHistory);
-pigBatchRouter.post('/:id/weight-log', pigBatchController.logWeight);
-pigBatchRouter.get('/:id/fcr', pigBatchController.getFCR);
-pigBatchRouter.post('/:id/fcr/recalculate', pigBatchController.recalculateFCR);
+pigBatchRouter.get('/:id/weight-history', authMiddleware, pigBatchController.getWeightHistory);
+pigBatchRouter.post('/:id/weight-log', authMiddleware, pigBatchController.logWeight);
+pigBatchRouter.get('/:id/fcr', authMiddleware, pigBatchController.getFCR);
+pigBatchRouter.post('/:id/fcr/recalculate', authMiddleware, pigBatchController.recalculateFCR);
 
 // Batch by ID – MUST COME LAST
-pigBatchRouter.get('/:id', pigBatchController.getBatchById);
-pigBatchRouter.put('/:id', pigBatchController.updateBatch);
-pigBatchRouter.delete('/:id', pigBatchController.deleteBatch);
-pigBatchRouter.patch('/:id/weight', pigBatchController.updateWeight);
+pigBatchRouter.get('/:id', authMiddleware, pigBatchController.getBatchById);
+pigBatchRouter.put('/:id', authMiddleware, pigBatchController.updateBatch);
+pigBatchRouter.delete('/:id', authMiddleware, pigBatchController.deleteBatch);
+pigBatchRouter.patch('/:id/weight', authMiddleware, pigBatchController.updateWeight);
 
 export default pigBatchRouter;
