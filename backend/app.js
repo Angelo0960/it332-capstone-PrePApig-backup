@@ -22,6 +22,7 @@ import marketRoutes
     from "./routes/marketRoutes.js";
 import cronRouter from "./routes/cronRoutes.js";
 import forecastRouter from "./routes/forecastRoutes.js";
+import analyticsRouter from "./routes/analyticsRoutes.js";
 
 import "./scheduler.js";
 
@@ -105,6 +106,7 @@ app.use(
 );
 app.use("/api/cron", cronRouter);
 app.use("/api/forecast", forecastRouter);
+app.use("/api/analytics", analyticsRouter);
 app.use(limiter);
 
 // Root Route

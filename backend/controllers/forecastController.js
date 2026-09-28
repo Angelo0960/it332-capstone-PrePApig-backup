@@ -11,7 +11,7 @@ import {
   getConfidenceLabel
 } from '../lib/forecastUtils.js';
 
-const TARGET_WEIGHT_KG = process.env.FORECAST_TARGET_WEIGHT_KG ? Number(process.env.FORECAST_TARGET_WEIGHT_KG) : 95;
+export const TARGET_WEIGHT_KG = process.env.FORECAST_TARGET_WEIGHT_KG ? Number(process.env.FORECAST_TARGET_WEIGHT_KG) : 95;
 
 // GET /api/forecast/batch/:id/days-to-market
 export const getDaysToMarket = async (req, res) => {

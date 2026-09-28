@@ -226,3 +226,54 @@ export const weightApi = {
     return res.json();
   }
 };
+
+// Forecast API
+export const forecastApi = {
+  // Get days to market weight
+  async getDaysToMarket(batchId) {
+    const res = await fetch(`${API_BASE}/api/forecast/batch/${batchId}/days-to-market`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to fetch days to market');
+    return res.json();
+  },
+
+  // Get feed needs projection
+  async getFeedNeeds(batchId, days = 30) {
+    const res = await fetch(`${API_BASE}/api/forecast/batch/${batchId}/feed-needs?days=${days}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to fetch feed needs');
+    return res.json();
+  },
+
+  // Get feed cost projection
+  async getFeedCost(batchId, days = 30) {
+    const res = await fetch(`${API_BASE}/api/forecast/batch/${batchId}/feed-cost?days=${days}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to fetch feed cost');
+    return res.json();
+  },
+
+  // Get profitability projection
+  async getProfitability(batchId) {
+    const res = await fetch(`${API_BASE}/api/forecast/batch/${batchId}/profitability`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to fetch profitability');
+    return res.json();
+  }
+};
+
+// Market Price API
+export const marketApi = {
+  // Get latest market price
+  async getLatestPrice() {
+    const res = await fetch(`${API_BASE}/api/market/latest`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to fetch market price');
+    return res.json();
+  }
+};

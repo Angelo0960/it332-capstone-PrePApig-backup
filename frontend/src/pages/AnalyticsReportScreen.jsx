@@ -77,51 +77,27 @@ export default function AnalyticsReportsScreen() {
     setLoading(true);
     setError(null);
     try {
-      const results = await Promise.allSettled([
-        apiFetch(`${API_BASE}/pigs/all`, { headers: getAuthHeaders() }),
-        apiFetch(`${API_BASE}/feeds/all`, { headers: getAuthHeaders() }),
-        apiFetch(`${API_BASE}/vaccinations/all`, { headers: getAuthHeaders() }),
-        apiFetch(`${API_BASE}/expenses/all`, { headers: getAuthHeaders() }),
-        apiFetch(`${API_BASE}/feeds/stock`, { headers: getAuthHeaders() }),
-        apiFetch(`${API_BASE}/vaccinations/stock`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE}/feed-program/full`),
-      ]);
+      const res = await apiFetch(`${API_BASE}/api/analytics`, { headers: getAuthHeaders() });
+      if (!res.ok) {
+        if (res.status === 401) {
+          setError('Session expired. Please log in again.');
+          return;
+        }
+        throw new Error('Failed to fetch analytics');
+      }
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || 'Unknown error');
 
-      const [batchesRes, feedRes, vacRes, expRes, feedStockRes, vacStockRes, feedProgramRes] = results;
-
-      if (batchesRes.status === 'fulfilled' && batchesRes.value.ok) {
-        const json = await batchesRes.value.json();
-        if (json.success) setBatches(json.data || []);
-      } else if (batchesRes.status === 'fulfilled' && batchesRes.value.status === 401) {
-        setError('Session expired. Please log in again.');
-        return;
-      }
-      if (feedRes.status === 'fulfilled' && feedRes.value.ok) {
-        const json = await feedRes.value.json();
-        if (json.success) setFeedRecords(json.data || []);
-      }
-      if (vacRes.status === 'fulfilled' && vacRes.value.ok) {
-        const json = await vacRes.value.json();
-        if (json.success) setVaccinationRecords(json.data || []);
-      }
-      if (expRes.status === 'fulfilled' && expRes.value.ok) {
-        const json = await expRes.value.json();
-        if (json.success) setExpenses(json.data || []);
-      }
-      if (feedStockRes.status === 'fulfilled' && feedStockRes.value.ok) {
-        const json = await feedStockRes.value.json();
-        if (json.success) setFeedStock(json.data || []);
-      }
-      if (vacStockRes.status === 'fulfilled' && vacStockRes.value.ok) {
-        const json = await vacStockRes.value.json();
-        if (json.success) setVaccineStock(json.data || []);
-      }
-      if (feedProgramRes.status === 'fulfilled' && feedProgramRes.value.ok) {
-        const json = await feedProgramRes.value.json();
-        if (json.success) setFeedProgram(json.data || []);
-      }
+      setBatches(json.data?.batches || []);
+      setFeedRecords(json.data?.feedRecords || []);
+      setVaccinationRecords(json.data?.vaccinationRecords || []);
+      setExpenses(json.data?.expenses || []);
+      setFeedStock(json.data?.feedStock || []);
+      setVaccineStock(json.data?.vaccineStock || []);
+      setFeedProgram(json.data?.feedProgram || []);
+      setMarketPrice(json.data?.marketPrice || null);
     } catch (err) {
-      setError('Failed to load some data. Please refresh.');
+      setError('Failed to load analytics data. Please refresh.');
     } finally {
       setLoading(false);
     }

@@ -283,6 +283,7 @@ export default function BatchPigsScreen() {
                         </span>
                       </div>
                       {pig.notes && <div className="text-xs text-gray-500 mt-1">📝 {pig.notes}</div>}
+                      {pig.age && <div className="text-xs text-gray-500 mt-1">🐣 Age: {pig.age} days</div>}
                     </div>
                     <div className="flex gap-1">
                       <button

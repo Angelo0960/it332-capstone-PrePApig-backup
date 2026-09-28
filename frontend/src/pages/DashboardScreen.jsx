@@ -111,6 +111,7 @@ export default function DashboardScreen() {
     start_weight: '1.4',
     date_acquired: '',
     status: 'Active',
+    age: '',
   });
 
   const currentBatch = batches[currentBatchIndex];
@@ -501,6 +502,7 @@ export default function DashboardScreen() {
           current_weight: totalWeight,
           date_acquired: newBatch.date_acquired,
           status: 'Active',
+          age: parseInt(newBatch.age) || 0,
         }),
       });
       if (!res.ok) {
@@ -514,7 +516,7 @@ export default function DashboardScreen() {
       if (json.success) {
         await fetchBatches();
         setShowAddBatch(false);
-        setNewBatch({ pig_count: '', breed: '', start_weight: '1.4', date_acquired: '', status: 'Active' });
+        setNewBatch({ pig_count: '', breed: '', start_weight: '1.4', date_acquired: '', status: 'Active', age: '' });
       } else {
         throw new Error(json.message || 'Unknown error');
       }
@@ -936,7 +938,19 @@ export default function DashboardScreen() {
                     max="3"
                     className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
                   />
-                  <p className="mt-1 text-xs text-gray-500">Typical newborn weight: 1.0–1.8 kg (avg 1.4 kg)</p>
+                  <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">
+                    Age (days)
+                  </label>
+                  <input
+                    type="number"
+                    value={newBatch.age}
+                    onChange={(e) => setNewBatch({ ...newBatch, age: e.target.value })}
+                    placeholder="30"
+                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Age in days since batch creation</p>
+                </div>
                   {newBatch.pig_count && newBatch.start_weight && (
                     <p className="mt-1 text-sm text-gray-700 font-medium">
                       Total batch weight: {(parseFloat(newBatch.start_weight) * parseInt(newBatch.pig_count)).toFixed(1)} kg

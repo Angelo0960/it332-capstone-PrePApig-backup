@@ -67,6 +67,7 @@ export const createBatch = async (req, res) => {
                     batch_id: newBatch.id,
                     weight: avgWeight,
                     health_status: 'Healthy',
+                    age: 0, // Newborn age
                     notes: `Auto‑generated on batch creation (breed: ${breed || 'Unknown'})`,
                 });
             }
@@ -488,7 +489,7 @@ export const getPigsByBatch = async (req, res) => {
 
 export const createPig = async (req, res) => {
     try {
-        const { batch_id, weight, health_status, notes } = req.body;
+        const { batch_id, weight, health_status, notes, age } = req.body;
         if (!batch_id || weight === undefined) {
             return res.status(400).json({
                 success: false,
@@ -498,7 +499,7 @@ export const createPig = async (req, res) => {
 
         const { data, error } = await supabase
             .from('pigs')
-            .insert([{ batch_id, weight, health_status, notes }])
+            .insert([{ batch_id, weight, health_status, notes, age }])
             .select();
 
         if (error) {
@@ -522,11 +523,11 @@ export const createPig = async (req, res) => {
 export const updatePig = async (req, res) => {
     try {
         const { id } = req.params;
-        const { weight, health_status, notes } = req.body;
+        const { weight, health_status, notes, age } = req.body;
 
         const { data, error } = await supabase
             .from('pigs')
-            .update({ weight, health_status, notes, updated_at: new Date() })
+            .update({ weight, health_status, notes, age })
             .eq('id', id)
             .select();
 
