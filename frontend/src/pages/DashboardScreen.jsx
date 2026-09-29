@@ -34,6 +34,7 @@ import {
   getFeedLabelForPhase,
 } from '../utils/batchAge.js';
 import { getVaccinationProgress } from '../utils/vaccinationProgress.js';
+import { PIG_BREEDS, DEFAULT_BREED } from '../utils/breeds.js';
 // ────────────────────────────────────────────────────────────────
 
 // Calculate profit in pesos
@@ -513,7 +514,7 @@ export default function DashboardScreen() {
         body: JSON.stringify({
           batch_code: batchCode,
           pig_count: parseInt(newBatch.pig_count),
-          breed: newBatch.breed || 'Unknown',
+          breed: newBatch.breed || DEFAULT_BREED,
           start_weight: perPigWeight,
           current_weight: totalWeight,
           // Acquisition date is derived from the entered age
@@ -938,15 +939,20 @@ export default function DashboardScreen() {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-2">
-                    Breed (optional)
+                    Breed
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={newBatch.breed}
                     onChange={(e) => setNewBatch({ ...newBatch, breed: e.target.value })}
-                    placeholder="Landrace"
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  />
+                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
+                  >
+                    <option value="">Select breed...</option>
+                    {PIG_BREEDS.map((breed) => (
+                      <option key={breed} value={breed}>
+                        {breed}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
