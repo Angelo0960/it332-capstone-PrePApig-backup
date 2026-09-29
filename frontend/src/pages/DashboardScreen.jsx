@@ -33,6 +33,7 @@ import {
   getTargetWeightForPhase,
   getFeedLabelForPhase,
 } from '../utils/batchAge.js';
+import { getVaccinationProgress } from '../utils/vaccinationProgress.js';
 // ────────────────────────────────────────────────────────────────
 
 // Calculate profit in pesos
@@ -210,6 +211,24 @@ export default function DashboardScreen() {
     }
   };
 
+  // ---------- Fetch vaccination records ----------
+  // Returns [] on failure so the dashboard still renders, just with no
+  // syringes lit rather than a wrong count.
+  const fetchVaccinationRecords = async () => {
+    try {
+      const res = await apiFetch(`${API_BASE}/vaccinations/all`, { headers: getAuthHeaders() });
+      if (!res.ok) {
+        console.warn('Could not fetch vaccination records:', res.status);
+        return [];
+      }
+      const json = await res.json();
+      return json.success && Array.isArray(json.data) ? json.data : [];
+    } catch (err) {
+      console.warn('Could not fetch vaccination records:', err.message);
+      return [];
+    }
+  };
+
   // ---------- Fetch batches ----------
   const fetchBatches = async () => {
     setLoading(true);
@@ -225,12 +244,16 @@ export default function DashboardScreen() {
       }
       const json = await res.json();
       if (json.success) {
+        // Completed vaccination records, so the syringe count reflects real
+        // doses given rather than the batch's age
+        const vaccinationRecords = await fetchVaccinationRecords();
+
         const batchesWithFCR = json.data.map((batch) => {
           // Age entered at batch creation + days since acquisition
           const day = getBatchAgeDays(batch);
           const name = batch.batch_code || `Batch ${batch.id}`;
           const growth = Math.min(100, Math.floor(day / 0.5));
-          const vaccination = Math.min(100, Math.floor((day / 50) * 100));
+          const vaccination = getVaccinationProgress(vaccinationRecords, batch.id);
           const health = 80;
           const feed = Math.max(0, 100 - Math.floor(day / 1.2));
           
@@ -412,11 +435,17 @@ export default function DashboardScreen() {
     fetchNotifications();
 
     // Listen for batch updates from other screens
-    const unsubscribe = eventBus.on(EVENTS.BATCH_UPDATED, () => {
-      fetchBatches();
-    });
+    const unsubscribers = [
+      eventBus.on(EVENTS.BATCH_UPDATED, () => {
+        fetchBatches();
+      }),
+      // A dose recorded on the Vaccination screen lights a syringe here
+      eventBus.on(EVENTS.VACCINATION_RECORDED, () => {
+        fetchBatches();
+      }),
+    ];
 
-    return () => unsubscribe();
+    return () => unsubscribers.forEach((off) => off());
   }, []);
 
   // ---------- Fetch FCR when current batch changes ----------
@@ -702,26 +731,28 @@ export default function DashboardScreen() {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-semibold text-gray-800">Vaccination</span>
                     <span className="text-xs font-bold text-blue-600">
-                      {Math.round(currentBatch.vaccination / 25)}/4 shots
+                      {currentBatch.vaccination.completed}/{currentBatch.vaccination.total} shots
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    {[1, 2, 3, 4].map((shot) => (
-                      <div
-                        key={`vac-${shot}`}
-                        className="pop-in"
-                        style={{ animationDelay: `${shot * 0.1}s` }}
-                      >
-                        <Syringe
-                          className={`w-5 h-5 ${
-                            currentBatch.vaccination >= shot * 25
-                              ? 'text-blue-500 fill-blue-500'
-                              : 'text-gray-800/30'
-                          } transition-colors duration-300`}
-                        />
-                      </div>
-                    ))}
-                    {currentBatch.vaccination >= 100 && (
+                    {Array.from({ length: currentBatch.vaccination.total }, (_, i) => i + 1).map(
+                      (shot) => (
+                        <div
+                          key={`vac-${shot}`}
+                          className="pop-in"
+                          style={{ animationDelay: `${shot * 0.1}s` }}
+                        >
+                          <Syringe
+                            className={`w-5 h-5 ${
+                              currentBatch.vaccination.completed >= shot
+                                ? 'text-blue-500 fill-blue-500'
+                                : 'text-gray-800/30'
+                            } transition-colors duration-300`}
+                          />
+                        </div>
+                      )
+                    )}
+                    {currentBatch.vaccination.isComplete && (
                       <div className="ml-2 text-xs text-green-600">
                         ✅ Complete
                       </div>

@@ -32,4 +32,5 @@ export const EVENTS = {
   BATCH_DELETED: 'batch:deleted',
   FEED_LOGGED: 'feed:logged',
   WEIGHT_LOGGED: 'weight:logged',
+  VACCINATION_RECORDED: 'vaccination:recorded',
 };

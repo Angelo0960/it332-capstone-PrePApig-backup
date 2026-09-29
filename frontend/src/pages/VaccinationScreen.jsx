@@ -18,6 +18,7 @@ import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5b
 import BottomNav from '../components/BottomNav';
 import { API_BASE, getAuthHeaders, apiFetch } from '../api.js';
 import { getBatchAgeDays } from '../utils/batchAge.js';
+import { eventBus, EVENTS } from '../utils/eventBus.js';
 
 // Standard vaccination schedule by age
 const vaccinationSchedule = [
@@ -258,6 +259,11 @@ export default function VaccinationScreen() {
           notes: '',
         });
         fetchVaccineStock();
+        // Let the dashboard light the matching syringe
+        eventBus.emit(EVENTS.VACCINATION_RECORDED, {
+          batchId: formData.batch_id,
+          vaccineName: formData.vaccine_name,
+        });
         return true;
       } else {
         throw new Error(json.message || 'Unknown error');
