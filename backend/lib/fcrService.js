@@ -1,4 +1,4 @@
-import { getPhaseFCR } from './feedScheduleService.js';
+import { getPhaseFCR, getBatchAgeWeeks } from './feedScheduleService.js';
 
 /**
  * Calculate FCR from historical feed records and weight history
@@ -102,11 +102,8 @@ export function getEffectiveFCR(batch, feedRecords = []) {
 
 function getCurrentPhase(batch) {
   if (!batch?.date_acquired) return 'Starter';
-  const acquired = new Date(batch.date_acquired);
-  const now = new Date();
-  const diffMs = now - acquired;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const weeks = Math.floor(diffDays / 7) + 1;
+  // Accounts for the age the pigs were when the batch was acquired
+  const weeks = getBatchAgeWeeks(batch.date_acquired, batch.age_on_acquisition);
 
   if (weeks <= 4) return 'Starter';
   if (weeks <= 10) return 'Grower';

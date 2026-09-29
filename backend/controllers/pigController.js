@@ -1,13 +1,14 @@
 import supabase from '../config/supabase.js';
 import { invalidateCache, CACHE_KEYS, invalidateReportCaches } from '../lib/supabaseCache.js';
 import { 
-  getCurrentFeedProgram, 
-  getNextFeedChange, 
-  getFeedScheduleStatus,
-  getAllFeedChanges,
-  getCompleteFeedSchedule,
-  getPhaseFCR,
-  validateFeedRation
+    getCurrentFeedProgram, 
+    getNextFeedChange,
+    getFeedScheduleStatus,
+    getAllFeedChanges,
+    getCompleteFeedSchedule,
+    getPhaseFCR,
+    getBatchAgeDays,
+    validateFeedRation
 } from '../lib/feedScheduleService.js';
 import { 
   getEffectiveFCR, 
@@ -28,10 +29,14 @@ export const createBatch = async (req, res) => {
             start_weight,
             current_weight,
             date_acquired,
-            status
+            status,
+            age
         } = req.body;
 
         const owner_id = req.user.id;
+
+        // Age (in days) the pigs were on the acquisition date
+        const ageOnAcquisition = Math.max(0, parseInt(age, 10) || 0);
 
         // 1. Insert the batch
         const { data: batchData, error: batchError } = await supabase
@@ -44,6 +49,7 @@ export const createBatch = async (req, res) => {
                 current_weight,
                 date_acquired,
                 status,
+                age_on_acquisition: ageOnAcquisition,
                 owner_id
             }])
             .select();
@@ -59,6 +65,7 @@ export const createBatch = async (req, res) => {
         const totalPigs = pig_count || 0;
         const totalWeight = current_weight || 0;
         const avgWeight = totalPigs > 0 ? totalWeight / totalPigs : 0;
+        const pigAge = getBatchAgeDays(date_acquired, ageOnAcquisition);
 
         if (totalPigs > 0) {
             const pigs = [];
@@ -67,7 +74,7 @@ export const createBatch = async (req, res) => {
                     batch_id: newBatch.id,
                     weight: avgWeight,
                     health_status: 'Healthy',
-                    age: 0, // Newborn age
+                    age: pigAge,
                     notes: `Auto‑generated on batch creation (breed: ${breed || 'Unknown'})`,
                 });
             }
@@ -246,20 +253,27 @@ export const updateBatch = async (req, res) => {
             start_weight,
             current_weight,
             date_acquired,
-            status
+            status,
+            age
         } = req.body;
+
+        const updates = {
+            batch_code,
+            pig_count,
+            breed,
+            start_weight,
+            current_weight,
+            date_acquired,
+            status
+        };
+
+        if (age !== undefined) {
+            updates.age_on_acquisition = Math.max(0, parseInt(age, 10) || 0);
+        }
 
         const { data, error } = await supabase
             .from('pig_batches')
-            .update({
-                batch_code,
-                pig_count,
-                breed,
-                start_weight,
-                current_weight,
-                date_acquired,
-                status
-            })
+            .update(updates)
             .eq('id', id)
             .select();
 
@@ -444,12 +458,15 @@ export const getPigsByBatch = async (req, res) => {
             const totalWeight = batch.current_weight || 0;
             const avgWeight = pigCount > 0 ? totalWeight / pigCount : 0;
 
+            const pigAge = getBatchAgeDays(batch.date_acquired, batch.age_on_acquisition);
+
             const newPigs = [];
             for (let i = 0; i < pigCount; i++) {
                 newPigs.push({
                     batch_id: batchId,
                     weight: avgWeight,
                     health_status: 'Healthy',
+                    age: pigAge,
                     notes: 'Auto‑generated (fallback)',
                 });
             }

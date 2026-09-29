@@ -21,8 +21,8 @@ export default function BatchPigsScreen() {
   const [editingPig, setEditingPig] = useState(null);
 
   // Form states
-  const [newPig, setNewPig] = useState({ weight: '', health_status: 'Healthy', notes: '' });
-  const [editPig, setEditPig] = useState({ weight: '', health_status: '', notes: '' });
+  const [newPig, setNewPig] = useState({ weight: '', age: '', health_status: 'Healthy', notes: '' });
+  const [editPig, setEditPig] = useState({ weight: '', age: '', health_status: '', notes: '' });
 
   // Fetch pigs
   const fetchPigs = async () => {
@@ -89,6 +89,7 @@ export default function BatchPigsScreen() {
         body: JSON.stringify({
           batch_id: batchId,
           weight: parseFloat(newPig.weight),
+          age: Math.max(0, parseInt(newPig.age, 10) || 0),
           health_status: newPig.health_status || 'Healthy',
           notes: newPig.notes || '',
         }),
@@ -98,7 +99,7 @@ export default function BatchPigsScreen() {
       if (json.success) {
         await fetchPigs();
         setShowAddModal(false);
-        setNewPig({ weight: '', health_status: 'Healthy', notes: '' });
+        setNewPig({ weight: '', age: '', health_status: 'Healthy', notes: '' });
       } else {
         throw new Error(json.message);
       }
@@ -112,6 +113,7 @@ export default function BatchPigsScreen() {
     setEditingPig(pig);
     setEditPig({
       weight: pig.weight.toString(),
+      age: pig.age != null ? String(pig.age) : '',
       health_status: pig.health_status || 'Healthy',
       notes: pig.notes || '',
     });
@@ -129,6 +131,7 @@ export default function BatchPigsScreen() {
         headers: getAuthHeaders(),
         body: JSON.stringify({
           weight: parseFloat(editPig.weight),
+          age: Math.max(0, parseInt(editPig.age, 10) || 0),
           health_status: editPig.health_status || 'Healthy',
           notes: editPig.notes || '',
         }),
@@ -145,7 +148,7 @@ export default function BatchPigsScreen() {
         await fetchPigs();
         setShowEditModal(false);
         setEditingPig(null);
-        setEditPig({ weight: '', health_status: '', notes: '' });
+        setEditPig({ weight: '', age: '', health_status: '', notes: '' });
       } else {
         throw new Error(json.message);
       }
@@ -283,7 +286,7 @@ export default function BatchPigsScreen() {
                         </span>
                       </div>
                       {pig.notes && <div className="text-xs text-gray-500 mt-1">📝 {pig.notes}</div>}
-                      {pig.age && <div className="text-xs text-gray-500 mt-1">🐣 Age: {pig.age} days</div>}
+                      {pig.age > 0 && <div className="text-xs text-gray-500 mt-1">🐣 Age: {pig.age} days</div>}
                     </div>
                     <div className="flex gap-1">
                       <button
@@ -333,6 +336,17 @@ export default function BatchPigsScreen() {
                   onChange={(e) => setNewPig({ ...newPig, weight: e.target.value })}
                   placeholder="25.5"
                   step="0.1"
+                  className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">Age (days)</label>
+                <input
+                  type="number"
+                  value={newPig.age}
+                  onChange={(e) => setNewPig({ ...newPig, age: e.target.value })}
+                  placeholder="30"
+                  min="0"
                   className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
                 />
               </div>
@@ -395,7 +409,17 @@ export default function BatchPigsScreen() {
                   value={editPig.weight}
                   onChange={(e) => setEditPig({ ...editPig, weight: e.target.value })}
                   step="0.1"
-                  className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
+                  className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">Age (days)</label>
+                <input
+                  type="number"
+                  value={editPig.age}
+                  onChange={(e) => setEditPig({ ...editPig, age: e.target.value })}
+                  min="0"
+                  className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
                 />
               </div>
               <div>

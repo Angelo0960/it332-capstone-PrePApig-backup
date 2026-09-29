@@ -17,7 +17,11 @@ async function runMigration() {
     `ALTER TABLE pig_batches ADD COLUMN IF NOT EXISTS fcr_confidence VARCHAR(20);`,
     `ALTER TABLE pig_batches ADD COLUMN IF NOT EXISTS fcr_data_points INTEGER DEFAULT 0;`,
     `CREATE INDEX IF NOT EXISTS idx_pig_batches_weight_history ON pig_batches USING GIN (weight_history);`,
-    `GRANT SELECT, INSERT, UPDATE, DELETE ON pig_batches TO anon, authenticated;`
+    `GRANT SELECT, INSERT, UPDATE, DELETE ON pig_batches TO anon, authenticated;`,
+    // Pig age (from the "Add New Batch" modal)
+    `ALTER TABLE pig_batches ADD COLUMN IF NOT EXISTS age_on_acquisition INTEGER NOT NULL DEFAULT 0;`,
+    `ALTER TABLE pigs ADD COLUMN IF NOT EXISTS age INTEGER NOT NULL DEFAULT 0;`,
+    `GRANT SELECT, INSERT, UPDATE, DELETE ON pigs TO anon, authenticated;`
   ];
 
   for (const sql of statements) {

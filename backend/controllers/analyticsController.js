@@ -3,6 +3,7 @@ import {
   getPhaseFCR,
   getCurrentFeedProgram,
   getNextFeedChange,
+  getBatchAgeDays,
   isFeedChangeDue,
   isFeedChangeSoon,
 } from '../lib/feedScheduleService.js';
@@ -342,6 +343,7 @@ export const getBatchAnalytics = async (req, res) => {
           start_weight: batch.start_weight,
           current_weight: batch.current_weight,
           date_acquired: batch.date_acquired,
+          age_on_acquisition: batch.age_on_acquisition || 0,
           breed: batch.breed,
         },
         summary: {
@@ -354,12 +356,10 @@ export const getBatchAnalytics = async (req, res) => {
           dailyGainRate,
           fcr,
           targetFCR,
-          daysSinceAcquired: batch.date_acquired
-            ? Math.floor(
-                (new Date() - new Date(batch.date_acquired)) /
-                  (1000 * 60 * 60 * 24)
-              )
-            : 0,
+          daysSinceAcquired: getBatchAgeDays(
+            batch.date_acquired,
+            batch.age_on_acquisition
+          ),
         },
         feedRecords: feedRecords.map((r) => ({
           id: r.id,

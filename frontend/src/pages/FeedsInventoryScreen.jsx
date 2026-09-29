@@ -22,6 +22,7 @@ import BottomNav from '../components/BottomNav';
 import { API_BASE, getAuthHeaders, apiFetch } from '../api.js';
 import { feedScheduleApi } from '../api.js';
 import { eventBus, EVENTS } from '../utils/eventBus.js';
+import { getBatchAgeDays } from '../utils/batchAge.js';
 // ────────────────────────────────────────────────────────────────
 
 // Mock data (fallback when API fails) - using UUID format to match backend
@@ -172,16 +173,8 @@ export default function FeedsInventoryScreen() {
       const json = await res.json();
       if (json.success && json.data.length > 0) {
         const mapped = json.data.map((batch) => {
-          let day = 0;
-          if (batch.date_acquired) {
-            const acquired = new Date(batch.date_acquired);
-            const now = new Date();
-            day = Math.max(0, Math.floor((now - acquired) / (1000 * 60 * 60 * 24)));
-          } else if (batch.created_at) {
-            const created = new Date(batch.created_at);
-            const now = new Date();
-            day = Math.max(0, Math.floor((now - created) / (1000 * 60 * 60 * 24)));
-          }
+          // Age entered at batch creation + days since acquisition
+          const day = getBatchAgeDays(batch);
           return {
             id: batch.id,
             name: batch.batch_code || `Batch ${batch.id}`,

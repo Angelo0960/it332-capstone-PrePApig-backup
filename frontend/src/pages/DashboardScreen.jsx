@@ -25,6 +25,14 @@ import { PWAAddToHomeButton } from '../components/PWAComponents.jsx';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
 import { API_BASE, getAuthHeaders, apiFetch } from '../api.js';
 import { eventBus, EVENTS } from '../utils/eventBus.js';
+import {
+  getBatchAgeDays,
+  getDateAcquiredForAge,
+  getPhaseForAge,
+  getTargetFCRForPhase,
+  getTargetWeightForPhase,
+  getFeedLabelForPhase,
+} from '../utils/batchAge.js';
 // ────────────────────────────────────────────────────────────────
 
 // Calculate profit in pesos
@@ -96,10 +104,11 @@ export default function DashboardScreen() {
   const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
   const [dragDirection, setDragDirection] = useState(0);
 
-  // Edit pig count state
-  const [showEditPigModal, setShowEditPigModal] = useState(false);
+  // Edit batch state
+  const [showEditBatchModal, setShowEditBatchModal] = useState(false);
   const [editBatchId, setEditBatchId] = useState(null);
   const [editPigCount, setEditPigCount] = useState('');
+  const [editBatchAge, setEditBatchAge] = useState('');
 
   const [notifications, setNotifications] = useState([]);
   const [batchFCR, setBatchFCR] = useState({}); // FCR cache keyed by batch ID
@@ -109,9 +118,8 @@ export default function DashboardScreen() {
     pig_count: '',
     breed: '',
     start_weight: '1.4',
-    date_acquired: '',
     status: 'Active',
-    age: '',
+    age: '30',
   });
 
   const currentBatch = batches[currentBatchIndex];
@@ -151,47 +159,6 @@ export default function DashboardScreen() {
     { type: 'Grower Pellet', stock: 245 },
     { type: 'Finisher', stock: 120 },
   ];
-
-  // Helper functions for feed scheduling
-  const getFeedTypeForAge = (day) => {
-    if (day <= 21) return 'starter';
-    if (day <= 49) return 'grower';
-    return 'finisher';
-  };
-
-  const getFeedTypeName = (feedType) => {
-    const names = { starter: 'Starter Mash', grower: 'Grower Pellet', finisher: 'Finisher' };
-    return names[feedType];
-  };
-
-  const getDaysUntilFeedChange = (day) => {
-    if (day <= 21) return 22 - day;
-    if (day <= 49) return 50 - day;
-    return null;
-  };
-
-  // Vaccination scheduling
-  const vaccinationSchedule = [
-    { vaccine: 'Swine Fever', minDay: 7, maxDay: 10 },
-    { vaccine: 'E. Coli', minDay: 14, maxDay: 21 },
-    { vaccine: 'PRRS', minDay: 28, maxDay: 35 },
-    { vaccine: 'Porcine Circovirus', minDay: 42, maxDay: 49 },
-  ];
-
-  const getNextVaccination = (day) => {
-    for (const vax of vaccinationSchedule) {
-      if (day < vax.maxDay) return vax;
-    }
-    return null;
-  };
-
-  const isVaccinationDue = (day, vaccine) => {
-    return day >= vaccine.minDay && day <= vaccine.maxDay;
-  };
-
-  const isVaccinationOverdue = (day, vaccine) => {
-    return day > vaccine.maxDay;
-  };
 
   // ---------- Generate unique batch code ----------
   const generateBatchCode = () => {
@@ -259,9 +226,8 @@ export default function DashboardScreen() {
       const json = await res.json();
       if (json.success) {
         const batchesWithFCR = json.data.map((batch) => {
-          const acquired = new Date(batch.date_acquired);
-          const now = new Date();
-          const day = Math.max(0, Math.floor((now - acquired) / (1000 * 60 * 60 * 24)));
+          // Age entered at batch creation + days since acquisition
+          const day = getBatchAgeDays(batch);
           const name = batch.batch_code || `Batch ${batch.id}`;
           const growth = Math.min(100, Math.floor(day / 0.5));
           const vaccination = Math.min(100, Math.floor((day / 50) * 100));
@@ -274,29 +240,28 @@ export default function DashboardScreen() {
           const feedStatus = batch.feedStatus || 'unknown';
           const daysUntilFeedChange = batch.daysUntilFeedChange;
           const feedMessage = batch.feedMessage;
-          
-          // Get cached FCR or use phase default
+
+          // Growth phase derived from the pig's actual age (entered age + days elapsed)
+          const phase = currentFeed?.phase || getPhaseForAge(day);
+
+          // FCR: prefer the cached value, otherwise target the batch's phase
           const cachedFCR = batchFCR[batch.id];
-          let fcr = cachedFCR?.fcr ?? null;
-          let targetFcr = cachedFCR?.targetFcr ?? 2.8;
-          
-          // Determine target FCR based on phase
-          let phaseTargetFcr = 2.8;
-          if (day <= 28) phaseTargetFcr = 2.0;
-          else if (day <= 70) phaseTargetFcr = 2.8;
-          else phaseTargetFcr = 2.5;
-          
+          const fcr = cachedFCR?.fcr ?? null;
+          const targetFcr = cachedFCR?.targetFcr ?? getTargetFCRForPhase(phase);
+
           return {
             id: batch.id,
             name: name,
             batch_code: batch.batch_code,
             pigCount: batch.pig_count || 0,
             day: day,
+            phase: phase,
             growth: growth,
             vaccination: vaccination,
             health: health,
             feed: feed,
             weight: batch.current_weight || batch.start_weight || 0,
+            targetWeight: getTargetWeightForPhase(phase),
             pricePerKg: 180,
             expenses: (batch.pig_count || 0) * 1000,
             // Feed schedule info
@@ -307,7 +272,7 @@ export default function DashboardScreen() {
             feedMessage,
             // FCR info
             fcr,
-            targetFcr: fcr ? targetFcr : phaseTargetFcr
+            targetFcr
           };
         });
         setBatches(batchesWithFCR);
@@ -384,44 +349,60 @@ export default function DashboardScreen() {
     }
   };
 
-  // ---------- Open edit pig modal ----------
-  const handleOpenEditPig = (batchId, currentCount) => {
-    setEditBatchId(batchId);
-    setEditPigCount(String(currentCount));
-    setShowEditPigModal(true);
+  // ---------- Open edit batch modal ----------
+  const handleOpenEditBatch = (batch) => {
+    setEditBatchId(batch.id);
+    setEditPigCount(String(batch.pigCount));
+    setEditBatchAge(String(batch.day));
+    setShowEditBatchModal(true);
   };
 
-  // ---------- Update pig count ----------
-  const handleUpdatePigCount = async () => {
+  const closeEditBatchModal = () => {
+    setShowEditBatchModal(false);
+    setEditBatchId(null);
+    setEditPigCount('');
+    setEditBatchAge('');
+  };
+
+  // ---------- Update pig count and age ----------
+  const handleUpdateBatch = async () => {
     const newCount = parseInt(editPigCount);
     if (isNaN(newCount) || newCount < 0) {
-      alert('Please enter a valid number');
+      alert('Please enter a valid number of pigs');
+      return;
+    }
+    const newAge = parseInt(editBatchAge);
+    if (isNaN(newAge) || newAge < 0) {
+      alert('Please enter a valid age in days');
       return;
     }
     try {
       const res = await apiFetch(`${API_BASE}/pigs/${editBatchId}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ pig_count: newCount }),
+        body: JSON.stringify({
+          pig_count: newCount,
+          // Age is authoritative; the acquisition date is shifted to match
+          date_acquired: getDateAcquiredForAge(newAge),
+          age: 0,
+        }),
       });
       if (!res.ok) {
         if (res.status === 401) {
           alert('Session expired. Please log in again.');
           return;
         }
-        throw new Error('Failed to update pig count');
+        throw new Error('Failed to update batch');
       }
       const json = await res.json();
       if (json.success) {
         await fetchBatches();
-        setShowEditPigModal(false);
-        setEditBatchId(null);
-        setEditPigCount('');
+        closeEditBatchModal();
       } else {
         throw new Error(json.message || 'Unknown error');
       }
     } catch (err) {
-      alert('Error updating pig count: ' + err.message);
+      alert('Error updating batch: ' + err.message);
     }
   };
 
@@ -480,12 +461,18 @@ export default function DashboardScreen() {
 
   // ---------- Handle adding a batch ----------
   const handleAddBatch = async () => {
-    if (!newBatch.pig_count || !newBatch.start_weight || !newBatch.date_acquired) {
-      alert('Please fill in all required fields (Number of Pigs, Start Weight, Date Acquired)');
+    if (!newBatch.pig_count || !newBatch.start_weight) {
+      alert('Please fill in all required fields (Number of Pigs, Start Weight, Age)');
+      return;
+    }
+
+    if (isNaN(parseInt(newBatch.age)) || parseInt(newBatch.age) < 0) {
+      alert('Please enter a valid age in days');
       return;
     }
 
     const batchCode = generateBatchCode();
+    const age = parseInt(newBatch.age);
 
     try {
       const perPigWeight = parseFloat(newBatch.start_weight);
@@ -500,9 +487,10 @@ export default function DashboardScreen() {
           breed: newBatch.breed || 'Unknown',
           start_weight: perPigWeight,
           current_weight: totalWeight,
-          date_acquired: newBatch.date_acquired,
+          // Acquisition date is derived from the entered age
+          date_acquired: getDateAcquiredForAge(age),
           status: 'Active',
-          age: parseInt(newBatch.age) || 0,
+          age: 0,
         }),
       });
       if (!res.ok) {
@@ -516,7 +504,7 @@ export default function DashboardScreen() {
       if (json.success) {
         await fetchBatches();
         setShowAddBatch(false);
-        setNewBatch({ pig_count: '', breed: '', start_weight: '1.4', date_acquired: '', status: 'Active', age: '' });
+        setNewBatch({ pig_count: '', breed: '', start_weight: '1.4', status: 'Active', age: '30' });
       } else {
         throw new Error(json.message || 'Unknown error');
       }
@@ -655,9 +643,9 @@ export default function DashboardScreen() {
                   <div className="text-xs text-gray-700 mb-1 font-medium">
                     {currentBatch.name}: {currentBatch.pigCount} Pigs
                     <button
-                      onClick={() => handleOpenEditPig(currentBatch.id, currentBatch.pigCount)}
+                      onClick={() => handleOpenEditBatch(currentBatch)}
                       className="ml-1 inline-flex items-center text-blue-500 hover:text-blue-700 transition-colors"
-                      title="Edit pig count"
+                      title="Edit batch details"
                     >
                       <Pencil className="w-3 h-3" />
                     </button>
@@ -701,7 +689,9 @@ export default function DashboardScreen() {
                   <div className="text-sm font-bold text-gray-900">
                     {currentBatch.day} days
                   </div>
-                  <div className="text-xs text-gray-500">Since batch acquisition</div>
+                  <div className="text-xs text-gray-500">
+                    {currentBatch.phase} phase
+                  </div>
                 </div>
               </div>
 
@@ -750,8 +740,7 @@ export default function DashboardScreen() {
                   <div className="flex items-center gap-2">
                     {[1, 2, 3, 4].map((level) => {
                       const avgWeight = currentBatch.weight / currentBatch.pigCount;
-                      const targetWeight =
-                        currentBatch.day <= 21 ? 30 : currentBatch.day <= 49 ? 60 : 90;
+                      const targetWeight = currentBatch.targetWeight;
                       const weightProgress = Math.min(100, (avgWeight / targetWeight) * 100);
                       return (
                         <div
@@ -776,7 +765,7 @@ export default function DashboardScreen() {
                 <div className="bg-white/20 backdrop-blur-lg rounded-xl p-3 shadow-lg border border-white/30">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-semibold text-gray-800">
-                      Feed: {currentBatch.currentFeed?.feedType || getFeedTypeName(getFeedTypeForAge(currentBatch.day))}
+                      Feed: {currentBatch.currentFeed?.feedType || getFeedLabelForPhase(currentBatch.phase)}
                     </span>
                     {currentBatch.feedStatus && currentBatch.feedStatus !== 'unknown' && (
                       <span className={`px-2 py-0.5 rounded text-xs font-medium ${
@@ -871,8 +860,8 @@ export default function DashboardScreen() {
                       pig_count: '',
                       breed: '',
                       start_weight: '1.4',
-                      date_acquired: '',
                       status: 'Active',
+                      age: '30',
                     });
                   }}
                   className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all"
@@ -929,20 +918,7 @@ export default function DashboardScreen() {
                     max="3"
                     className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
                   />
-                  <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">
-                    Age (days)
-                  </label>
-                  <input
-                    type="number"
-                    value={newBatch.age}
-                    onChange={(e) => setNewBatch({ ...newBatch, age: e.target.value })}
-                    placeholder="30"
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">Age in days since batch creation</p>
-                </div>
-                  {newBatch.pig_count && newBatch.start_weight && (
+                    {newBatch.pig_count && newBatch.start_weight && (
                     <p className="mt-1 text-sm text-gray-700 font-medium">
                       Total batch weight: {(parseFloat(newBatch.start_weight) * parseInt(newBatch.pig_count)).toFixed(1)} kg
                     </p>
@@ -951,14 +927,34 @@ export default function DashboardScreen() {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-2">
-                    Date Acquired
+                    Age (days)
                   </label>
                   <input
-                    type="date"
-                    value={newBatch.date_acquired}
-                    onChange={(e) => setNewBatch({ ...newBatch, date_acquired: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
+                    type="number"
+                    value={newBatch.age}
+                    onChange={(e) => setNewBatch({ ...newBatch, age: e.target.value })}
+                    placeholder="30"
+                    min="0"
+                    max="365"
+                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
                   />
+                  <p className="mt-1 text-xs text-gray-500">
+                    How old the pigs are today. The dashboard counts up from here.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">
+                    Date Acquired
+                  </label>
+                  <div className="w-full px-4 py-3 rounded-xl bg-white/20 backdrop-blur-lg border border-white/30 text-gray-700">
+                    {newBatch.age !== '' && !isNaN(parseInt(newBatch.age))
+                      ? getDateAcquiredForAge(newBatch.age)
+                      : '—'}
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Worked out automatically from the age above.
+                  </p>
                 </div>
 
                 <button
@@ -972,18 +968,14 @@ export default function DashboardScreen() {
           </div>
         )}
 
-        {/* Edit Pig Count Modal */}
-        {showEditPigModal && (
+        {/* Edit Batch Modal */}
+        {showEditBatchModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-sm md:max-w-md lg:max-w-lg">
               <div className="flex items-center justify-between p-5 border-b border-white/30">
-                <h2 className="text-lg font-bold text-gray-900">Edit Pig Count</h2>
+                <h2 className="text-lg font-bold text-gray-900">Edit Batch</h2>
                 <button
-                  onClick={() => {
-                    setShowEditPigModal(false);
-                    setEditBatchId(null);
-                    setEditPigCount('');
-                  }}
+                  onClick={closeEditBatchModal}
                   className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all"
                 >
                   <X className="w-4 h-4 text-gray-700" />
@@ -1005,8 +997,25 @@ export default function DashboardScreen() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">
+                    Age (days)
+                  </label>
+                  <input
+                    type="number"
+                    value={editBatchAge}
+                    onChange={(e) => setEditBatchAge(e.target.value)}
+                    placeholder="30"
+                    min="0"
+                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    The pigs' age today. The acquisition date is adjusted to match.
+                  </p>
+                </div>
+
                 <button
-                  onClick={handleUpdatePigCount}
+                  onClick={handleUpdateBatch}
                   className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform"
                 >
                   Update

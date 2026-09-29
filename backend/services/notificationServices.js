@@ -329,7 +329,7 @@ export const checkFeedChanges = async () => {
     // Get all active batches
     const { data: batches, error } = await supabase
         .from('pig_batches')
-        .select('id, batch_code, date_acquired, owner_id, pig_count, breed')
+        .select('id, batch_code, date_acquired, age_on_acquisition, owner_id, pig_count, breed')
         .eq('status', 'Active');
 
     if (error) {

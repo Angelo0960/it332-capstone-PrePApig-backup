@@ -7,17 +7,33 @@ import { FEED_PROGRAM, mapRationToFeedType } from './feedProgram.js';
 const BAG_WEIGHT_KG = 50;
 
 /**
- * Calculate weeks since batch was acquired
- * Week 1 = day 0-6 after acquisition
+ * Get the batch's current age in days
+ * Accounts for the age the pigs were when the batch was acquired.
  * @param {string|Date} dateAcquired - ISO date string or Date object
- * @returns {number} Week number (1-26, clamped)
+ * @param {number} ageOnAcquisition - Pig age (days) on the acquisition date
+ * @returns {number} Age in days
  */
-export function getBatchAgeWeeks(dateAcquired) {
+export function getBatchAgeDays(dateAcquired, ageOnAcquisition = 0) {
+  if (!dateAcquired) return Math.max(0, parseInt(ageOnAcquisition, 10) || 0);
+
   const acquired = new Date(dateAcquired);
   const now = new Date();
-  const diffMs = now - acquired;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const weeks = Math.floor(diffDays / 7) + 1;
+  const elapsed = Math.floor((now - acquired) / (1000 * 60 * 60 * 24));
+  const offset = Math.max(0, parseInt(ageOnAcquisition, 10) || 0);
+
+  return Math.max(0, elapsed) + offset;
+}
+
+/**
+ * Calculate the batch's age in weeks
+ * Week 1 = pig day 0-6
+ * @param {string|Date} dateAcquired - ISO date string or Date object
+ * @param {number} ageOnAcquisition - Pig age (days) on the acquisition date
+ * @returns {number} Week number (1-26, clamped)
+ */
+export function getBatchAgeWeeks(dateAcquired, ageOnAcquisition = 0) {
+  const ageDays = getBatchAgeDays(dateAcquired, ageOnAcquisition);
+  const weeks = Math.floor(ageDays / 7) + 1;
   return Math.max(1, Math.min(26, weeks));
 }
 
@@ -29,7 +45,7 @@ export function getBatchAgeWeeks(dateAcquired) {
 export function getCurrentFeedProgram(batch) {
   if (!batch || !batch.date_acquired) return null;
 
-  const weeksSinceAcquired = getBatchAgeWeeks(batch.date_acquired);
+  const weeksSinceAcquired = getBatchAgeWeeks(batch.date_acquired, batch.age_on_acquisition);
   const pigCount = batch.pig_count || 0;
   const program = FEED_PROGRAM.find(p => p.week === weeksSinceAcquired);
 
@@ -66,8 +82,8 @@ export function getCurrentFeedProgram(batch) {
 export function getNextFeedChange(batch) {
   if (!batch || !batch.date_acquired) return null;
 
-  const currentWeek = getBatchAgeWeeks(batch.date_acquired);
-  const acquiredDate = new Date(batch.date_acquired);
+  const currentWeek = getBatchAgeWeeks(batch.date_acquired, batch.age_on_acquisition);
+  const startDate = getBatchStartDate(batch);
 
   // Find next week where ration or phase changes
   for (let w = currentWeek + 1; w <= 26; w++) {
@@ -77,7 +93,7 @@ export function getNextFeedChange(batch) {
     if (!nextProgram) break;
 
     if (nextProgram.ration !== currentProgram.ration || nextProgram.phase !== currentProgram.phase) {
-      const changeDate = new Date(acquiredDate.getTime() + (w - 1) * 7 * 24 * 60 * 60 * 1000);
+      const changeDate = new Date(startDate.getTime() + (w - 1) * 7 * 24 * 60 * 60 * 1000);
       const daysUntil = Math.ceil((changeDate - new Date()) / (1000 * 60 * 60 * 24));
 
       return {
@@ -106,7 +122,7 @@ export function getNextFeedChange(batch) {
 export function getAllFeedChanges(batch) {
   if (!batch || !batch.date_acquired) return [];
 
-  const acquiredDate = new Date(batch.date_acquired);
+  const startDate = getBatchStartDate(batch);
   const changes = [];
 
   for (let w = 2; w <= 26; w++) {
@@ -116,12 +132,10 @@ export function getAllFeedChanges(batch) {
     if (!currentProgram) break;
 
     if (currentProgram.ration !== prevProgram.ration || currentProgram.phase !== prevProgram.phase) {
-      const changeDate = new Date(FEED_PROGRAM[0].week === 1 ? 
-        new Date(batch.date_acquired).getTime() + (w - 1) * 7 * 24 * 60 * 60 * 1000 :
-        new Date(batch.date_acquired).getTime() + (w - 1) * 7 * 24 * 60 * 60 * 1000);
-      
+      const changeDate = new Date(startDate.getTime() + (w - 1) * 7 * 24 * 60 * 60 * 1000);
+
       const now = new Date();
-      const daysUntil = Math.ceil((new Date(changeDate) - now) / (1000 * 60 * 60 * 24));
+      const daysUntil = Math.ceil((changeDate - now) / (1000 * 60 * 60 * 24));
 
       changes.push({
         week: w,
@@ -324,14 +338,16 @@ export function getFeedForWeek(batch, week) {
 }
 
 /**
- * Get batch age in days
- * @param {string|Date} dateAcquired
- * @returns {number} Days since acquired
+ * Get the date the pigs were born, i.e. pig day 0
+ * Derived by shifting the acquisition date back by the age entered on creation.
+ * @param {Object} batch - Batch object
+ * @returns {Date} Pig day 0
  */
-export function getBatchAgeDays(dateAcquired) {
-  const acquired = new Date(dateAcquired);
-  const now = new Date();
-  return Math.floor((now - acquired) / (1000 * 60 * 60 * 24));
+export function getBatchStartDate(batch) {
+  const acquired = new Date(batch?.date_acquired);
+  const ageOnAcquisition = Math.max(0, parseInt(batch?.age_on_acquisition, 10) || 0);
+
+  return new Date(acquired.getTime() - ageOnAcquisition * 24 * 60 * 60 * 1000);
 }
 
 /**
@@ -341,8 +357,9 @@ export function getBatchAgeDays(dateAcquired) {
  * @returns {Object} Week start and end dates
  */
 export function getWeekDateRange(batch, week) {
-  const acquired = new Date(batch.date_acquired);
-  const startDate = new Date(acquired.getTime() + (week - 1) * 7 * 24 * 60 * 60 * 1000);
+  const startDate = new Date(
+    getBatchStartDate(batch).getTime() + (week - 1) * 7 * 24 * 60 * 60 * 1000
+  );
   const endDate = new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000);
   
   return {

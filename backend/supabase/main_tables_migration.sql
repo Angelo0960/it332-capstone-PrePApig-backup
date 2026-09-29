@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS pig_batches (
     start_weight DECIMAL(8,2) NOT NULL DEFAULT 0,
     current_weight DECIMAL(8,2) NOT NULL DEFAULT 0,
     date_acquired DATE NOT NULL,
+    age_on_acquisition INTEGER NOT NULL DEFAULT 0, -- Pig age (days) on date_acquired
     status VARCHAR(20) NOT NULL DEFAULT 'Active', -- 'Active' | 'Completed' | 'Sold'
     owner_id UUID NOT NULL REFERENCES auth.users(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -43,6 +44,7 @@ CREATE TABLE IF NOT EXISTS pigs (
     batch_id UUID NOT NULL REFERENCES pig_batches(id) ON DELETE CASCADE,
     weight DECIMAL(8,2) NOT NULL DEFAULT 0,
     health_status VARCHAR(20) NOT NULL DEFAULT 'Healthy', -- 'Healthy' | 'Sick' | 'Recovering'
+    age INTEGER NOT NULL DEFAULT 0, -- Pig age (days) when recorded
     notes TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
