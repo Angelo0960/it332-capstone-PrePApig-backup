@@ -52,6 +52,9 @@ export default function AnalyticsReportsScreen() {
   const [feedStock, setFeedStock] = useState([]);
   const [vaccineStock, setVaccineStock] = useState([]);
 
+  // ✅ NEW: market price state (was missing)
+  const [marketPrice, setMarketPrice] = useState(null);
+
   // Feed Program state
   const [feedProgram, setFeedProgram] = useState([]);
   const [batchFeedTarget, setBatchFeedTarget] = useState(null);
@@ -70,14 +73,16 @@ export default function AnalyticsReportsScreen() {
   const [showBatchDropdown, setShowBatchDropdown] = useState(false);
 
   // --- Report modal state ---
-  const [reportModal, setReportModal] = useState(null); // null or report name
+  const [reportModal, setReportModal] = useState(null);
 
-// ---------- Fetch all data ----------
+  // ---------- Fetch all data ----------
   const fetchAllData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch(`${API_BASE}/api/analytics`, { headers: getAuthHeaders() });
+      const res = await apiFetch(`${API_BASE}/api/analytics`, {
+        headers: getAuthHeaders(),
+      });
       if (!res.ok) {
         if (res.status === 401) {
           setError('Session expired. Please log in again.');
@@ -97,6 +102,7 @@ export default function AnalyticsReportsScreen() {
       setFeedProgram(json.data?.feedProgram || []);
       setMarketPrice(json.data?.marketPrice || null);
     } catch (err) {
+      console.error(err);
       setError('Failed to load analytics data. Please refresh.');
     } finally {
       setLoading(false);
@@ -118,6 +124,7 @@ export default function AnalyticsReportsScreen() {
       setBatchFeedTarget(null);
       setFeedCostForecast(null);
       setActualVsPlanned(null);
+      setBatchFCR(null);
     }
   }, [selectedBatch, batches]);
 
@@ -125,12 +132,13 @@ export default function AnalyticsReportsScreen() {
     setFeedProgramLoading(true);
     setFcrLoading(true);
     try {
-      const [targetRes, forecastRes, comparisonRes, fcrRes] = await Promise.allSettled([
-        feedProgramApi.getBatchFeedTarget(batchId),
-        feedProgramApi.getBatchFeedCostForecast(batchId, 4),
-        feedProgramApi.getBatchActualVsPlanned(batchId, 4),
-        weightApi.getFCR(batchId)
-      ]);
+      const [targetRes, forecastRes, comparisonRes, fcrRes] =
+        await Promise.allSettled([
+          feedProgramApi.getBatchFeedTarget(batchId),
+          feedProgramApi.getBatchFeedCostForecast(batchId, 4),
+          feedProgramApi.getBatchActualVsPlanned(batchId, 4),
+          weightApi.getFCR(batchId),
+        ]);
 
       if (targetRes.status === 'fulfilled' && targetRes.value.success) {
         setBatchFeedTarget(targetRes.value.data);
@@ -186,7 +194,9 @@ export default function AnalyticsReportsScreen() {
     let total = 0;
     filteredVaccinationRecords.forEach((rec) => {
       const dosage = parseFloat(rec.dosage) || 0;
-      const stock = vaccineStock.find((s) => s.vaccine_name === rec.vaccine_name);
+      const stock = vaccineStock.find(
+        (s) => s.vaccine_name === rec.vaccine_name
+      );
       const price = stock?.price_per_dose || 0;
       total += dosage * price;
     });
@@ -222,7 +232,8 @@ export default function AnalyticsReportsScreen() {
     });
     const grouped = {};
     data.forEach((d) => {
-      if (!grouped[d.week]) grouped[d.week] = { week: d.week, actual: [], target: [] };
+      if (!grouped[d.week])
+        grouped[d.week] = { week: d.week, actual: [], target: [] };
       grouped[d.week].actual.push(d.actual);
       grouped[d.week].target.push(d.target);
     });
@@ -230,11 +241,15 @@ export default function AnalyticsReportsScreen() {
       week,
       actual:
         Math.round(
-          (grouped[week].actual.reduce((a, b) => a + b, 0) / grouped[week].actual.length) * 10
+          (grouped[week].actual.reduce((a, b) => a + b, 0) /
+            grouped[week].actual.length) *
+            10
         ) / 10,
       target:
         Math.round(
-          (grouped[week].target.reduce((a, b) => a + b, 0) / grouped[week].target.length) * 10
+          (grouped[week].target.reduce((a, b) => a + b, 0) /
+            grouped[week].target.length) *
+            10
         ) / 10,
     }));
   };
@@ -250,19 +265,22 @@ export default function AnalyticsReportsScreen() {
     });
     const sorted = Object.keys(grouped).sort();
     return sorted.map((date) => ({
-      date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      date: new Date(date).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      }),
       actual: Math.round(grouped[date] * 10) / 10,
     }));
-};
+  };
 
-// 4. FCR Trend (from batch FCR history)
+  // 4. FCR Trend (from batch FCR history)
   const getFCRChartData = () => {
     if (!batchFCR?.history || batchFCR.history.length === 0) return [];
-    
+
     return batchFCR.history.map((entry, index) => ({
       week: `W${entry.week || index + 1}`,
       fcr: entry.fcr,
-      target: batchFCR.target_fcr || 2.8
+      target: batchFCR.target_fcr || 2.8,
     }));
   };
 
@@ -276,7 +294,6 @@ export default function AnalyticsReportsScreen() {
       (sum, b) => sum + (Number(b.current_weight) || 0) * 180,
       0
     );
-    // Use combined expenses but spread evenly across months
     const months = {};
     filteredExpenses.forEach((e) => {
       const date = new Date(e.expense_date);
@@ -303,11 +320,15 @@ export default function AnalyticsReportsScreen() {
       if (!breakdown[type]) breakdown[type] = 0;
       breakdown[type] += Number(e.amount);
     });
-    const total = Object.values(breakdown).reduce((a, b) => a + b, 0);
     return Object.keys(breakdown).map((name) => ({
       name,
       value: Math.round(breakdown[name] * 100) / 100,
-      color: name === 'Feeds' ? '#10B981' : name === 'Vaccines' ? '#3B82F6' : '#F59E0B',
+      color:
+        name === 'Feeds'
+          ? '#10B981'
+          : name === 'Vaccines'
+          ? '#3B82F6'
+          : '#F59E0B',
     }));
   };
 
@@ -327,7 +348,10 @@ export default function AnalyticsReportsScreen() {
   };
 
   // 6. Total feed stock
-  const totalFeedStock = feedStock.reduce((sum, s) => sum + (s.stock_quantity || 0), 0);
+  const totalFeedStock = feedStock.reduce(
+    (sum, s) => sum + (s.stock_quantity || 0),
+    0
+  );
 
   // ---------- Report actions ----------
   const handleViewReport = (reportName) => {
@@ -339,12 +363,13 @@ export default function AnalyticsReportsScreen() {
   };
 
   const handleDownloadReport = (reportName) => {
-    // Generate a dummy CSV file
     const content = `Report: ${reportName}\nGenerated: ${new Date().toLocaleString()}\n\nThis is a placeholder report.\nData would be included here.`;
     const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `${reportName.replace(/\s/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `${reportName.replace(/\s/g, '_')}_${new Date()
+      .toISOString()
+      .slice(0, 10)}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -360,10 +385,13 @@ export default function AnalyticsReportsScreen() {
     return (
       <div className="min-h-screen w-full relative overflow-hidden flex flex-col">
         <div className="absolute inset-0">
-          <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover" />
+          <img
+            src={backgroundImage}
+            alt="Farm Background"
+            className="w-full h-full object-cover"
+          />
         </div>
         <div className="relative z-10 flex flex-col flex-1 min-h-screen">
-          {/* Header skeleton */}
           <div className="px-4 md:px-8 lg:px-12 pt-3 pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -377,7 +405,6 @@ export default function AnalyticsReportsScreen() {
             </div>
           </div>
 
-          {/* Filters skeleton */}
           <div className="px-4 md:px-8 lg:px-12 pb-3">
             <div className="flex gap-2">
               <div className="flex-1 h-10 bg-gray-300/60 rounded-xl animate-pulse" />
@@ -385,9 +412,7 @@ export default function AnalyticsReportsScreen() {
             </div>
           </div>
 
-          {/* Scrollable content skeleton */}
           <div className="flex-1 overflow-y-auto px-4 md:px-8 lg:px-12 pb-24 space-y-4">
-            {/* Alerts skeleton */}
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 animate-pulse">
               <div className="h-5 w-32 bg-gray-300/60 rounded mb-3" />
               <div className="space-y-2">
@@ -396,10 +421,12 @@ export default function AnalyticsReportsScreen() {
               </div>
             </div>
 
-            {/* Summary cards skeleton */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 animate-pulse">
+                <div
+                  key={i}
+                  className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 animate-pulse"
+                >
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-4 h-4 bg-gray-300/60 rounded" />
                     <div className="h-4 w-20 bg-gray-300/60 rounded" />
@@ -410,75 +437,9 @@ export default function AnalyticsReportsScreen() {
               ))}
             </div>
 
-            {/* Growth chart skeleton */}
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 animate-pulse">
               <div className="h-5 w-48 bg-gray-300/60 rounded mb-3" />
               <div className="h-44 bg-gray-300/60 rounded-xl" />
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="bg-gray-300/60 rounded-lg p-2 h-14" />
-                ))}
-              </div>
-            </div>
-
-            {/* Feed consumption chart skeleton */}
-            <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 animate-pulse">
-              <div className="h-5 w-40 bg-gray-300/60 rounded mb-3" />
-              <div className="h-36 bg-gray-300/60 rounded-xl" />
-              <div className="h-10 bg-blue-100/60 rounded-xl mt-3" />
-            </div>
-
-            {/* Feed efficiency skeleton */}
-            <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 animate-pulse">
-              <div className="h-5 w-36 bg-gray-300/60 rounded mb-3" />
-              <div className="h-20 bg-gray-300/60 rounded-xl" />
-            </div>
-
-            {/* Profit summary skeleton */}
-            <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 animate-pulse">
-              <div className="h-5 w-40 bg-gray-300/60 rounded mb-3" />
-              <div className="space-y-2">
-                <div className="h-6 bg-gray-300/60 rounded" />
-                <div className="h-6 bg-gray-300/60 rounded" />
-                <div className="h-6 bg-gray-300/60 rounded" />
-                <div className="h-12 bg-gray-300/60 rounded mt-3" />
-              </div>
-              <div className="h-32 bg-gray-300/60 rounded-xl mt-3" />
-            </div>
-
-            {/* Generate reports skeleton */}
-            <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 animate-pulse">
-              <div className="h-5 w-32 bg-gray-300/60 rounded mb-3" />
-              <div className="space-y-3">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-5 h-5 bg-gray-300/60 rounded" />
-                      <div className="h-4 w-48 bg-gray-300/60 rounded" />
-                    </div>
-                    <div className="flex gap-2">
-                      <div className="w-16 h-8 bg-gray-300/60 rounded" />
-                      <div className="w-8 h-8 bg-gray-300/60 rounded" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Recent reports skeleton */}
-            <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 animate-pulse">
-              <div className="h-5 w-32 bg-gray-300/60 rounded mb-3" />
-              <div className="space-y-3">
-                {[1, 2].map((i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <div className="h-6 w-48 bg-gray-300/60 rounded" />
-                    <div className="flex gap-2">
-                      <div className="w-16 h-8 bg-gray-300/60 rounded" />
-                      <div className="w-8 h-8 bg-gray-300/60 rounded" />
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
 
@@ -491,7 +452,11 @@ export default function AnalyticsReportsScreen() {
   return (
     <div className="min-h-screen w-full relative overflow-hidden flex flex-col">
       <div className="absolute inset-0">
-        <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover" />
+        <img
+          src={backgroundImage}
+          alt="Farm Background"
+          className="w-full h-full object-cover"
+        />
       </div>
 
       <div className="relative z-10 flex flex-col flex-1 min-h-screen">
@@ -505,7 +470,9 @@ export default function AnalyticsReportsScreen() {
               >
                 <ArrowLeft className="w-4 h-4 text-gray-700" />
               </button>
-              <h1 className="text-lg font-bold text-gray-900">Analytics & Reports</h1>
+              <h1 className="text-lg font-bold text-gray-900">
+                Analytics & Reports
+              </h1>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -537,18 +504,20 @@ export default function AnalyticsReportsScreen() {
               </button>
               {showDateDropdown && (
                 <div className="absolute top-full mt-2 w-full bg-white/90 backdrop-blur-xl border border-white/40 rounded-xl shadow-2xl overflow-hidden z-20">
-                  {['This month', 'Last 30 days', 'Last 90 days', 'Custom range'].map((option) => (
-                    <button
-                      key={option}
-                      onClick={() => {
-                        setDateRange(option);
-                        setShowDateDropdown(false);
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-gray-900 hover:bg-green-100/50 transition-colors"
-                    >
-                      {option}
-                    </button>
-                  ))}
+                  {['This month', 'Last 30 days', 'Last 90 days', 'Custom range'].map(
+                    (option) => (
+                      <button
+                        key={option}
+                        onClick={() => {
+                          setDateRange(option);
+                          setShowDateDropdown(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-900 hover:bg-green-100/50 transition-colors"
+                      >
+                        {option}
+                      </button>
+                    )
+                  )}
                 </div>
               )}
             </div>
@@ -561,18 +530,20 @@ export default function AnalyticsReportsScreen() {
               </button>
               {showBatchDropdown && (
                 <div className="absolute top-full mt-2 w-full bg-white/90 backdrop-blur-xl border border-white/40 rounded-xl shadow-2xl overflow-hidden z-20">
-                  {['All Batches', ...batches.map((b) => b.batch_code)].filter(Boolean).map((option) => (
-                    <button
-                      key={option}
-                      onClick={() => {
-                        setSelectedBatch(option);
-                        setShowBatchDropdown(false);
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-gray-900 hover:bg-green-100/50 transition-colors"
-                    >
-                      {option}
-                    </button>
-                  ))}
+                  {['All Batches', ...batches.map((b) => b.batch_code)]
+                    .filter(Boolean)
+                    .map((option) => (
+                      <button
+                        key={option}
+                        onClick={() => {
+                          setSelectedBatch(option);
+                          setShowBatchDropdown(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-900 hover:bg-green-100/50 transition-colors"
+                      >
+                        {option}
+                      </button>
+                    ))}
                 </div>
               )}
             </div>
@@ -583,7 +554,12 @@ export default function AnalyticsReportsScreen() {
           <div className="px-4 md:px-8 lg:px-12 pb-3">
             <div className="bg-red-100/80 border border-red-300/50 text-red-800 px-4 py-3 rounded-xl flex items-center justify-between">
               <span>{error}</span>
-              <button onClick={fetchAllData} className="text-sm font-semibold underline">Retry</button>
+              <button
+                onClick={fetchAllData}
+                className="text-sm font-semibold underline"
+              >
+                Retry
+              </button>
             </div>
           </div>
         )}
@@ -593,7 +569,9 @@ export default function AnalyticsReportsScreen() {
           {/* Alerts Panel (mock) */}
           <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg mb-4">
             <div className="p-4 border-b border-white/20">
-              <h3 className="font-semibold text-gray-900 text-sm">Active Alerts</h3>
+              <h3 className="font-semibold text-gray-900 text-sm">
+                Active Alerts
+              </h3>
             </div>
             <div className="divide-y divide-white/20">
               <div className="p-3 flex items-start gap-3">
@@ -602,7 +580,9 @@ export default function AnalyticsReportsScreen() {
                   <div className="text-sm font-medium text-gray-900">
                     Batch B: Growth slower than expected
                   </div>
-                  <div className="text-xs text-gray-600 mt-0.5">Check feeding schedule</div>
+                  <div className="text-xs text-gray-600 mt-0.5">
+                    Check feeding schedule
+                  </div>
                 </div>
               </div>
               <div className="p-3 flex items-start gap-3">
@@ -621,15 +601,21 @@ export default function AnalyticsReportsScreen() {
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
               <div className="flex items-center gap-2 mb-2">
                 <Package className="w-4 h-4 text-emerald-600" />
-                <span className="text-xs text-gray-700 font-semibold">Feed Stock</span>
+                <span className="text-xs text-gray-700 font-semibold">
+                  Feed Stock
+                </span>
               </div>
-              <div className="text-2xl font-bold text-gray-900">{totalFeedStock} kg</div>
+              <div className="text-2xl font-bold text-gray-900">
+                {totalFeedStock} kg
+              </div>
               <div className="text-xs text-gray-600">Total remaining</div>
             </div>
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
               <div className="flex items-center gap-2 mb-2">
                 <Syringe className="w-4 h-4 text-blue-600" />
-                <span className="text-xs text-gray-700 font-semibold">Vaccinations</span>
+                <span className="text-xs text-gray-700 font-semibold">
+                  Vaccinations
+                </span>
               </div>
               <div className="text-2xl font-bold text-gray-900">
                 {getVaccinationSummary().totalDoses} doses
@@ -642,17 +628,24 @@ export default function AnalyticsReportsScreen() {
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
               <div className="flex items-center gap-2 mb-2">
                 <DollarSign className="w-4 h-4 text-purple-600" />
-                <span className="text-xs text-gray-700 font-semibold">Total Expenses</span>
+                <span className="text-xs text-gray-700 font-semibold">
+                  Total Expenses
+                </span>
               </div>
-              <div className="text-2xl font-bold text-gray-900">{formatCurrency(combinedExpenses)}</div>
+              <div className="text-2xl font-bold text-gray-900">
+                {formatCurrency(combinedExpenses)}
+              </div>
               <div className="text-xs text-gray-600">
-                Feed: {formatCurrency(totalFeedCost)} · Vaccine: {formatCurrency(totalVaccineCost)}
+                Feed: {formatCurrency(totalFeedCost)} · Vaccine:{' '}
+                {formatCurrency(totalVaccineCost)}
               </div>
             </div>
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className="w-4 h-4 text-green-600" />
-                <span className="text-xs text-gray-700 font-semibold">Batches</span>
+                <span className="text-xs text-gray-700 font-semibold">
+                  Batches
+                </span>
               </div>
               <div className="text-2xl font-bold text-gray-900">
                 {selectedBatch === 'All Batches' ? batches.length : 1}
@@ -665,7 +658,9 @@ export default function AnalyticsReportsScreen() {
 
           {/* Growth Performance */}
           <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg mb-4">
-            <h3 className="font-semibold text-gray-900 mb-3">Pig Growth Trend (Weight vs. Age)</h3>
+            <h3 className="font-semibold text-gray-900 mb-3">
+              Pig Growth Trend (Weight vs. Age)
+            </h3>
             <div className="bg-white/40 rounded-xl p-3 mb-3">
               <ResponsiveContainer width="100%" height={180}>
                 <LineChart data={getGrowthData()}>
@@ -693,25 +688,13 @@ export default function AnalyticsReportsScreen() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              <div className="bg-white/40 rounded-lg p-2">
-                <div className="text-xs text-gray-600">ADG</div>
-                <div className="text-lg font-bold text-gray-900">0.65 kg</div>
-              </div>
-              <div className="bg-white/40 rounded-lg p-2">
-                <div className="text-xs text-gray-600">Current</div>
-                <div className="text-lg font-bold text-gray-900">72 kg</div>
-              </div>
-              <div className="bg-white/40 rounded-lg p-2">
-                <div className="text-xs text-gray-600">Remaining</div>
-                <div className="text-lg font-bold text-gray-900">4 wks</div>
-              </div>
-            </div>
           </div>
 
-{/* Feed Consumption */}
+          {/* Feed Consumption */}
           <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg mb-4">
-            <h3 className="font-semibold text-gray-900 mb-3">Feed Consumption</h3>
+            <h3 className="font-semibold text-gray-900 mb-3">
+              Feed Consumption
+            </h3>
             <div className="bg-white/40 rounded-xl p-3 mb-3">
               <ResponsiveContainer width="100%" height={150}>
                 <LineChart data={getFeedConsumptionData()}>
@@ -742,12 +725,18 @@ export default function AnalyticsReportsScreen() {
           {selectedBatch !== 'All Batches' && batchFCR && (
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg mb-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-gray-900">FCR Trend (Feed Conversion Ratio)</h3>
-                <span className={`px-2 py-1 rounded text-xs font-medium ${
-                  batchFCR.current_fcr <= (batchFCR.target_fcr || 2.8) ? 'bg-green-100 text-green-800' :
-                  batchFCR.current_fcr <= (batchFCR.target_fcr || 2.8) + 0.3 ? 'bg-orange-100 text-orange-800' :
-                  'bg-red-100 text-red-800'
-                }`}>
+                <h3 className="font-semibold text-gray-900">
+                  FCR Trend (Feed Conversion Ratio)
+                </h3>
+                <span
+                  className={`px-2 py-1 rounded text-xs font-medium ${
+                    batchFCR.current_fcr <= (batchFCR.target_fcr || 2.8)
+                      ? 'bg-green-100 text-green-800'
+                      : batchFCR.current_fcr <= (batchFCR.target_fcr || 2.8) + 0.3
+                      ? 'bg-orange-100 text-orange-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}
+                >
                   Current: {batchFCR.current_fcr?.toFixed(2) || '—'}
                 </span>
               </div>
@@ -756,8 +745,8 @@ export default function AnalyticsReportsScreen() {
                   <LineChart data={getFCRChartData()}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                     <XAxis dataKey="week" tick={{ fontSize: 10 }} stroke="#6B7280" />
-                    <YAxis 
-                      tick={{ fontSize: 10 }} 
+                    <YAxis
+                      tick={{ fontSize: 10 }}
                       stroke="#6B7280"
                       domain={[1.5, 4]}
                     />
@@ -782,40 +771,14 @@ export default function AnalyticsReportsScreen() {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-                <div className="bg-white/40 rounded-lg p-2">
-                  <div className="text-xs text-gray-600">Current FCR</div>
-                  <div className="text-lg font-bold text-gray-900">{batchFCR.current_fcr?.toFixed(2) || '—'}</div>
-                </div>
-                <div className="bg-white/40 rounded-lg p-2">
-                  <div className="text-xs text-gray-600">Target FCR</div>
-                  <div className="text-lg font-bold text-red-600">{batchFCR.target_fcr?.toFixed(1) || '2.8'}</div>
-                </div>
-                <div className="bg-white/40 rounded-lg p-2">
-                  <div className="text-xs text-gray-600">Confidence</div>
-                  <div className="text-lg font-bold text-gray-900 capitalize">{batchFCR.confidence || 'low'}</div>
-                </div>
-                <div className="bg-white/40 rounded-lg p-2">
-                  <div className="text-xs text-gray-600">Data Points</div>
-                  <div className="text-lg font-bold text-gray-900">{batchFCR.data_points || 0}</div>
-                </div>
-              </div>
-              <div className="mt-3 p-3 bg-purple-50/50 rounded-lg border border-purple-200/50">
-                <div className="text-xs text-purple-800 font-medium mb-1">FCR vs Target</div>
-                <div className="text-sm text-purple-900">
-                  {batchFCR.current_fcr && batchFCR.target_fcr ? 
-                    (batchFCR.current_fcr <= batchFCR.target_fcr 
-                      ? `✅ FCR is better than target (${((1 - batchFCR.current_fcr / batchFCR.target_fcr) * 100).toFixed(1)}% improvement)`
-                      : `⚠️ FCR is ${((batchFCR.current_fcr / batchFCR.target_fcr - 1) * 100).toFixed(1)}% above target`)
-                    : 'Insufficient data for comparison'}
-                </div>
-</div>
             </div>
           )}
 
           {/* Profit Analysis */}
           <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg mb-4">
-            <h3 className="font-semibold text-gray-900 mb-3">Profit Summary (This Period)</h3>
+            <h3 className="font-semibold text-gray-900 mb-3">
+              Profit Summary (This Period)
+            </h3>
             <div className="space-y-2 mb-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-700">Revenue from Sales</span>
@@ -825,7 +788,10 @@ export default function AnalyticsReportsScreen() {
                     ? batches
                     : batches.filter((b) => b.batch_code === selectedBatch)
                   )
-                    .reduce((sum, b) => sum + (Number(b.current_weight) || 0) * 180, 0)
+                    .reduce(
+                      (sum, b) => sum + (Number(b.current_weight) || 0) * 180,
+                      0
+                    )
                     .toLocaleString()}
                 </span>
               </div>
@@ -833,25 +799,21 @@ export default function AnalyticsReportsScreen() {
                 <div className="text-xs text-gray-600 mb-2">Expenses:</div>
                 <div className="flex items-center justify-between text-sm mb-1">
                   <span className="text-gray-700 ml-2">Feeds (consumed)</span>
-                  <span className="text-gray-900">{formatCurrency(totalFeedCost)}</span>
+                  <span className="text-gray-900">
+                    {formatCurrency(totalFeedCost)}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between text-sm mb-1">
                   <span className="text-gray-700 ml-2">Vaccines</span>
-                  <span className="text-gray-900">{formatCurrency(totalVaccineCost)}</span>
+                  <span className="text-gray-900">
+                    {formatCurrency(totalVaccineCost)}
+                  </span>
                 </div>
-                {getExpenseBreakdown().length > 0 && (
-                  <div className="flex items-center justify-between text-sm mb-1">
-                    <span className="text-gray-700 ml-2">Other (manual)</span>
-                    <span className="text-gray-900">
-                      {formatCurrency(
-                        filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
-                      )}
-                    </span>
-                  </div>
-                )}
                 <div className="flex items-center justify-between text-sm font-semibold border-t border-white/30 pt-2 mt-2">
                   <span className="text-gray-900">Total Expenses</span>
-                  <span className="text-red-600">{formatCurrency(combinedExpenses)}</span>
+                  <span className="text-red-600">
+                    {formatCurrency(combinedExpenses)}
+                  </span>
                 </div>
               </div>
               <div className="flex items-center justify-between bg-green-100/60 rounded-lg p-3 mt-3">
@@ -862,79 +824,15 @@ export default function AnalyticsReportsScreen() {
                       (selectedBatch === 'All Batches'
                         ? batches
                         : batches.filter((b) => b.batch_code === selectedBatch)
-                      ).reduce((sum, b) => sum + (Number(b.current_weight) || 0) * 180, 0) -
-                        combinedExpenses
+                      ).reduce(
+                        (sum, b) =>
+                          sum + (Number(b.current_weight) || 0) * 180,
+                        0
+                      ) - combinedExpenses
                     )}
                   </div>
-                  <span className="px-2 py-0.5 bg-green-500 text-white rounded-full text-xs font-semibold">
-                    {Math.round(
-                      ((selectedBatch === 'All Batches'
-                        ? batches
-                        : batches.filter((b) => b.batch_code === selectedBatch)
-                      ).reduce((sum, b) => sum + (Number(b.current_weight) || 0) * 180, 0) /
-                        (combinedExpenses || 1) -
-                        1) * 100
-                    )}
-                    % margin
-                  </span>
                 </div>
               </div>
-            </div>
-
-            {/* Expense Breakdown Chart (manual expenses) */}
-            <div className="bg-white/40 rounded-xl p-3 mb-3">
-              <div className="text-sm font-semibold text-gray-900 mb-2">
-                Manual Expense Breakdown
-              </div>
-              <div className="flex items-center justify-between">
-                <ResponsiveContainer width="40%" height={120}>
-                  <PieChart>
-                    <Pie
-                      data={getExpenseBreakdown()}
-                      dataKey="value"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={25}
-                      outerRadius={45}
-                    >
-                      {getExpenseBreakdown().map((entry, index) => (
-                        <Cell key={`pie-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex-1 space-y-2">
-                  {getExpenseBreakdown().map((item) => (
-                    <div key={item.name} className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
-                      <div className="text-xs text-gray-700 flex-1">{item.name}</div>
-                      <div className="text-xs font-semibold text-gray-900">
-                        {Math.round(
-                          (item.value /
-                            (filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0) ||
-                              1)) *
-                            100
-                        )}
-                        %
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Profit Trend */}
-            <div className="bg-white/40 rounded-xl p-3">
-              <div className="text-sm font-semibold text-gray-900 mb-2">Monthly Profit Trend</div>
-              <ResponsiveContainer width="100%" height={120}>
-                <BarChart data={getProfitTrend()}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="#6B7280" />
-                  <YAxis tick={{ fontSize: 10 }} stroke="#6B7280" />
-                  <Tooltip />
-                  <Bar dataKey="profit" fill="#10B981" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
             </div>
           </div>
 
@@ -962,12 +860,19 @@ export default function AnalyticsReportsScreen() {
                   desc: 'Income vs expenses, margins',
                 },
               ].map((report) => (
-                <div key={report.name} className="p-4 flex items-center justify-between">
+                <div
+                  key={report.name}
+                  className="p-4 flex items-center justify-between"
+                >
                   <div className="flex items-start gap-3 flex-1">
                     <FileText className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                     <div>
-                      <div className="font-medium text-gray-900 text-sm">{report.name}</div>
-                      <div className="text-xs text-gray-600 mt-0.5">{report.desc}</div>
+                      <div className="font-medium text-gray-900 text-sm">
+                        {report.name}
+                      </div>
+                      <div className="text-xs text-gray-600 mt-0.5">
+                        {report.desc}
+                      </div>
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -988,55 +893,6 @@ export default function AnalyticsReportsScreen() {
               ))}
             </div>
           </div>
-
-          {/* Recent Reports */}
-          <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg mb-4">
-            <div className="p-4 border-b border-white/20">
-              <h3 className="font-semibold text-gray-900">Recent Reports</h3>
-            </div>
-            <div className="divide-y divide-white/20">
-              <div className="p-4 flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="font-medium text-gray-900 text-sm">
-                    Growth_Report_BatchA_May2026.pdf
-                  </div>
-                  <div className="text-xs text-gray-600 mt-0.5">May 10, 2026</div>
-                </div>
-                <button
-                  onClick={() => handleViewReport('Growth Report Batch A')}
-                  className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-semibold shadow-lg active:scale-95 transition-transform mr-2"
-                >
-                  View
-                </button>
-                <button
-                  onClick={() => handleDownloadReport('Growth_Report_BatchA_May2026')}
-                  className="w-8 h-8 bg-white/30 backdrop-blur-lg rounded-lg flex items-center justify-center active:scale-95 transition-transform"
-                >
-                  <Download className="w-4 h-4 text-gray-700" />
-                </button>
-              </div>
-              <div className="p-4 flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="font-medium text-gray-900 text-sm">
-                    Feed_Consumption_Q2_2026.csv
-                  </div>
-                  <div className="text-xs text-gray-600 mt-0.5">May 1, 2026</div>
-                </div>
-                <button
-                  onClick={() => handleViewReport('Feed Consumption Report')}
-                  className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-semibold shadow-lg active:scale-95 transition-transform mr-2"
-                >
-                  View
-                </button>
-                <button
-                  onClick={() => handleDownloadReport('Feed_Consumption_Q2_2026')}
-                  className="w-8 h-8 bg-white/30 backdrop-blur-lg rounded-lg flex items-center justify-center active:scale-95 transition-transform"
-                >
-                  <Download className="w-4 h-4 text-gray-700" />
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Report View Modal */}
@@ -1044,7 +900,9 @@ export default function AnalyticsReportsScreen() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
               <div className="flex items-center justify-between p-5 border-b border-white/30">
-                <h2 className="text-xl font-bold text-gray-900">{reportModal}</h2>
+                <h2 className="text-xl font-bold text-gray-900">
+                  {reportModal}
+                </h2>
                 <button
                   onClick={handleCloseModal}
                   className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all"
@@ -1054,16 +912,21 @@ export default function AnalyticsReportsScreen() {
               </div>
               <div className="p-6">
                 <p className="text-gray-700">
-                  This is a placeholder view for the <strong>{reportModal}</strong>.
+                  This is a placeholder view for the{' '}
+                  <strong>{reportModal}</strong>.
                   <br />
                   <br />
-                  In a real implementation, this would display the full report content (charts, tables,
-                  etc.).
+                  In a real implementation, this would display the full report
+                  content (charts, tables, etc.).
                 </p>
                 <div className="mt-4 p-4 bg-white/20 rounded-xl border border-white/30">
-                  <p className="text-sm text-gray-600">Example data for {reportModal}:</p>
+                  <p className="text-sm text-gray-600">
+                    Example data for {reportModal}:
+                  </p>
                   <ul className="mt-2 text-sm text-gray-700 space-y-1">
-                    <li>• Total records: {Math.floor(Math.random() * 100) + 10}</li>
+                    <li>
+                      • Total records: {Math.floor(Math.random() * 100) + 10}
+                    </li>
                     <li>• Date range: {dateRange}</li>
                     <li>• Batch: {selectedBatch}</li>
                     <li>• Generated: {new Date().toLocaleString()}</li>
