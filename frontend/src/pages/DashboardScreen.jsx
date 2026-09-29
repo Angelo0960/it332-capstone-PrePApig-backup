@@ -782,7 +782,6 @@ export default function DashboardScreen() {
                       }`}>
                         {currentBatch.feedStatus === 'overdue' && `⚠️ Overdue`}
                         {currentBatch.feedStatus === 'soon' && `⏳ ${currentBatch.daysUntilFeedChange}d`}
-                        {currentBatch.feedStatus === 'ok' && '✅ On track'}
                         {currentBatch.feedStatus === 'complete' && '✅ Complete'}
                       </span>
                     )}
