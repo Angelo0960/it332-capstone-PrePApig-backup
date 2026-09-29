@@ -731,6 +731,11 @@ export default function DashboardScreen() {
                         />
                       </div>
                     ))}
+                    {currentBatch.vaccination >= 100 && (
+                      <div className="ml-2 text-xs text-green-600">
+                        ✅ Complete
+                      </div>
+                    )}
                   </div>
                 </div>
 
