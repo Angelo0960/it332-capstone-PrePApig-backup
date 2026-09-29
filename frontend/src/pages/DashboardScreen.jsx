@@ -695,26 +695,13 @@ export default function DashboardScreen() {
                       : '0'}
                   </div>
                 </div>
-                {/* FCR Badge */}
+                {/* Pig Age Card */}
                 <div className="bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3 fade-up">
-                  <div className="text-xs text-gray-700 mb-1 font-medium">FCR (Feed Conversion)</div>
-                  <div className="flex items-center gap-2">
-                    <div className={`text-sm font-bold ${
-                      currentBatch.fcr <= 2.5 ? 'text-green-600' : 
-                      currentBatch.fcr <= 3.0 ? 'text-orange-600' : 'text-red-600'
-                    }`}>
-                      {currentBatch.fcr ? currentBatch.fcr.toFixed(1) : '—'}
-                    </div>
-                    <span className="text-xs text-gray-500">target: {currentBatch.targetFcr || 2.8}</span>
-                    <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden ml-2">
-                      <div 
-                        className="h-full bg-gradient-to-r from-green-500 to-red-500 rounded-full"
-                        style={{ 
-                          width: `${Math.min(100, Math.max(0, 100 - ((currentBatch.fcr || 2.8) - 2.0) / 1.5 * 100))}%` 
-                        }}
-                      />
-                    </div>
+                  <div className="text-xs text-gray-700 mb-1 font-medium">Pig Age</div>
+                  <div className="text-sm font-bold text-gray-900">
+                    {currentBatch.day} days
                   </div>
+                  <div className="text-xs text-gray-500">Since batch acquisition</div>
                 </div>
               </div>
 
