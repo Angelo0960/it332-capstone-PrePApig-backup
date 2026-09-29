@@ -253,7 +253,7 @@ export default function DashboardScreen() {
           const day = getBatchAgeDays(batch);
           const name = batch.batch_code || `Batch ${batch.id}`;
           const growth = Math.min(100, Math.floor(day / 0.5));
-          const vaccination = getVaccinationProgress(vaccinationRecords, batch.id);
+          const vaccination = getVaccinationProgress(vaccinationRecords, batch.id, day);
           const health = 80;
           const feed = Math.max(0, 100 - Math.floor(day / 1.2));
           
@@ -758,6 +758,20 @@ export default function DashboardScreen() {
                       </div>
                     )}
                   </div>
+                  {currentBatch.vaccination.overdue.length > 0 && (
+                    <p className="mt-2 text-xs font-semibold text-red-600">
+                      ⚠️ Overdue:{' '}
+                      {currentBatch.vaccination.overdue
+                        .map((v) => `${v.vaccine} (${v.daysOverdue}d late)`)
+                        .join(', ')}
+                    </p>
+                  )}
+                  {currentBatch.vaccination.overdue.length === 0 &&
+                    currentBatch.vaccination.due.length > 0 && (
+                      <p className="mt-2 text-xs font-semibold text-yellow-600">
+                        💉 Due now: {currentBatch.vaccination.due.map((v) => v.vaccine).join(', ')}
+                      </p>
+                    )}
                 </div>
 
                 {/* Avg Weight */}

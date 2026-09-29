@@ -148,6 +148,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     message TEXT NOT NULL,
     type VARCHAR(50), -- 'vaccination', 'feed_reminder', 'vaccination_reminder', 'vaccination_overdue', 'general'
     is_read BOOLEAN DEFAULT FALSE,
+    batch_id UUID REFERENCES pig_batches(id) ON DELETE CASCADE, -- batch this refers to (added in notification_batch_migration.sql)
     recipient_token VARCHAR(500), -- Legacy FCM token storage
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

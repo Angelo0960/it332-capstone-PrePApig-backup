@@ -67,17 +67,39 @@ export function getCompletedVaccines(records, batchId) {
 
 /**
  * Vaccination progress for a batch.
+ *
+ * `due` and `overdue` are derived from the batch's age against the
+ * schedule, so the dashboard can warn about a missed dose. Like the
+ * syringe count, a vaccine already given is never reported as due.
+ *
  * @param {Array<Object>} records - vaccination_records rows
  * @param {string} batchId
- * @returns {{completed: number, total: number, isComplete: boolean, done: Set<string>}}
+ * @param {number} ageDays - Pig age in days
+ * @returns {{completed: number, total: number, isComplete: boolean,
+ *            due: Array, overdue: Array, done: Set<string>}}
  */
-export function getVaccinationProgress(records, batchId) {
+export function getVaccinationProgress(records, batchId, ageDays = 0) {
   const done = getCompletedVaccines(records, batchId);
+  const age = Math.max(0, parseInt(ageDays, 10) || 0);
+
+  const due = [];
+  const overdue = [];
+
+  for (const entry of VACCINATION_SCHEDULE) {
+    if (done.has(normalize(entry.vaccine))) continue;
+    if (age > entry.maxDay) {
+      overdue.push({ ...entry, daysOverdue: age - entry.maxDay });
+    } else if (age >= entry.minDay) {
+      due.push(entry);
+    }
+  }
 
   return {
     completed: done.size,
     total: VACCINATION_TOTAL,
     isComplete: done.size >= VACCINATION_TOTAL,
+    due,
+    overdue,
     done,
   };
 }

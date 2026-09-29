@@ -21,7 +21,11 @@ async function runMigration() {
     // Pig age (from the "Add New Batch" modal)
     `ALTER TABLE pig_batches ADD COLUMN IF NOT EXISTS age_on_acquisition INTEGER NOT NULL DEFAULT 0;`,
     `ALTER TABLE pigs ADD COLUMN IF NOT EXISTS age INTEGER NOT NULL DEFAULT 0;`,
-    `GRANT SELECT, INSERT, UPDATE, DELETE ON pigs TO anon, authenticated;`
+    `GRANT SELECT, INSERT, UPDATE, DELETE ON pigs TO anon, authenticated;`,
+    // Notification batch scoping, so reminders dedupe per batch
+    `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS batch_id UUID REFERENCES pig_batches(id) ON DELETE CASCADE;`,
+    `CREATE INDEX IF NOT EXISTS idx_notifications_batch_dedupe ON notifications(user_id, type, batch_id, created_at DESC) WHERE is_read IS NOT NULL;`,
+    `GRANT SELECT, INSERT, UPDATE, DELETE ON notifications TO anon, authenticated;`
   ];
 
   for (const sql of statements) {
