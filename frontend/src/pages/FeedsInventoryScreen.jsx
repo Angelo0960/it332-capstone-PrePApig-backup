@@ -16,7 +16,7 @@ import {
   Edit,
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
-import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.png';
+import FarmBackground from '../components/FarmBackground.jsx';
 import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
 import { API_BASE, getAuthHeaders, apiFetch } from '../api.js';
@@ -572,9 +572,7 @@ export default function FeedsInventoryScreen() {
 
   return (
     <div className="min-h-screen w-full relative overflow-hidden flex flex-col">
-      <div className="absolute inset-0">
-        <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover" />
-      </div>
+      <FarmBackground />
 
       <div className="relative z-10 flex flex-col flex-1 min-h-screen">
         {/* Header */}

@@ -2,8 +2,8 @@ import { useState } from "react";
 import { User, Lock, Mail } from "lucide-react";
 import { api, API_BASE, registerFcmToken } from '../api.js';
 import { generateToken } from '../services/firebase.js';
-import pigImage from "../../src/assets/2e388bda-a6fa-4911-bcea-0e3aaa26ed7f-removebg-preview.png";
-import backgroundImage from "../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.png";
+import FarmBackground from '../components/FarmBackground.jsx';
+import ResponsiveImage from '../components/ResponsiveImage.jsx';
 
 export function LoginScreen({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -47,13 +47,7 @@ export function LoginScreen({ onLogin }) {
   return (
     <div className="min-h-screen w-full relative overflow-hidden">
       {/* Background Image */}
-      <div className="absolute inset-0">
-        <img
-          src={backgroundImage}
-          alt="Farm Background"
-          className="w-full h-full object-cover"
-        />
-      </div>
+      <FarmBackground />
 
       {/* Grid layout – full viewport, no bottom padding */}
       <div className="relative z-10 min-h-screen grid grid-rows-[auto_1fr] gap-y-4 sm:gap-y-6 lg:gap-y-8 px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 lg:pt-25">
@@ -74,9 +68,9 @@ export function LoginScreen({ onLogin }) {
         <div className="flex flex-col items-center justify-center">
           {/* Pig centered above the card */}
           <div className="relative z-0 mx-auto -mb-57 sm:-mb-8 lg:-mb-10 pointer-events-none">
-            <img
-              src={pigImage}
-              alt="Pig Character"
+            <ResponsiveImage
+              name="pigLogin"
+              sizes="500px"
               className="drop-shadow-xl origin-bottom scale-[1.2] sm:scale-[1.5] lg:scale-[1.8]"
               style={{
                 filter: "drop-shadow(0 8px 16px rgba(0,0,0,0.12))",

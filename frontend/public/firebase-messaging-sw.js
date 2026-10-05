@@ -28,7 +28,7 @@ messaging.onBackgroundMessage((payload) => {
     payload.notification?.title || "Notification",
     {
       body: payload.notification?.body,
-      icon: payload.notification?.icon || "/vite.svg",
+      icon: payload.notification?.icon || "/icons/icon-192x192.png",
     }
   );
 });
@@ -40,7 +40,7 @@ self.addEventListener("message", (event) => {
     console.log("📬 Service worker received message:", title);
     self.registration.showNotification(title, {
       body,
-      icon: icon || "/vite.svg",
+      icon: icon || "/icons/icon-192x192.png",
     });
   }
 });

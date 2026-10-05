@@ -14,7 +14,7 @@ import {
   Calendar,
   Check,
 } from 'lucide-react';
-import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.png';
+import FarmBackground from '../components/FarmBackground.jsx';
 import BottomNav from '../components/BottomNav';
 import { API_BASE, getAuthHeaders, apiFetch } from '../api.js';
 import { getBatchAgeDays } from '../utils/batchAge.js';
@@ -403,9 +403,7 @@ export default function VaccinationScreen() {
 
   return (
     <div className="min-h-screen w-full relative overflow-hidden flex flex-col">
-      <div className="absolute inset-0">
-        <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover" />
-      </div>
+      <FarmBackground />
 
       <div className="relative z-10 flex flex-col flex-1 min-h-screen">
         {/* Header */}

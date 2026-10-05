@@ -18,8 +18,8 @@ import {
   Users,
   MonitorSmartphone,
 } from 'lucide-react';
-import pigImage from '../../src/assets/Gemini_Generated_Image_92oun292oun292ou-removebg-preview (1).png';
-import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.png';
+import FarmBackground from '../components/FarmBackground.jsx';
+import ResponsiveImage from '../components/ResponsiveImage.jsx';
 import BottomNav from '../components/BottomNav';
 import { PWAAddToHomeButton } from '../components/PWAComponents.jsx';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
@@ -466,9 +466,7 @@ export default function DashboardScreen() {
   if (!loading && batches.length === 0) {
     return (
       <div className="min-h-screen w-full relative overflow-hidden flex flex-col">
-        <div className="absolute inset-0">
-          <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover" />
-        </div>
+        <FarmBackground />
         <div className="relative z-10 flex-1 flex items-center justify-center">
           <div className="bg-white/30 backdrop-blur-lg p-8 rounded-2xl shadow-lg text-center">
             <p className="text-gray-700">No batches available</p>
@@ -548,9 +546,7 @@ export default function DashboardScreen() {
     return (
       <div className="min-h-screen w-full relative overflow-hidden flex flex-col">
         <style>{animationStyles}</style>
-        <div className="absolute inset-0">
-          <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover" />
-        </div>
+        <FarmBackground />
         <div className="relative z-10 flex flex-col flex-1 min-h-screen">
           {/* Header skeleton */}
           <div className="px-4 md:px-8 lg:px-12 pt-3 pb-3">
@@ -626,9 +622,7 @@ export default function DashboardScreen() {
   return (
     <div className="min-h-screen w-full relative overflow-hidden flex flex-col">
       <style>{animationStyles}</style>
-      <div className="absolute inset-0">
-        <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover" />
-      </div>
+      <FarmBackground />
 
       <div className="relative z-10 flex flex-col flex-1 min-h-screen">
         {/* Header */}
@@ -855,9 +849,9 @@ export default function DashboardScreen() {
                   onTouchStart={handleTouchStart}
                   onTouchEnd={handleTouchEnd}
                 >
-                  <img
-                    src={pigImage}
-                    alt="Pig Character"
+                  <ResponsiveImage
+                    name="pigDashboard"
+                    sizes="(min-width: 1024px) 384px, (min-width: 768px) 320px, 256px"
                     className="w-full h-full object-cover pointer-events-none transition-transform duration-500 ease-in-out"
                     style={{
                       transform: `scale(${calculatePigScale(currentBatch.day)})`,
