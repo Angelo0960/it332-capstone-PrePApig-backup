@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -366,18 +366,17 @@ export default function VaccinationScreen() {
   };
 
   const selectedBatchData = batches.find((b) => String(b.id) === String(selectedBatch));
-  const batchExpense = calculateBatchVaccinationExpense(selectedBatch);
+  const batchExpense = useMemo(
+    () => calculateBatchVaccinationExpense(selectedBatch),
+    [selectedBatch, vaccinationRecords, vaccineStock]
+  );
   const filteredRecords = vaccinationRecords;
   const scheduleBatches = batches.length > 0 ? batches : MOCK_BATCHES;
 
-  const totalDoses = vaccinationRecords.reduce((sum, r) => {
-    const dosage = Number(r.dosage);
-    return sum + (isNaN(dosage) ? 0 : dosage);
-  }, 0);
-
-  const uniqueVaccines = new Set(
-    vaccinationRecords.map((r) => r.vaccine_name?.trim()).filter(Boolean)
-  ).size;
+  const { totalDoses, uniqueVaccines } = useMemo(() => ({
+    totalDoses: vaccinationRecords.reduce((sum, r) => sum + (Number(r.dosage) || 0), 0),
+    uniqueVaccines: new Set(vaccinationRecords.map((r) => r.vaccine_name?.trim()).filter(Boolean)).size,
+  }), [vaccinationRecords]);
 
   return (
     <div className="min-h-screen w-full relative overflow-hidden flex flex-col">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -407,27 +407,34 @@ export default function FeedsInventoryScreen() {
   };
 
   const selectedBatchData = batches.find((b) => String(b.id) === String(selectedBatch));
-  const batchExpense = calculateBatchFeedExpense(selectedBatch);
+  const batchExpense = useMemo(() => calculateBatchFeedExpense(selectedBatch), [selectedBatch, feedRecords, feedStocks]);
   const filteredRecords = feedRecords;
 
-  const totalStock = feedStocks.reduce((sum, s) => sum + (s.stock_quantity || 0), 0);
-  const totalStockValue = feedStocks.reduce(
-    (sum, s) => sum + ((s.stock_quantity || 0) * (s.unit_price || 0)),
-    0
-  );
+  const { totalStock, totalStockValue, selectedBatchFeedRecords, totalFeedConsumed, consumptionByFeedType } = useMemo(() => {
+    const selectedRecords = selectedBatch !== 'all'
+      ? feedRecords.filter((r) => String(r.batch_id) === String(selectedBatch))
+      : [];
+    const byType = selectedRecords.reduce((acc, r) => {
+      const type = r.feed_type;
+      acc[type] = (acc[type] || 0) + (Number(r.quantity_kg) || 0);
+      return acc;
+    }, {});
+    return {
+      totalStock: feedStocks.reduce((sum, s) => sum + (Number(s.stock_quantity) || 0), 0),
+      totalStockValue: feedStocks.reduce((sum, s) => sum + ((Number(s.stock_quantity) || 0) * (Number(s.unit_price) || 0)), 0),
+      selectedBatchFeedRecords: selectedRecords,
+      totalFeedConsumed: selectedRecords.reduce((sum, r) => sum + (Number(r.quantity_kg) || 0), 0),
+      consumptionByFeedType: byType,
+    };
+  }, [feedRecords, feedStocks, selectedBatch]);
 
-  const selectedBatchFeedRecords =
-    selectedBatch !== 'all' ? feedRecords.filter((r) => r.batch_id === selectedBatch) : [];
-  const totalFeedConsumed = selectedBatchFeedRecords.reduce(
-    (sum, r) => sum + (r.quantity_kg || 0),
-    0
+  const chartData = useMemo(
+    () => feedRecords.map((r) => ({
+      date: new Date(r.feeding_date).toLocaleDateString(),
+      actual: r.quantity_kg,
+    })),
+    [feedRecords]
   );
-  const consumptionByFeedType = selectedBatchFeedRecords.reduce((acc, r) => {
-    const type = r.feed_type;
-    if (!acc[type]) acc[type] = 0;
-    acc[type] += r.quantity_kg || 0;
-    return acc;
-  }, {});
 
   // ----- Today's date for checking existing feedings -----
   const todayStr = new Date().toISOString().split('T')[0];
@@ -738,10 +745,7 @@ export default function FeedsInventoryScreen() {
                 <h3 className="font-semibold text-gray-900 mb-2">Feed Consumption & Forecast</h3>
                 <ResponsiveContainer width="100%" height={220}>
                   <LineChart
-                    data={feedRecords.map((r) => ({
-                      date: new Date(r.feeding_date).toLocaleDateString(),
-                      actual: r.quantity_kg,
-                    }))}
+                    data={chartData}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                     <XAxis dataKey="date" tick={{ fill: '#4B5563', fontSize: 10 }} />
