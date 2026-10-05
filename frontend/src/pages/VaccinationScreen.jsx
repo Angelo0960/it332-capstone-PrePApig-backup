@@ -94,6 +94,7 @@ export default function VaccinationScreen() {
   const [showRecordVaccination, setShowRecordVaccination] = useState(false);
   const [showRestockVaccine, setShowRestockVaccine] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState('all');
+  const [showBatchMenu, setShowBatchMenu] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [useMock, setUseMock] = useState(false);
@@ -419,32 +420,45 @@ export default function VaccinationScreen() {
 
         {/* Batch Selector */}
         <div className="px-4 md:px-8 lg:px-12 mb-4">
-          <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-3 shadow-lg">
-            <div className="flex items-center gap-2 overflow-x-auto">
-              <button
-                onClick={() => setSelectedBatch('all')}
-                className={`px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${
-                  selectedBatch === 'all'
-                    ? 'bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-lg'
-                    : 'bg-white/30 text-gray-700'
-                }`}
-              >
-                All Batches
-              </button>
-              {batches.map((batch) => (
+          <div className="relative bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-3 shadow-lg">
+            <button
+              type="button"
+              aria-expanded={showBatchMenu}
+              onClick={() => setShowBatchMenu((open) => !open)}
+              className="w-full flex items-center justify-between px-4 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-pink-600 text-white font-semibold text-sm shadow-lg"
+            >
+              <span>
+                {selectedBatch === 'all'
+                  ? 'All Batches'
+                  : `${selectedBatchData?.name || 'Selected Batch'} · ${selectedBatchData?.pigCount ?? 0} pigs`}
+              </span>
+              <span className="ml-3 text-base">{showBatchMenu ? '▴' : '▾'}</span>
+            </button>
+            {showBatchMenu && (
+              <div className="absolute z-30 left-3 right-3 top-full mt-2 max-h-64 overflow-y-auto rounded-xl bg-white/90 backdrop-blur-lg border border-white/50 p-2 shadow-xl">
                 <button
-                  key={batch.id}
-                  onClick={() => setSelectedBatch(String(batch.id))}
-                  className={`px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${
-                    String(selectedBatch) === String(batch.id)
-                      ? 'bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-lg'
-                      : 'bg-white/30 text-gray-700'
-                  }`}
+                  type="button"
+                  onClick={() => { setSelectedBatch('all'); setShowBatchMenu(false); }}
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold text-gray-700 hover:bg-pink-100/70"
                 >
-                  {batch.name} · {batch.pigCount ?? 0} pigs
+                  All Batches
                 </button>
-              ))}
-            </div>
+                {batches.map((batch) => (
+                  <button
+                    type="button"
+                    key={batch.id}
+                    onClick={() => { setSelectedBatch(String(batch.id)); setShowBatchMenu(false); }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
+                      String(selectedBatch) === String(batch.id)
+                        ? 'bg-pink-100/80 text-pink-700'
+                        : 'text-gray-700 hover:bg-pink-100/70'
+                    }`}
+                  >
+                    {batch.name} · {batch.pigCount ?? 0} pigs
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
