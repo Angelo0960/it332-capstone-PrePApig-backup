@@ -476,7 +476,7 @@ export default function FeedsInventoryScreen() {
 
         {/* Batch Selector */}
         <div className="px-4 md:px-8 lg:px-12 mb-4">
-          <div className="relative bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-3 shadow-lg">
+          <div className="relative z-50 isolate bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-3 shadow-lg">
             <button
               type="button"
               aria-expanded={showBatchMenu}
@@ -491,7 +491,7 @@ export default function FeedsInventoryScreen() {
               <span className="ml-3 text-base">{showBatchMenu ? '▴' : '▾'}</span>
             </button>
             {showBatchMenu && (
-              <div className="absolute z-30 left-3 right-3 top-full mt-2 max-h-64 overflow-y-auto rounded-xl bg-white/90 backdrop-blur-lg border border-white/50 p-2 shadow-xl">
+              <div className="absolute z-[100] left-3 right-3 top-full mt-2 max-h-64 overflow-y-auto rounded-xl bg-white/90 backdrop-blur-lg border border-white/50 p-2 shadow-xl">
                 <button
                   type="button"
                   onClick={() => { setSelectedBatch('all'); setShowBatchMenu(false); }}
