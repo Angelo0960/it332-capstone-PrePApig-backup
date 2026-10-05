@@ -476,22 +476,31 @@ export default function FeedsInventoryScreen() {
         {/* Batch Selector */}
         <div className="px-4 md:px-8 lg:px-12 mb-4">
           <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-3 shadow-lg">
-            <label className="block text-xs font-semibold text-gray-700 mb-2" htmlFor="feed-batch-select">
-              Select batch
-            </label>
-            <select
-              id="feed-batch-select"
-              value={String(selectedBatch)}
-              onChange={(event) => setSelectedBatch(event.target.value)}
-              className="w-full rounded-xl bg-white/60 border border-white/50 px-4 py-3 text-sm font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-emerald-400"
-            >
-              <option value="all">All Batches</option>
+            <div className="flex items-center gap-2 overflow-x-auto">
+              <button
+                onClick={() => setSelectedBatch('all')}
+                className={`px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${
+                  selectedBatch === 'all'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg'
+                    : 'bg-white/30 text-gray-700'
+                }`}
+              >
+                All Batches
+              </button>
               {batches.map((batch) => (
-                <option key={batch.id} value={String(batch.id)}>
+                <button
+                  key={batch.id}
+                  onClick={() => setSelectedBatch(String(batch.id))}
+                  className={`px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${
+                    String(selectedBatch) === String(batch.id)
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg'
+                      : 'bg-white/30 text-gray-700'
+                  }`}
+                >
                   {batch.name} · {batch.pigCount ?? 0} pigs
-                </option>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
         </div>
 
