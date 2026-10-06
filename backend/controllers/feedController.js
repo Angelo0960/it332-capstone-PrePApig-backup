@@ -28,86 +28,60 @@ export const createFeedRecord = async (req, res) => {
 
         if (error) throw error;
 
-        // 2. Get the batch owner and batch code
-        const { data: batchData, error: batchError } = await supabase
-            .from('pig_batches')
-            .select('owner_id, batch_code')
-            .eq('id', batch_id)
-            .single();
-
-        if (batchError) {
-            console.warn('Could not fetch batch owner:', batchError.message);
-            return res.status(201).json({ success: true, data });
-        }
-
-        const ownerId = batchData?.owner_id;
-        const batchCode = batchData?.batch_code || 'Batch';
-
-        // 3. Skip notification if no owner or admin
-        if (!ownerId || ownerId === 'admin') {
-            console.log('Skipping notification – no real owner');
-            return res.status(201).json({ success: true, data });
-        }
-
-        // 4. Get user's FCM tokens (if push notifications are used)
-        const { data: devices, error: deviceError } = await supabase
-            .from('user_devices')
-            .select('fcm_token')
-            .eq('user_id', ownerId);
-
-        if (deviceError) {
-            console.warn('Could not fetch user devices:', deviceError.message);
-            // Continue without push, but we'll still save the notification
-        }
-
-        const tokens = devices ? devices.map(d => d.fcm_token).filter(Boolean) : [];
-
-        // 5. Build notification title and body
-        const title = `🐖 Feeding Recorded`;
-        const body = `${feed_type} (${quantity_kg} kg) for ${batchCode} has been recorded.`;
-
-        // 6. Send push notifications (fire-and-forget)
-        if (tokens.length > 0) {
-            const messages = tokens.map(token => ({
-                notification: { title, body },
-                token,
-                data: {
-                    type: 'feed',
-                    batchId: batch_id,
-                },
-            }));
-
-            Promise.allSettled(
-                messages.map(msg =>
-                    admin.messaging().send(msg).catch(async err => {
-                        console.error(`FCM send error for token ${msg.token}:`, err.message);
-                        if (err.code === 'messaging/invalid-registration-token') {
-                            await supabase.from('user_devices').delete().eq('fcm_token', msg.token);
-                        }
-                    })
-                )
-            ).then(results => {
-                const succeeded = results.filter(r => r.status === 'fulfilled').length;
-                console.log(`📨 Feed notification sent: ${succeeded}/${tokens.length}`);
-            });
-        }
-
-        // 7. Save notification in database for history
-        await supabase
-            .from('notifications')
-            .insert([{
-                user_id: ownerId,
-                title,
-                message: body,
-                type: 'feed',
-                is_read: false,
-            }])
-            .select();
-
         res.status(201).json({
             success: true,
             data
         });
+
+        // Notifications are intentionally processed after the response so marking done stays fast.
+        void (async () => {
+            try {
+                const { data: batchData, error: batchError } = await supabase
+                    .from('pig_batches')
+                    .select('owner_id, batch_code')
+                    .eq('id', batch_id)
+                    .single();
+
+                if (batchError) {
+                    console.warn('Could not fetch batch owner:', batchError.message);
+                    return;
+                }
+
+                const ownerId = batchData?.owner_id;
+                const batchCode = batchData?.batch_code || 'Batch';
+                if (!ownerId || ownerId === 'admin') return;
+
+                const { data: devices, error: deviceError } = await supabase
+                    .from('user_devices')
+                    .select('fcm_token')
+                    .eq('user_id', ownerId);
+                if (deviceError) {
+                    console.warn('Could not fetch user devices:', deviceError.message);
+                    return;
+                }
+
+                const title = '🐖 Feeding Recorded';
+                const body = `${feed_type} (${quantity_kg} kg) for ${batchCode} has been recorded.`;
+                const tokens = devices.map((device) => device.fcm_token).filter(Boolean);
+                if (tokens.length > 0) {
+                    await Promise.allSettled(tokens.map((token) => admin.messaging().send({
+                        notification: { title, body },
+                        token,
+                        data: { type: 'feed', batchId: batch_id },
+                    })));
+                }
+
+                await supabase.from('notifications').insert([{
+                    user_id: ownerId,
+                    title,
+                    message: body,
+                    type: 'feed',
+                    is_read: false,
+                }]);
+            } catch (notificationError) {
+                console.error('Background feed notification failed:', notificationError.message);
+            }
+        })();
 
     } catch (error) {
         console.error('Error in createFeedRecord:', error);

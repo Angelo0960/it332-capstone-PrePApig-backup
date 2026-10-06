@@ -126,7 +126,6 @@ export default function FeedsInventoryScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [useMock, setUseMock] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
 
   const [feedRecords, setFeedRecords] = useState(MOCK_FEED_RECORDS);
   const [batches, setBatches] = useState(MOCK_BATCHES);
@@ -237,7 +236,7 @@ export default function FeedsInventoryScreen() {
 
   useEffect(() => {
     fetchFeedRecords();
-  }, [selectedBatch, refreshKey]);
+  }, [selectedBatch]);
 
   // ----- Core: Save feed usage -----
   const handleSaveFeedUsage = async (formData) => {
@@ -256,7 +255,10 @@ export default function FeedsInventoryScreen() {
 
       const json = await res.json();
       if (json.success) {
-        setRefreshKey((prev) => prev + 1);
+        const savedRecord = Array.isArray(json.data) ? json.data[0] : json.data;
+        if (savedRecord && (selectedBatch === 'all' || String(savedRecord.batch_id) === String(selectedBatch))) {
+          setFeedRecords((records) => [savedRecord, ...records]);
+        }
         setShowRecordUsage(false);
         setUsageForm({
           batch: '',
@@ -265,7 +267,7 @@ export default function FeedsInventoryScreen() {
           date: new Date().toISOString().split('T')[0],
           notes: '',
         });
-        await fetchFeedStock();
+        void fetchFeedStock();
         return true;
       } else {
         throw new Error(json.message || 'Unknown error');

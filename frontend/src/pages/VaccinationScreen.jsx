@@ -98,7 +98,6 @@ export default function VaccinationScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [useMock, setUseMock] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
 
   // Data
   const [vaccinationRecords, setVaccinationRecords] = useState(MOCK_RECORDS);
@@ -242,7 +241,7 @@ export default function VaccinationScreen() {
           date: new Date().toISOString().split('T')[0],
           notes: '',
         });
-        fetchVaccineStock();
+        void fetchVaccineStock();
         return true;
       } else {
         throw new Error(json.message || 'Unknown error');
