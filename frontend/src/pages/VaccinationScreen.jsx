@@ -216,7 +216,7 @@ export default function VaccinationScreen() {
 
   useEffect(() => {
     fetchVaccinations();
-  }, [selectedBatch, refreshKey]);
+  }, [selectedBatch]);
 
   // Save vaccination (used by both modal and direct marking)
   const handleSaveVaccination = async (formData) => {
@@ -232,7 +232,10 @@ export default function VaccinationScreen() {
       }
       const json = await res.json();
       if (json.success) {
-        setRefreshKey((prev) => prev + 1);
+        const savedRecord = Array.isArray(json.data) ? json.data[0] : json.data;
+        if (savedRecord && (selectedBatch === 'all' || String(savedRecord.batch_id) === String(selectedBatch))) {
+          setVaccinationRecords((records) => [savedRecord, ...records]);
+        }
         setShowRecordVaccination(false);
         setVaccinationForm({
           batch: '',
