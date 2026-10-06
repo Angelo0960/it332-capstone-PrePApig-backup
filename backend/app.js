@@ -18,6 +18,7 @@ const allowedOrigins = [
   "http://localhost:5173",
   "https://it332-capstone-pre-p-apig-backup.vercel.app",
   "https://it332-capstone-pre-p-apig-backup-7ylyz2whd-angelo0960s-projects.vercel.app",
+  ...(process.env.CLIENT_ORIGINS || '').split(',').map((origin) => origin.trim()).filter(Boolean),
 ];
 
 app.use(
