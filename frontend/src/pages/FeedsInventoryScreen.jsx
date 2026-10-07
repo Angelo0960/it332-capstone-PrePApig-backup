@@ -20,6 +20,7 @@ import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5b
 import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
 import { API_BASE, getAuthHeaders } from '../api.js';
+import { buildFeedDonePayload } from '../utils/markDonePayloads.js';
 // ────────────────────────────────────────────────────────────────
 
 // Mock data
@@ -281,14 +282,11 @@ export default function FeedsInventoryScreen() {
 
   // ----- Direct Mark as Done -----
   const handleDirectMarkAsDone = (batchId, feedType, amount) => {
-    const payload = {
-      batch_id: batchId,
-      feed_type: feedType,
-      quantity_kg: parseFloat(amount),
-      feeding_date: new Date().toISOString().split('T')[0],
-      feeding_time: new Date().toLocaleTimeString(),
-      notes: 'Auto‑marked as done',
-    };
+    const payload = buildFeedDonePayload({
+      batchId,
+      feedType,
+      amount,
+    });
     handleSaveFeedUsage(payload);
   };
 

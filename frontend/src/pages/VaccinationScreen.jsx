@@ -17,6 +17,7 @@ import {
 import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.png';
 import BottomNav from '../components/BottomNav';
 import { API_BASE, getAuthHeaders } from '../api.js';
+import { buildVaccinationDonePayload } from '../utils/markDonePayloads.js';
 
 // Standard vaccination schedule by age
 const vaccinationSchedule = [
@@ -257,16 +258,11 @@ export default function VaccinationScreen() {
 
   // Direct "Mark as Done" – no modal
   const handleDirectMarkAsDone = (batchId, vaccineName, doses) => {
-    const payload = {
-      batch_id: batchId,
-      vaccine_name: vaccineName,
-      vaccination_date: new Date().toISOString().split('T')[0],
-      dosage: parseInt(doses, 10) || 0,
-      notes: 'Marked as done via schedule',
-      next_due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      administered_by: 'Farmer',
-      status: 'Completed',
-    };
+    const payload = buildVaccinationDonePayload({
+      batchId,
+      vaccineName,
+      doses,
+    });
     handleSaveVaccination(payload);
   };
 
