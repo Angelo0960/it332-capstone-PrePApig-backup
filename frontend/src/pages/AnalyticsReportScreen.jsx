@@ -49,9 +49,12 @@ export default function AnalyticsReportsScreen() {
   const [expenses, setExpenses] = useState([]);
   const [feedStock, setFeedStock] = useState([]);
   const [vaccineStock, setVaccineStock] = useState([]);
-  const [pigPriceBasis, setPigPriceBasis] = useState([]);
-  const [pigPriceSummary, setPigPriceSummary] = useState(null);
+  const [pigPriceLocations, setPigPriceLocations] = useState([]);
+  const [pigPriceReference, setPigPriceReference] = useState(null);
   const [pigPriceError, setPigPriceError] = useState(null);
+  const [aiAnalysis, setAiAnalysis] = useState(null);
+  const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
+  const [aiAnalysisError, setAiAnalysisError] = useState(null);
 
   // Filters
   const [dateRange, setDateRange] = useState('Last 30 days');
@@ -103,14 +106,39 @@ export default function AnalyticsReportsScreen() {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const json = await response.json();
       if (!json.success) throw new Error(json.message || 'Pig price unavailable');
-      setPigPriceBasis(json.basis || []);
-      setPigPriceSummary(json.basisSummary || null);
+      setPigPriceLocations(json.priceSourceLocations || []);
+      setPigPriceReference(json.data || null);
       setPigPriceError(null);
     } catch (err) {
       console.error('Error loading pig price basis:', err);
-      setPigPriceBasis([]);
-      setPigPriceSummary(null);
-      setPigPriceError('Price basis unavailable');
+      setPigPriceLocations([]);
+      setPigPriceReference(null);
+      setPigPriceError('Price sources unavailable');
+    }
+  };
+
+  const requestAiPriceAnalysis = async () => {
+    setAiAnalysisLoading(true);
+    setAiAnalysisError(null);
+    try {
+      const response = await fetch(`${API_BASE}/market-prices/pigs/ai-analysis`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ locations: pigPriceLocations }),
+      });
+      const json = await response.json();
+      if (!response.ok || !json.success) {
+        throw new Error(json.message || 'Gemini analysis unavailable');
+      }
+      setAiAnalysis(json);
+    } catch (err) {
+      setAiAnalysis(null);
+      setAiAnalysisError(err.message);
+    } finally {
+      setAiAnalysisLoading(false);
     }
   };
 
@@ -512,35 +540,46 @@ export default function AnalyticsReportsScreen() {
             </div>
           </div>
 
-          {/* Pig Price Basis for Gemini Analysis */}
+          {/* Local Pig Price Sources and Gemini Analysis */}
           <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg mb-4">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="font-semibold text-gray-900">Pig Price Basis</h3>
-                <p className="text-xs text-gray-600">Batangas province-level farmgate data for Gemini analysis</p>
+                <h3 className="font-semibold text-gray-900">Local Pig Price Sources</h3>
+                <p className="text-xs text-gray-600">Use 3+ nearby locations for Gemini price analysis</p>
               </div>
-              {pigPriceSummary && (
-                <div className="text-right text-xs text-gray-600">
-                  <div>Average: <span className="font-bold text-green-600">₱{pigPriceSummary.averagePricePhpPerKg.toFixed(2)}/kg</span></div>
-                  <div>{pigPriceSummary.records} price points · Trend: {pigPriceSummary.direction}</div>
-                </div>
-              )}
+              <button
+                onClick={requestAiPriceAnalysis}
+                disabled={aiAnalysisLoading || pigPriceLocations.length < 3}
+                className="px-3 py-2 bg-purple-600 text-white rounded-xl text-xs font-semibold shadow-lg disabled:opacity-50"
+              >
+                {aiAnalysisLoading ? 'Analyzing...' : 'Ask Gemini AI'}
+              </button>
             </div>
-            {pigPriceBasis.length > 0 ? (
-              <div className="grid grid-cols-3 gap-2">
-                {pigPriceBasis.slice(0, 6).map((price) => (
-                  <div key={`${price.period}-${price.pricePhpPerKg}`} className="bg-white/40 rounded-xl p-2 text-center">
-                    <div className="text-[11px] text-gray-600">{price.period}</div>
-                    <div className="text-sm font-bold text-gray-900">₱{price.pricePhpPerKg.toFixed(2)}</div>
-                    <div className="text-[10px] text-gray-500">per kg liveweight</div>
-                  </div>
-                ))}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {(pigPriceLocations.length > 0 ? pigPriceLocations : ['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Nasugbu']).map((location) => (
+                <span key={location} className="px-2 py-1 bg-white/50 rounded-lg text-xs text-gray-800">
+                  {location}
+                </span>
+              ))}
+            </div>
+            {pigPriceReference && (
+              <div className="text-xs text-gray-600 mb-2">
+                Provincial reference: <span className="font-bold text-green-600">₱{Number(pigPriceReference.pricePhpPerKg).toFixed(2)}/kg</span> ({pigPriceReference.period}).
               </div>
-            ) : (
-              <div className="text-xs text-gray-600">{pigPriceError || 'Loading price basis...'}</div>
+            )}
+            {pigPriceError && <div className="text-xs text-red-600">{pigPriceError}</div>}
+            {aiAnalysisError && <div className="text-xs text-red-600 mt-2">{aiAnalysisError}</div>}
+            {aiAnalysis && (
+              <div className="bg-purple-100/50 border border-purple-300/50 rounded-xl p-3 mt-3">
+                <div className="text-xs font-semibold text-purple-900 mb-1">Gemini price suggestion</div>
+                <div className="text-sm text-gray-800 whitespace-pre-line">{aiAnalysis.analysis}</div>
+                {aiAnalysis.sources?.length > 0 && (
+                  <div className="text-[10px] text-gray-600 mt-2">Grounded sources: {aiAnalysis.sources.length}</div>
+                )}
+              </div>
             )}
             <div className="text-[10px] text-gray-500 mt-2">
-              This is a structured 3+ point price basis. It is not a Calaca-only quote and should be combined with farm costs before choosing a selling price.
+              Gemini must find at least 3 geographically distinct public price points. It must mark unavailable locations instead of inventing prices.
             </div>
           </div>
 

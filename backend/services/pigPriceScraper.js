@@ -1,6 +1,7 @@
 const PRICE_SOURCE_URL =
   'https://baboyph.com/data/hog-farmgate-household-regional.csv';
 const BATANGAS_PSGC = '0401000000';
+const PRICE_SOURCE_LOCATIONS = ['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Nasugbu'];
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 let cache = { expiresAt: 0, value: null };
@@ -87,6 +88,7 @@ export const fetchBatangasPigPrice = async ({ fetchImpl = fetch, now = Date.now(
   const result = {
     success: true,
     data: latest,
+    priceSourceLocations: PRICE_SOURCE_LOCATIONS,
     basis: priceRows,
     basisSummary: {
       records: priceRows.length,
