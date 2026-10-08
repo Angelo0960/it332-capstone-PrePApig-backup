@@ -49,7 +49,7 @@ export default function AnalyticsReportsScreen() {
   const [expenses, setExpenses] = useState([]);
   const [feedStock, setFeedStock] = useState([]);
   const [vaccineStock, setVaccineStock] = useState([]);
-  const [pigPriceLocations, setPigPriceLocations] = useState([]);
+  const [pigPriceLocations, setPigPriceLocations] = useState(['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Nasugbu']);
   const [pigPriceReference, setPigPriceReference] = useState(null);
   const [pigPriceError, setPigPriceError] = useState(null);
   const [aiAnalysis, setAiAnalysis] = useState(null);
@@ -571,8 +571,27 @@ export default function AnalyticsReportsScreen() {
             {aiAnalysisError && <div className="text-xs text-red-600 mt-2">{aiAnalysisError}</div>}
             {aiAnalysis && (
               <div className="bg-purple-100/50 border border-purple-300/50 rounded-xl p-3 mt-3">
-                <div className="text-xs font-semibold text-purple-900 mb-1">Gemini price suggestion</div>
+                <div className="text-xs font-semibold text-purple-900 mb-2">Gemini price suggestion</div>
+                {aiAnalysis.pricePoints?.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+                    {aiAnalysis.pricePoints.map((point, index) => (
+                      <div key={`${point.location}-${index}`} className="bg-white/50 rounded-lg p-2">
+                        <div className="text-xs font-semibold text-gray-900">{point.location}</div>
+                        <div className="text-sm font-bold text-green-700">
+                          {point.pricePhpPerKg == null ? 'Unavailable' : `₱${Number(point.pricePhpPerKg).toFixed(2)}/kg`}
+                        </div>
+                        <div className="text-[10px] text-gray-600">{point.period || point.status || 'Source checked'}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="text-sm text-gray-800 whitespace-pre-line">{aiAnalysis.analysis}</div>
+                {aiAnalysis.suggestion && (
+                  <div className="text-sm font-semibold text-purple-900 mt-2">Suggestion: {aiAnalysis.suggestion}</div>
+                )}
+                {aiAnalysis.limitations?.length > 0 && (
+                  <div className="text-[10px] text-gray-600 mt-2">Limits: {aiAnalysis.limitations.join(' ')}</div>
+                )}
                 {aiAnalysis.sources?.length > 0 && (
                   <div className="text-[10px] text-gray-600 mt-2">Grounded sources: {aiAnalysis.sources.length}</div>
                 )}

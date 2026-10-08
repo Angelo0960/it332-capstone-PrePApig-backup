@@ -6,6 +6,20 @@ const extractText = (payload) =>
     .join('')
     .trim() || '';
 
+const parseStructuredAnalysis = (text) => {
+  try {
+    return JSON.parse(text);
+  } catch {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    try {
+      return JSON.parse(jsonMatch[0]);
+    } catch {
+      return null;
+    }
+  }
+};
+
 const extractGrounding = (payload) => {
   const metadata = payload?.candidates?.[0]?.groundingMetadata;
   const chunks = metadata?.groundingChunks || [];
@@ -33,7 +47,9 @@ export const generatePigPriceAnalysis = async ({
     'Use web search grounding. Do not invent prices. If a location has no reliable public price, label it unavailable.',
     'Separate liveweight/farmgate prices from retail, dressed-meat, or unrelated prices.',
     'Recommend which available location/source is the most useful price basis and explain why.',
-    'Return a concise analysis with: price points by location, source date, unit, limitations, and a suggested price range or next action.',
+    'Return JSON only with this shape:',
+    '{"pricePoints":[{"location":"Calaca","pricePhpPerKg":null,"unit":"PHP/kg liveweight","period":"YYYY-MM or unavailable","source":"source name or unavailable","status":"found or unavailable"}],"analysis":"short analysis","suggestion":"recommended price basis or next action","limitations":["important limitation"]}',
+    'Use null and unavailable when a location has no reliable public price. Do not estimate, average, or invent missing local prices.',
     `Provincial reference (not Calaca-only): ${JSON.stringify(provincialReference)}`,
   ].join('\n');
 
@@ -48,7 +64,10 @@ export const generatePigPriceAnalysis = async ({
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         tools: [{ google_search: {} }],
-        generationConfig: { temperature: 0.2 },
+        generationConfig: {
+          temperature: 0.2,
+          responseMimeType: 'application/json',
+        },
       }),
     }
   );
@@ -61,11 +80,21 @@ export const generatePigPriceAnalysis = async ({
   const analysis = extractText(payload);
   if (!analysis) throw new Error('Gemini returned an empty price analysis');
 
+  const structured = parseStructuredAnalysis(analysis) || {
+    pricePoints: [],
+    analysis,
+    suggestion: '',
+    limitations: ['Gemini did not return the requested structured format.'],
+  };
+
   return {
     success: true,
     model,
     locations: uniqueLocations,
-    analysis,
+    pricePoints: Array.isArray(structured.pricePoints) ? structured.pricePoints : [],
+    analysis: structured.analysis || analysis,
+    suggestion: structured.suggestion || '',
+    limitations: Array.isArray(structured.limitations) ? structured.limitations : [],
     sources: extractGrounding(payload),
     generatedAt: new Date().toISOString(),
   };

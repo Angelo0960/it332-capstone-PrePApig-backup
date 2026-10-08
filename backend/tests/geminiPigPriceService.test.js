@@ -14,7 +14,16 @@ test('Gemini price analysis sends nearby locations and search grounding', async 
         ok: true,
         json: async () => ({
           candidates: [{
-            content: { parts: [{ text: 'Use the most recent comparable farmgate source.' }] },
+            content: { parts: [{ text: JSON.stringify({
+              pricePoints: [
+                { location: 'Lemery', pricePhpPerKg: 180, status: 'found' },
+                { location: 'Balayan', pricePhpPerKg: 178, status: 'found' },
+                { location: 'Nasugbu', pricePhpPerKg: null, status: 'unavailable' },
+              ],
+              analysis: 'Three locations were checked.',
+              suggestion: 'Use the comparable liveweight sources.',
+              limitations: ['Local quotes may change.'],
+            }) }] },
             groundingMetadata: {
               groundingChunks: [{ web: { title: 'Local source', uri: 'https://example.test/source' } }],
             },
@@ -27,7 +36,10 @@ test('Gemini price analysis sends nearby locations and search grounding', async 
   const body = JSON.parse(request.options.body);
   assert.equal(result.success, true);
   assert.equal(result.sources.length, 1);
+  assert.equal(result.pricePoints.length, 3);
+  assert.equal(result.suggestion, 'Use the comparable liveweight sources.');
   assert.deepEqual(body.tools, [{ google_search: {} }]);
+  assert.equal(body.generationConfig.responseMimeType, 'application/json');
   assert.match(body.contents[0].parts[0].text, /at least 3 different nearby locations/);
   assert.match(body.contents[0].parts[0].text, /Lemery/);
 });
