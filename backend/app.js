@@ -9,6 +9,7 @@ import vaccinationRouter from "./routes/vaccineRoutes.js";
 import expensesRouter from "./routes/expensesRoutes.js";
 import reportRouter from "./routes/reportRoutes.js";
 import notificationRouter from "./routes/notificationRoutes.js";
+import marketPriceRouter from "./routes/marketPriceRoutes.js";
 
 import "./scheduler.js";
 
@@ -65,6 +66,7 @@ app.use("/vaccinations", vaccinationRouter);
 app.use("/expenses", expensesRouter);
 app.use("/reports", reportRouter);
 app.use("/notifications", notificationRouter);
+app.use("/market-prices", marketPriceRouter);
 
 // Root Route
 app.get("/", (req, res) => {

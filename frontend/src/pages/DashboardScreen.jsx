@@ -82,6 +82,8 @@ export default function DashboardScreen() {
   const [editPigCount, setEditPigCount] = useState('');
 
   const [notifications, setNotifications] = useState([]);
+  const [pigPrice, setPigPrice] = useState(null);
+  const [pigPriceError, setPigPriceError] = useState(null);
 
   const [newBatch, setNewBatch] = useState({
     pig_count: '',
@@ -170,6 +172,22 @@ export default function DashboardScreen() {
     } catch (err) {
       console.error('Error fetching notifications:', err);
       setNotifications([]);
+    }
+  };
+
+  // ---------- Fetch nearby pig price ----------
+  const fetchPigPrice = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/market-prices/pigs`);
+      if (!res.ok) throw new Error('Failed to fetch pig price');
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || 'Pig price unavailable');
+      setPigPrice(json.data);
+      setPigPriceError(null);
+    } catch (err) {
+      console.error('Error fetching pig price:', err);
+      setPigPrice(null);
+      setPigPriceError(err.message);
     }
   };
 
@@ -300,6 +318,7 @@ export default function DashboardScreen() {
   useEffect(() => {
     fetchBatches();
     fetchNotifications();
+    fetchPigPrice();
   }, []);
 
   // ---------- Logout ----------
@@ -460,6 +479,25 @@ export default function DashboardScreen() {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-4 md:px-8 lg:px-12 pb-24">
+          <div className="bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3 mb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs text-gray-700 font-medium">Pig Price Near Calaca</div>
+                <div className="text-[11px] text-gray-600">Batangas province-level farmgate reference</div>
+              </div>
+              {pigPrice && (
+                <div className="text-right">
+                  <div className="text-lg font-bold text-green-600">
+                    ₱{Number(pigPrice.pricePhpPerKg).toLocaleString('en-PH', { minimumFractionDigits: 2 })}/kg
+                  </div>
+                  <div className="text-[10px] text-gray-600">{pigPrice.period} · {pigPrice.unit}</div>
+                </div>
+              )}
+            </div>
+            {pigPriceError && <div className="text-xs text-red-600 mt-2">Price unavailable</div>}
+            {pigPrice && <div className="text-[10px] text-gray-500 mt-1">Public provincial reference; not a Calaca-only quote.</div>}
+          </div>
+
           {batches.length > 0 && currentBatch && (
             <>
               <AnimatePresence mode="wait">
