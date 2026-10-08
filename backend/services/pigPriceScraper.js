@@ -78,9 +78,35 @@ export const fetchBatangasPigPrice = async ({ fetchImpl = fetch, now = Date.now(
     throw new Error('No Batangas pig price record was found in the source data');
   }
 
+  const priceRows = rows.slice(0, 6).map(toPriceRecord);
+  const latest = priceRows[0];
+  const values = priceRows.map((record) => record.pricePhpPerKg);
+  const averagePricePhpPerKg =
+    values.reduce((sum, value) => sum + value, 0) / values.length;
+
   const result = {
     success: true,
-    data: toPriceRecord(rows[0]),
+    data: latest,
+    basis: priceRows,
+    basisSummary: {
+      records: priceRows.length,
+      averagePricePhpPerKg: Number(averagePricePhpPerKg.toFixed(2)),
+      lowestPricePhpPerKg: Math.min(...values),
+      highestPricePhpPerKg: Math.max(...values),
+      direction:
+        priceRows.length > 1 && latest.pricePhpPerKg > priceRows[1].pricePhpPerKg
+          ? 'up'
+          : priceRows.length > 1 && latest.pricePhpPerKg < priceRows[1].pricePhpPerKg
+            ? 'down'
+            : 'stable',
+    },
+    analysisInput: {
+      location: latest.location,
+      unit: latest.unit,
+      prices: priceRows.map(({ period, pricePhpPerKg }) => ({ period, pricePhpPerKg })),
+      instruction:
+        'Use these provincial price points with the farm cost data to assess a reasonable selling-price range. Do not present the result as a Calaca-only quote.',
+    },
     fetchedAt: new Date(now).toISOString(),
     cacheExpiresAt: new Date(now + CACHE_TTL_MS).toISOString(),
   };

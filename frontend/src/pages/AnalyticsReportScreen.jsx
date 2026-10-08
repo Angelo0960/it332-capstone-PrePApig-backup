@@ -49,6 +49,9 @@ export default function AnalyticsReportsScreen() {
   const [expenses, setExpenses] = useState([]);
   const [feedStock, setFeedStock] = useState([]);
   const [vaccineStock, setVaccineStock] = useState([]);
+  const [pigPriceBasis, setPigPriceBasis] = useState([]);
+  const [pigPriceSummary, setPigPriceSummary] = useState(null);
+  const [pigPriceError, setPigPriceError] = useState(null);
 
   // Filters
   const [dateRange, setDateRange] = useState('Last 30 days');
@@ -93,8 +96,27 @@ export default function AnalyticsReportsScreen() {
     }
   };
 
+  // ---------- Fetch pig price basis for analysis ----------
+  const fetchPigPriceBasis = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/market-prices/pigs`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const json = await response.json();
+      if (!json.success) throw new Error(json.message || 'Pig price unavailable');
+      setPigPriceBasis(json.basis || []);
+      setPigPriceSummary(json.basisSummary || null);
+      setPigPriceError(null);
+    } catch (err) {
+      console.error('Error loading pig price basis:', err);
+      setPigPriceBasis([]);
+      setPigPriceSummary(null);
+      setPigPriceError('Price basis unavailable');
+    }
+  };
+
   useEffect(() => {
     fetchAllData();
+    fetchPigPriceBasis();
   }, [dateRange]);
 
   // ---------- Filter data by selected batch ----------
@@ -487,6 +509,38 @@ export default function AnalyticsReportsScreen() {
               <div className="text-xs text-gray-600">
                 {selectedBatch === 'All Batches' ? 'Total batches' : selectedBatch}
               </div>
+            </div>
+          </div>
+
+          {/* Pig Price Basis for Gemini Analysis */}
+          <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="font-semibold text-gray-900">Pig Price Basis</h3>
+                <p className="text-xs text-gray-600">Batangas province-level farmgate data for Gemini analysis</p>
+              </div>
+              {pigPriceSummary && (
+                <div className="text-right text-xs text-gray-600">
+                  <div>Average: <span className="font-bold text-green-600">₱{pigPriceSummary.averagePricePhpPerKg.toFixed(2)}/kg</span></div>
+                  <div>{pigPriceSummary.records} price points · Trend: {pigPriceSummary.direction}</div>
+                </div>
+              )}
+            </div>
+            {pigPriceBasis.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2">
+                {pigPriceBasis.slice(0, 6).map((price) => (
+                  <div key={`${price.period}-${price.pricePhpPerKg}`} className="bg-white/40 rounded-xl p-2 text-center">
+                    <div className="text-[11px] text-gray-600">{price.period}</div>
+                    <div className="text-sm font-bold text-gray-900">₱{price.pricePhpPerKg.toFixed(2)}</div>
+                    <div className="text-[10px] text-gray-500">per kg liveweight</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-gray-600">{pigPriceError || 'Loading price basis...'}</div>
+            )}
+            <div className="text-[10px] text-gray-500 mt-2">
+              This is a structured 3+ point price basis. It is not a Calaca-only quote and should be combined with farm costs before choosing a selling price.
             </div>
           </div>
 
