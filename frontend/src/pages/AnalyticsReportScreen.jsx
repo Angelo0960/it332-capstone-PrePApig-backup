@@ -239,11 +239,12 @@ export default function AnalyticsReportsScreen() {
       selectedBatch === 'All Batches'
         ? batches
         : batches.filter((b) => b.batch_code === selectedBatch);
-    const totalRevenue = targetBatches.reduce(
-      (sum, b) => sum + (Number(b.current_weight) || 0) * 180,
+    const pricedBatches = targetBatches.filter((batch) => Number(batch.sale_price_per_kg) > 0);
+    if (pricedBatches.length === 0) return [];
+    const totalRevenue = pricedBatches.reduce(
+      (sum, b) => sum + (Number(b.current_weight) || 0) * Number(b.sale_price_per_kg),
       0
     );
-    // Use combined expenses but spread evenly across months
     const months = {};
     filteredExpenses.forEach((e) => {
       const date = new Date(e.expense_date);
@@ -732,42 +733,6 @@ export default function AnalyticsReportsScreen() {
             </div>
           </div>
 
-          {/* Recent Reports */}
-          <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg mb-4">
-            <div className="p-4 border-b border-white/20">
-              <h3 className="font-semibold text-gray-900">Recent Reports</h3>
-            </div>
-            <div className="divide-y divide-white/20">
-              <div className="p-4 flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="font-medium text-gray-900 text-sm">
-                    Growth_Report_BatchA_May2026.pdf
-                  </div>
-                  <div className="text-xs text-gray-600 mt-0.5">May 10, 2026</div>
-                </div>
-                <button
-                  onClick={() => handleDownloadReport('Growth_Report_BatchA_May2026')}
-                  className="w-8 h-8 bg-white/30 backdrop-blur-lg rounded-lg flex items-center justify-center active:scale-95 transition-transform"
-                >
-                  <Download className="w-4 h-4 text-gray-700" />
-                </button>
-              </div>
-              <div className="p-4 flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="font-medium text-gray-900 text-sm">
-                    Feed_Consumption_Q2_2026.csv
-                  </div>
-                  <div className="text-xs text-gray-600 mt-0.5">May 1, 2026</div>
-                </div>
-                <button
-                  onClick={() => handleDownloadReport('Feed_Consumption_Q2_2026')}
-                  className="w-8 h-8 bg-white/30 backdrop-blur-lg rounded-lg flex items-center justify-center active:scale-95 transition-transform"
-                >
-                  <Download className="w-4 h-4 text-gray-700" />
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
 
         <BottomNav active="Reports" />
