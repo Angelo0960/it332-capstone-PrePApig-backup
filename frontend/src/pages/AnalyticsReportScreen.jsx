@@ -146,23 +146,6 @@ export default function AnalyticsReportsScreen() {
     fetchAllData();
   }, [dateRange]);
 
-  // Price references are supplementary and do not need to delay analytics.
-  // Load them once after the first screen has had a chance to render.
-  useEffect(() => {
-    const loadPriceBasis = () => fetchPigPriceBasis();
-    const idleId = window.requestIdleCallback
-      ? window.requestIdleCallback(loadPriceBasis, { timeout: 2000 })
-      : window.setTimeout(loadPriceBasis, 200);
-
-    return () => {
-      if (window.cancelIdleCallback && typeof idleId === 'number') {
-        window.cancelIdleCallback(idleId);
-      } else {
-        window.clearTimeout(idleId);
-      }
-    };
-  }, []);
-
   // ---------- Filter data by selected batch ----------
   const filterByBatch = (data, batchIdField) => {
     if (selectedBatch === 'All Batches') return data;
