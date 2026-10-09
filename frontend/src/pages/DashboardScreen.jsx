@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 import { useNavigate } from 'react-router-dom';
 import {
@@ -63,6 +63,7 @@ export default function DashboardScreen() {
   const [showAddBatch, setShowAddBatch] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
+  const touchStartX = useRef(null);
 
 
   // Edit pig count state
@@ -81,6 +82,23 @@ export default function DashboardScreen() {
   });
 
   const currentBatch = batches[currentBatchIndex];
+
+  const handleTouchStart = (event) => {
+    touchStartX.current = event.touches[0]?.clientX ?? null;
+  };
+
+  const handleTouchEnd = (event) => {
+    if (touchStartX.current === null || batches.length < 2) return;
+    const endX = event.changedTouches[0]?.clientX;
+    const deltaX = endX - touchStartX.current;
+    touchStartX.current = null;
+    if (!Number.isFinite(deltaX) || Math.abs(deltaX) < 50) return;
+    setCurrentBatchIndex((previous) =>
+      deltaX < 0
+        ? (previous + 1) % batches.length
+        : (previous - 1 + batches.length) % batches.length
+    );
+  };
   const user = getUserFromToken();
 
   // Feed stock data - mock (can be replaced later)
@@ -609,6 +627,8 @@ export default function DashboardScreen() {
 
 
 
+                    onTouchStart={handleTouchStart}
+                    onTouchEnd={handleTouchEnd}
                     className="relative w-64 h-48 md:w-80 md:h-60 lg:w-96 lg:h-72 cursor-grab active:cursor-grabbing"
                   >
                     <img
