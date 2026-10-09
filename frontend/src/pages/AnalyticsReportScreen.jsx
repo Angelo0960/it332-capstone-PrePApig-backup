@@ -169,8 +169,19 @@ export default function AnalyticsReportsScreen() {
 
   // ---------- Currency helper ----------
   const formatCurrency = (amount) => {
-    if (isNaN(amount) || !isFinite(amount)) return '₱0.00';
-    return `₱${amount.toFixed(2)}`;
+    const numericAmount = Number(amount);
+    if (!Number.isFinite(numericAmount)) return '₱0.00';
+    return `₱${numericAmount.toLocaleString('en-PH', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  };
+
+  const formatPricePerKg = (amount) => {
+    const numericAmount = Number(amount);
+    return Number.isFinite(numericAmount)
+      ? `₱${numericAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/kg`
+      : 'Unavailable';
   };
 
   // ---------- Compute feed + vaccine combined expenses (safe) ----------
@@ -505,7 +516,9 @@ export default function AnalyticsReportsScreen() {
                 <PhilippinePeso className="w-4 h-4 text-purple-600" />
                 <span className="text-xs text-gray-700 font-semibold">Total Expenses</span>
               </div>
-              <div className="text-2xl font-bold text-gray-900">{formatCurrency(combinedExpenses)}</div>
+              <div className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight break-words">
+                {formatCurrency(combinedExpenses)}
+              </div>
               <div className="text-xs text-gray-600">
                 Feed: {formatCurrency(totalFeedCost)} · Vaccine: {formatCurrency(totalVaccineCost)}
               </div>
@@ -548,7 +561,7 @@ export default function AnalyticsReportsScreen() {
             </div>
             {pigPriceReference && (
               <div className="text-xs text-gray-600 mb-2">
-                Provincial reference: <span className="font-bold text-green-600">₱{Number(pigPriceReference.pricePhpPerKg).toFixed(2)}/kg</span> ({pigPriceReference.period}).
+                Provincial reference: <span className="font-bold text-green-600">{formatPricePerKg(pigPriceReference.pricePhpPerKg)}</span> ({pigPriceReference.period}).
               </div>
             )}
             {pigPriceError && <div className="text-xs text-red-600">{pigPriceError}</div>}
@@ -562,7 +575,7 @@ export default function AnalyticsReportsScreen() {
                       <div key={`${point.location}-${index}`} className="bg-white/50 rounded-lg p-2">
                         <div className="text-xs font-semibold text-gray-900">{point.location}</div>
                         <div className="text-sm font-bold text-green-700">
-                          {point.pricePhpPerKg == null ? 'Unavailable' : `₱${Number(point.pricePhpPerKg).toFixed(2)}/kg`}
+                          {point.pricePhpPerKg == null ? 'Unavailable' : formatPricePerKg(point.pricePhpPerKg)}
                         </div>
                         <div className="text-[10px] text-gray-600">{point.period || point.status || 'Source checked'}</div>
                       </div>
