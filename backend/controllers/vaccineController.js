@@ -126,9 +126,12 @@ export const createVaccination = async (req, res) => {
 
     } catch (error) {
         console.error('Error in createVaccination:', error);
+        const message = error.message?.includes("'owner_id' column")
+            ? 'Database migration required: run backend/config/migrations/20261009_add_vaccination_owner.sql in Supabase.'
+            : error.message;
         res.status(500).json({
             success: false,
-            message: error.message
+            message
         });
     }
 };

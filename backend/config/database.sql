@@ -32,9 +32,10 @@ CREATE TABLE feed_records (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE vaccination_records (
+CREATE TABLE IF NOT EXISTS vaccination_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     batch_id UUID REFERENCES pig_batches(id) ON DELETE CASCADE,
+    owner_id UUID,
     vaccine_name VARCHAR(100) NOT NULL,
     vaccination_date DATE NOT NULL,
     next_due_date DATE,
