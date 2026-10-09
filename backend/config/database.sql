@@ -120,12 +120,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS notifications_user_dedupe_idx
     WHERE dedupe_key IS NOT NULL;
 ALTER TABLE feed_records ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN NOT NULL DEFAULT FALSE;
 CREATE INDEX IF NOT EXISTS idx_pig_batches_owner ON pig_batches (owner_id);
+CREATE INDEX IF NOT EXISTS idx_pig_batches_owner_created_at ON pig_batches (owner_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_feed_records_owner ON feed_records (owner_id);
 CREATE INDEX IF NOT EXISTS idx_vaccination_records_owner ON vaccination_records (owner_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_owner ON expenses (owner_id);
 CREATE INDEX IF NOT EXISTS idx_pigs_owner ON pigs (owner_id);
 CREATE INDEX IF NOT EXISTS idx_feed_stocks_owner ON feed_stocks (owner_id);
 CREATE INDEX IF NOT EXISTS idx_vaccine_stocks_owner ON vaccine_stocks (owner_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_created_at ON notifications (user_id, created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_feed_stocks_owner_type ON feed_stocks (owner_id, feed_type);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_vaccine_stocks_owner_name ON vaccine_stocks (owner_id, vaccine_name);
 
