@@ -2,8 +2,8 @@ import { useState } from "react";
 import { User, Lock } from "lucide-react";
 import { api, API_BASE } from '../api.js';          // ← import API_BASE
 import { generateToken } from '../services/firebase.js';
-import pigImage from "../../src/assets/2e388bda-a6fa-4911-bcea-0e3aaa26ed7f-removebg-preview.png";
-import backgroundImage from "../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.png";
+import pigImage from "../../src/assets/2e388bda-a6fa-4911-bcea-0e3aaa26ed7f-removebg-preview.webp";
+import backgroundImage from "../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.webp";
 
 export function LoginScreen({ onLogin }) {
   const [farmerId, setFarmerId] = useState('');

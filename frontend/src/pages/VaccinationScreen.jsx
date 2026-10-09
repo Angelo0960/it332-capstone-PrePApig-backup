@@ -14,7 +14,7 @@ import {
   Calendar,
   Check,
 } from 'lucide-react';
-import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.png';
+import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.webp';
 import BottomNav from '../components/BottomNav';
 import { API_BASE, getAuthHeaders } from '../api.js';
 import { buildVaccinationDonePayload } from '../utils/markDonePayloads.js';
