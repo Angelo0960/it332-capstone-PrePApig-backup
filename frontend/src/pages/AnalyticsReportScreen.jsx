@@ -217,47 +217,7 @@ export default function AnalyticsReportsScreen() {
 
   // ---------- Computed data for charts ----------
 
-  // 1. Growth data (filtered by batch)
-  const getGrowthData = () => {
-    const targetBatches =
-      selectedBatch === 'All Batches'
-        ? batches
-        : batches.filter((b) => b.batch_code === selectedBatch);
-    if (targetBatches.length === 0) return [];
-
-    const weeks = 14;
-    const data = [];
-    targetBatches.forEach((batch) => {
-      const start = Number(batch.start_weight) || 0;
-      const current = Number(batch.current_weight) || start;
-      const weekIncrement = (current - start) / weeks;
-      for (let i = 0; i <= weeks; i += 2) {
-        const week = i;
-        const weight = start + weekIncrement * i;
-        const targetWeight = start + (i / weeks) * (current * 1.2 - start);
-        data.push({ week: `W${week}`, actual: weight, target: targetWeight });
-      }
-    });
-    const grouped = {};
-    data.forEach((d) => {
-      if (!grouped[d.week]) grouped[d.week] = { week: d.week, actual: [], target: [] };
-      grouped[d.week].actual.push(d.actual);
-      grouped[d.week].target.push(d.target);
-    });
-    return Object.keys(grouped).map((week) => ({
-      week,
-      actual:
-        Math.round(
-          (grouped[week].actual.reduce((a, b) => a + b, 0) / grouped[week].actual.length) * 10
-        ) / 10,
-      target:
-        Math.round(
-          (grouped[week].target.reduce((a, b) => a + b, 0) / grouped[week].target.length) * 10
-        ) / 10,
-    }));
-  };
-
-  // 2. Feed consumption (from filtered feed records)
+  // Feed consumption (from filtered feed records)
   const getFeedConsumptionData = () => {
     const grouped = {};
     filteredFeedRecords.forEach((r) => {
@@ -338,7 +298,6 @@ export default function AnalyticsReportsScreen() {
     () => feedStock.reduce((sum, s) => sum + (s.stock_quantity || 0), 0),
     [feedStock]
   );
-  const growthData = useMemo(() => getGrowthData(), [batches, selectedBatch]);
   const feedConsumptionData = useMemo(() => getFeedConsumptionData(), [filteredFeedRecords]);
   const profitTrend = useMemo(
     () => getProfitTrend(),
@@ -603,52 +562,6 @@ export default function AnalyticsReportsScreen() {
             </div>
           </div>
 
-          {/* Growth Performance */}
-          <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg mb-4">
-            <h3 className="font-semibold text-gray-900 mb-3">Pig Growth Trend (Weight vs. Age)</h3>
-            <div className="bg-white/40 rounded-xl p-3 mb-3">
-              <ResponsiveContainer width="100%" height={180}>
-                <LineChart data={growthData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis dataKey="week" tick={{ fontSize: 10 }} stroke="#6B7280" />
-                  <YAxis tick={{ fontSize: 10 }} stroke="#6B7280" />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="actual"
-                    stroke="#10B981"
-                    strokeWidth={3}
-                    dot={{ fill: '#10B981', r: 4 }}
-                    name="Actual"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="target"
-                    stroke="#9CA3AF"
-                    strokeWidth={2}
-                    strokeDasharray="5 5"
-                    dot={false}
-                    name="Target"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              <div className="bg-white/40 rounded-lg p-2">
-                <div className="text-xs text-gray-600">ADG</div>
-                <div className="text-lg font-bold text-gray-900">0.65 kg</div>
-              </div>
-              <div className="bg-white/40 rounded-lg p-2">
-                <div className="text-xs text-gray-600">Current</div>
-                <div className="text-lg font-bold text-gray-900">72 kg</div>
-              </div>
-              <div className="bg-white/40 rounded-lg p-2">
-                <div className="text-xs text-gray-600">Remaining</div>
-                <div className="text-lg font-bold text-gray-900">4 wks</div>
-              </div>
-            </div>
-          </div>
-
           {/* Feed Consumption */}
           <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg mb-4">
             <h3 className="font-semibold text-gray-900 mb-3">Feed Consumption</h3>
@@ -675,16 +588,6 @@ export default function AnalyticsReportsScreen() {
                 {selectedBatch === 'All Batches' ? 'All batches' : selectedBatch} ·{' '}
                 {filteredFeedRecords.length} feeding records
               </div>
-            </div>
-          </div>
-
-          {/* Feed Efficiency */}
-          <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg mb-4">
-            <h3 className="font-semibold text-gray-900 mb-3">Feed Efficiency</h3>
-            <div className="bg-white/40 rounded-xl p-4 text-center">
-              <div className="text-sm text-gray-600 mb-1">Feed Conversion Ratio</div>
-              <div className="text-4xl font-bold text-green-600">2.8</div>
-              <div className="text-xs text-gray-600 mt-1">Good (Target: &lt; 3.0)</div>
             </div>
           </div>
 
