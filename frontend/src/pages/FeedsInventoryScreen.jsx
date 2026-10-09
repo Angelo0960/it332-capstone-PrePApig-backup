@@ -149,7 +149,7 @@ export default function FeedsInventoryScreen() {
   // Fetch functions
   const fetchBatches = async () => {
     try {
-      const res = await fetch(`${API_BASE}/pigs/all`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/pigs/all?limit=100`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success && json.data.length > 0) {
@@ -187,7 +187,7 @@ export default function FeedsInventoryScreen() {
     setLoading(true);
     setError(null);
     try {
-      let url = `${API_BASE}/feeds/all`;
+      let url = `${API_BASE}/feeds/all?limit=100`;
       if (selectedBatch !== 'all') {
         url = `${API_BASE}/feeds/batch/${selectedBatch}`;
       }

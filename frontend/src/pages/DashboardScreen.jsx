@@ -150,7 +150,7 @@ export default function DashboardScreen() {
   // ---------- Fetch notifications ----------
   const fetchNotifications = async () => {
     try {
-      const res = await fetch(`${API_BASE}/notifications/all`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/notifications/all?limit=20`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed to fetch notifications');
       const json = await res.json();
       if (json.success) {
@@ -182,7 +182,7 @@ export default function DashboardScreen() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/pigs/all`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/pigs/all?limit=20`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed to fetch batches');
       const json = await res.json();
       if (json.success) {

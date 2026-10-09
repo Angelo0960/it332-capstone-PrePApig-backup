@@ -124,7 +124,7 @@ export default function VaccinationScreen() {
   // Fetch batches
   const fetchBatches = async () => {
     try {
-      const res = await fetch(`${API_BASE}/pigs/all`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/pigs/all?limit=100`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success && json.data.length > 0) {
@@ -168,7 +168,7 @@ export default function VaccinationScreen() {
     setLoading(true);
     setError(null);
     try {
-      let url = `${API_BASE}/vaccinations/all`;
+      let url = `${API_BASE}/vaccinations/all?limit=100`;
       if (selectedBatch !== 'all') {
         url = `${API_BASE}/vaccinations/batch/${selectedBatch}`;
       }
