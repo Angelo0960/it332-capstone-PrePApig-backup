@@ -136,7 +136,11 @@ export default function AnalyticsReportsScreen() {
       setAiAnalysis(json);
     } catch (err) {
       setAiAnalysis(null);
-      setAiAnalysisError(err.message);
+      setAiAnalysisError(
+        err.message.includes('Gemini API key is not configured')
+          ? 'Gemini is not configured on the backend. Add GEMINI_API_KEY to the Render backend environment variables, then redeploy.'
+          : err.message
+      );
     } finally {
       setAiAnalysisLoading(false);
     }

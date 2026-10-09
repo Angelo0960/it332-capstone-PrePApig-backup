@@ -1,4 +1,9 @@
-const DEFAULT_MODEL = 'gemini-3.8-flash';
+import 'dotenv/config';
+
+const DEFAULT_MODEL = 'gemini-2.5-flash';
+
+const getConfiguredApiKey = () =>
+  process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY || '';
 
 const extractText = (payload) =>
   payload?.candidates?.[0]?.content?.parts
@@ -33,11 +38,14 @@ export const generatePigPriceAnalysis = async ({
   locations,
   provincialReference,
   fetchImpl = fetch,
-  apiKey = process.env.GEMINI_API_KEY,
+  apiKey = getConfiguredApiKey(),
   model = process.env.GEMINI_MODEL || DEFAULT_MODEL,
 }) => {
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not configured');
+  const configuredApiKey = String(apiKey || '').trim();
+  if (!configuredApiKey) {
+    throw new Error(
+      'Gemini API key is not configured. Set GEMINI_API_KEY in the backend environment.'
+    );
   }
 
   const uniqueLocations = [...new Set(locations)].slice(0, 10);
@@ -59,7 +67,7 @@ export const generatePigPriceAnalysis = async ({
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
+        'x-goog-api-key': configuredApiKey,
       },
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],

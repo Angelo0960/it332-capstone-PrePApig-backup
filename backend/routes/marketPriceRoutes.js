@@ -37,7 +37,7 @@ marketPriceRouter.post('/pigs/ai-analysis', async (req, res) => {
     res.status(200).json(result);
   } catch (error) {
     console.error('Error generating Gemini pig-price analysis:', error);
-    const status = error.message === 'GEMINI_API_KEY is not configured' ? 503 : 502;
+    const status = error.message.startsWith('Gemini API key is not configured') ? 503 : 502;
     res.status(status).json({
       success: false,
       message: error.message,

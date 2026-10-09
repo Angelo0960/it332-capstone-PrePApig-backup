@@ -47,6 +47,6 @@ test('Gemini price analysis sends nearby locations and search grounding', async 
 test('Gemini analysis requires an API key', async () => {
   await assert.rejects(
     generatePigPriceAnalysis({ apiKey: '', locations: ['Calaca', 'Lemery', 'Balayan'] }),
-    /GEMINI_API_KEY is not configured/
+    /Gemini API key is not configured/
   );
 });
