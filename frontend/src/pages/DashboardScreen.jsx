@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+
 import { useNavigate } from 'react-router-dom';
 import {
   Home,
@@ -17,7 +17,6 @@ import {
   Pencil,
   Users,
 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import pigImage from '../../src/assets/Gemini_Generated_Image_92oun292oun292ou-removebg-preview (1).webp';
 import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.webp';
 import BottomNav from '../components/BottomNav';
@@ -37,12 +36,6 @@ const calculateProfit = (weight, pricePerKg, expenses) => {
 
 
 // Calculate pig size based on age (day)
-const calculatePigScale = (day) => {
-  if (day <= 15) return 0.8 + (day / 15) * 0.4;
-  else if (day <= 35) return 1.2 + ((day - 15) / 20) * 0.7;
-  else if (day <= 50) return 1.9 + ((day - 35) / 15) * 0.4;
-  else return Math.min(2.5, 2.3 + ((day - 50) / 20) * 0.2);
-};
 
 // Decode JWT to get user info
 const getUserFromToken = () => {
@@ -70,7 +63,7 @@ export default function DashboardScreen() {
   const [showAddBatch, setShowAddBatch] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
-  const [dragDirection, setDragDirection] = useState(0);
+
 
   // Edit pig count state
   const [showEditPigModal, setShowEditPigModal] = useState(false);
@@ -368,18 +361,6 @@ export default function DashboardScreen() {
     }
   };
 
-  // ---------- Swipe handling ----------
-  const handleDragEnd = (_event, info) => {
-    const swipeThreshold = 50;
-    if (batches.length === 0) return;
-    if (info.offset.x > swipeThreshold) {
-      setDragDirection(1);
-      setCurrentBatchIndex((prev) => (prev > 0 ? prev - 1 : batches.length - 1));
-    } else if (info.offset.x < -swipeThreshold) {
-      setDragDirection(-1);
-      setCurrentBatchIndex((prev) => (prev < batches.length - 1 ? prev + 1 : 0));
-    }
-  };
 
   // ---------- Loading state ----------
   if (loading) {
@@ -458,13 +439,13 @@ export default function DashboardScreen() {
         <div className="flex-1 overflow-y-auto px-4 md:px-8 lg:px-12 pb-24">
           {batches.length > 0 && currentBatch && (
             <>
-              <AnimatePresence mode="wait">
-                <motion.div
+              <>
+                <div
                   key={currentBatch.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
+
+
+
+
                   className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3 mb-4"
                 >
                   <div className="bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3 relative">
@@ -510,16 +491,16 @@ export default function DashboardScreen() {
                         : formatCurrency(0)}
                     </div>
                   </div>
-                </motion.div>
-              </AnimatePresence>
+                </div>
+              </>
 
-              <AnimatePresence mode="wait">
-                <motion.div
+              <>
+                <div
                   key={`progress-${currentBatch.id}`}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}
+
+
+
+
                   className="space-y-2 mb-4"
                 >
                   {/* Vaccination */}
@@ -532,11 +513,11 @@ export default function DashboardScreen() {
                     </div>
                     <div className="flex items-center gap-2">
                       {[1, 2, 3, 4].map((shot) => (
-                        <motion.div
+                        <div
                           key={`vac-${shot}`}
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{ duration: 0.3, delay: shot * 0.1 }}
+
+
+
                         >
                           <Syringe
                             className={`w-5 h-5 ${
@@ -545,7 +526,7 @@ export default function DashboardScreen() {
                                 : 'text-gray-800/30'
                             } transition-colors duration-300`}
                           />
-                        </motion.div>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -565,11 +546,11 @@ export default function DashboardScreen() {
                           currentBatch.day <= 21 ? 30 : currentBatch.day <= 49 ? 60 : 90;
                         const weightProgress = Math.min(100, (avgWeight / targetWeight) * 100);
                         return (
-                          <motion.div
+                          <div
                             key={`weight-${level}`}
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ duration: 0.3, delay: level * 0.1 }}
+
+
+
                           >
                             <Scale
                               className={`w-5 h-5 ${
@@ -578,7 +559,7 @@ export default function DashboardScreen() {
                                   : 'text-gray-800/30'
                               } transition-colors duration-300`}
                             />
-                          </motion.div>
+                          </div>
                         );
                       })}
                     </div>
@@ -594,11 +575,11 @@ export default function DashboardScreen() {
                     </div>
                     <div className="flex items-center gap-2">
                       {[1, 2, 3, 4].map((bag) => (
-                        <motion.div
+                        <div
                           key={`feed-${bag}`}
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{ duration: 0.3, delay: bag * 0.1 }}
+
+
+
                         >
                           <Package
                             className={`w-5 h-5 ${
@@ -607,45 +588,44 @@ export default function DashboardScreen() {
                                 : 'text-gray-800/30'
                             } transition-colors duration-300`}
                           />
-                        </motion.div>
+                        </div>
                       ))}
                     </div>
                   </div>
-                </motion.div>
-              </AnimatePresence>
+                </div>
+              </>
 
               {/* Pig Character */}
               <div className="flex items-center justify-center py-8 mb-4 relative min-h-[200px] md:min-h-[240px] lg:min-h-[288px]">
-                <AnimatePresence mode="wait" custom={dragDirection}>
-                  <motion.div
+                <>
+                  <div
                     key={currentBatch.id}
-                    custom={dragDirection}
-                    initial={{ x: dragDirection * 300, opacity: 0, scale: 0.8 }}
-                    animate={{ x: 0, opacity: 1, scale: 1 }}
-                    exit={{ x: -dragDirection * 300, opacity: 0, scale: 0.8 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    drag="x"
-                    dragConstraints={{ left: 0, right: 0 }}
-                    dragElastic={0.2}
-                    onDragEnd={handleDragEnd}
+
+
+
+
+
+
+
+
+
                     className="relative w-64 h-48 md:w-80 md:h-60 lg:w-96 lg:h-72 cursor-grab active:cursor-grabbing"
                   >
-                    <motion.img
+                    <img
                       src={pigImage}
                       alt="Pig Character"
                       className="w-full h-full object-cover pointer-events-none"
-                      animate={{ scale: calculatePigScale(currentBatch.day) }}
-                      transition={{ duration: 0.5, ease: 'easeInOut' }}
+
+
                     />
-                  </motion.div>
-                </AnimatePresence>
+                  </div>
+                </>
 
                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex gap-2">
                   {batches.map((batch, index) => (
                     <button
                       key={batch.id}
                       onClick={() => {
-                        setDragDirection(index > currentBatchIndex ? -1 : 1);
                         setCurrentBatchIndex(index);
                       }}
                       className={`w-2 h-2 rounded-full transition-all ${
