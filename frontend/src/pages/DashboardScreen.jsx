@@ -200,6 +200,19 @@ export default function DashboardScreen() {
   const fetchBatches = async () => {
     setLoading(true);
     setError(null);
+    const cacheKey = `prepapig:batches:${user?.id || 'current'}`;
+    let renderedCache = false;
+    try {
+      const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+      if (Array.isArray(cached) && cached.length > 0) {
+        setCurrentBatchIndex(0);
+        setBatches(cached);
+        setLoading(false);
+        renderedCache = true;
+      }
+    } catch {
+      localStorage.removeItem(cacheKey);
+    }
     try {
       const res = await fetch(`${API_BASE}/pigs/all?limit=20`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed to fetch batches');
@@ -232,6 +245,7 @@ export default function DashboardScreen() {
         if (batchRenderFrame.current) cancelAnimationFrame(batchRenderFrame.current);
         setCurrentBatchIndex(0);
         setBatches(mapped.slice(0, 1));
+        localStorage.setItem(cacheKey, JSON.stringify(mapped));
         let nextBatchIndex = 1;
         const renderNextBatch = () => {
           if (nextBatchIndex >= mapped.length) return;
@@ -247,9 +261,9 @@ export default function DashboardScreen() {
     } catch (err) {
       console.error('Error fetching batches:', err);
       setError(err.message);
-      setBatches([]);
+      if (!renderedCache) setBatches([]);
     } finally {
-      setLoading(false);
+      if (!renderedCache) setLoading(false);
     }
   };
 
@@ -318,7 +332,6 @@ export default function DashboardScreen() {
   // ---------- Load data ----------
   useEffect(() => {
     fetchBatches();
-    fetchNotifications();
     return () => {
       if (batchRenderFrame.current) cancelAnimationFrame(batchRenderFrame.current);
     };
@@ -446,8 +459,9 @@ export default function DashboardScreen() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {
-                  setShowNotifications(!showNotifications);
-                  if (!showNotifications) markAllAsRead();
+                  const opening = !showNotifications;
+                  setShowNotifications(opening);
+                  if (opening) void fetchNotifications();
                 }}
                 className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all relative"
               >

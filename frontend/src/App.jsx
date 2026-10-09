@@ -46,8 +46,8 @@ function App() {
     };
 
     const idleId = window.requestIdleCallback
-      ? window.requestIdleCallback(setup, { timeout: 2500 })
-      : window.setTimeout(setup, 300);
+      ? window.requestIdleCallback(setup, { timeout: 10000 })
+      : window.setTimeout(setup, 10000);
 
     return () => {
       if (window.cancelIdleCallback && typeof idleId === 'number') {
