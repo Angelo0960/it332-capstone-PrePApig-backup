@@ -144,8 +144,24 @@ export default function AnalyticsReportsScreen() {
 
   useEffect(() => {
     fetchAllData();
-    fetchPigPriceBasis();
   }, [dateRange]);
+
+  // Price references are supplementary and do not need to delay analytics.
+  // Load them once after the first screen has had a chance to render.
+  useEffect(() => {
+    const loadPriceBasis = () => fetchPigPriceBasis();
+    const idleId = window.requestIdleCallback
+      ? window.requestIdleCallback(loadPriceBasis, { timeout: 2000 })
+      : window.setTimeout(loadPriceBasis, 200);
+
+    return () => {
+      if (window.cancelIdleCallback && typeof idleId === 'number') {
+        window.cancelIdleCallback(idleId);
+      } else {
+        window.clearTimeout(idleId);
+      }
+    };
+  }, []);
 
   // ---------- Filter data by selected batch ----------
   const filterByBatch = (data, batchIdField) => {
@@ -358,21 +374,6 @@ export default function AnalyticsReportsScreen() {
   const handleHeaderDownload = () => {
     window.print();
   };
-
-  // ---------- Loading state ----------
-  if (loading) {
-    return (
-      <div className="min-h-screen w-full relative overflow-hidden flex flex-col">
-        <div className="absolute inset-0">
-          <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover" />
-        </div>
-        <div className="relative z-10 flex-1 flex items-center justify-center">
-          <div className="text-gray-700">Loading reports...</div>
-        </div>
-        <BottomNav active="Reports" />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen w-full relative overflow-hidden flex flex-col">

@@ -5,6 +5,7 @@ const PRICE_SOURCE_LOCATIONS = ['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Nasugbu']
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 let cache = { expiresAt: 0, value: null };
+let inFlightRequest = null;
 
 const parseCsvLine = (line) => {
   const values = [];
@@ -63,8 +64,10 @@ const toPriceRecord = (row) => ({
 
 export const fetchBatangasPigPrice = async ({ fetchImpl = fetch, now = Date.now() } = {}) => {
   if (cache.value && cache.expiresAt > now) return cache.value;
+  if (inFlightRequest) return inFlightRequest;
 
-  const response = await fetchImpl(PRICE_SOURCE_URL, {
+  inFlightRequest = (async () => {
+    const response = await fetchImpl(PRICE_SOURCE_URL, {
     headers: { 'User-Agent': 'PrepAPig/1.0 pig-price-monitor' },
   });
   if (!response.ok) {
@@ -113,12 +116,20 @@ export const fetchBatangasPigPrice = async ({ fetchImpl = fetch, now = Date.now(
     cacheExpiresAt: new Date(now + CACHE_TTL_MS).toISOString(),
   };
 
-  cache = { expiresAt: now + CACHE_TTL_MS, value: result };
-  return result;
+    cache = { expiresAt: now + CACHE_TTL_MS, value: result };
+    return result;
+  })();
+
+  try {
+    return await inFlightRequest;
+  } finally {
+    inFlightRequest = null;
+  }
 };
 
 export const clearPigPriceCache = () => {
   cache = { expiresAt: 0, value: null };
+  inFlightRequest = null;
 };
 
 export { PRICE_SOURCE_URL, BATANGAS_PSGC, parseCsv };
