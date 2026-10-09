@@ -6,7 +6,6 @@ const FeedsInventoryScreen = lazy(() => import('./pages/FeedsInventoryScreen.jsx
 const AnalyticsReportsScreen = lazy(() => import('./pages/AnalyticsReportScreen.jsx'));
 const VaccinationScreen = lazy(() => import('./pages/VaccinationScreen.jsx'));
 const BatchPigsScreen = lazy(() => import('./pages/BatchPigsScreen.jsx'));
-import { generateToken, onMessageListener } from './services/firebase.js';
 import { registerFcmToken } from './api.js';
 import './App.css';
 
@@ -32,6 +31,8 @@ function App() {
     const setup = async () => {
       const token = localStorage.getItem('token');
       if (!token || token === 'null' || token === 'undefined') return;
+
+      const { generateToken, onMessageListener } = await import('./services/firebase.js');
       const fcmToken = await generateToken();
       if (fcmToken) {
         try {
@@ -41,9 +42,20 @@ function App() {
           console.error('Failed to register token:', err);
         }
       }
+      onMessageListener();
     };
-    setup();
-    onMessageListener();
+
+    const idleId = window.requestIdleCallback
+      ? window.requestIdleCallback(setup, { timeout: 2500 })
+      : window.setTimeout(setup, 300);
+
+    return () => {
+      if (window.cancelIdleCallback && typeof idleId === 'number') {
+        window.cancelIdleCallback(idleId);
+      } else {
+        window.clearTimeout(idleId);
+      }
+    };
   }, []);
 
   const ProtectedRoute = ({ children }) => {
