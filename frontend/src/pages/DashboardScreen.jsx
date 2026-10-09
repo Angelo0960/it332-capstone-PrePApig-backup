@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import {
   Home,
-  DollarSign,
   Package,
   TrendingUp,
   Tag,

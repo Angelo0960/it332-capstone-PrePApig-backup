@@ -9,7 +9,7 @@ import {
   Home,
   Package,
   Syringe,
-  DollarSign,
+  PhilippinePeso,
   FileText,
   TrendingUp,
   AlertTriangle,
@@ -502,7 +502,7 @@ export default function AnalyticsReportsScreen() {
             </div>
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
               <div className="flex items-center gap-2 mb-2">
-                <DollarSign className="w-4 h-4 text-purple-600" />
+                <PhilippinePeso className="w-4 h-4 text-purple-600" />
                 <span className="text-xs text-gray-700 font-semibold">Total Expenses</span>
               </div>
               <div className="text-2xl font-bold text-gray-900">{formatCurrency(combinedExpenses)}</div>

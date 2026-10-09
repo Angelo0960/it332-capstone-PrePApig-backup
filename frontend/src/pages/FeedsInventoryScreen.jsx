@@ -7,7 +7,6 @@ import {
   Check,
   Package,
   Syringe,
-  DollarSign,
   TrendingUp,
   Plus,
   Home,
