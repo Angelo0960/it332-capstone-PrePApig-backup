@@ -61,6 +61,8 @@ export const generatePigPriceAnalysis = async ({
     `Provincial reference (not Calaca-only): ${JSON.stringify(provincialReference)}`,
   ].join('\n');
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
   const response = await fetchImpl(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
@@ -77,8 +79,9 @@ export const generatePigPriceAnalysis = async ({
           responseMimeType: 'application/json',
         },
       }),
+      signal: controller.signal,
     }
-  );
+  ).finally(() => clearTimeout(timeout));
 
   const payload = await response.json();
   if (!response.ok) {

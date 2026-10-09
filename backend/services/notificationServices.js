@@ -73,12 +73,13 @@ export const sendDailyFeedReminders = async () => {
         const title = `🐖 Daily Feed Reminder`;
         const body = `You have ${userRecords.length} feeding(s) today for: ${batchCodes.join(', ')}. Total: ${totalKg} kg.`;
 
-        await supabase.from('notifications').insert([{
+        await supabase.from('notifications').upsert([{
             title,
             message: body,
             type: 'feed_reminder',
             user_id: ownerId,
-        }]);
+            dedupe_key: `feed_reminder:${today}`,
+        }], { onConflict: 'user_id,dedupe_key', ignoreDuplicates: true });
 
         const sendPromises = tokens.map(token =>
             admin.messaging().send({
@@ -189,12 +190,13 @@ export const sendVaccinationReminders = async () => {
             const vaccineNames = due.map(v => v.vaccine_name).join(', ');
             const title = '💉 Vaccination Due';
             const body = `Vaccination(s) due today for ${batchNames}: ${vaccineNames}`;
-            await supabase.from('notifications').insert([{
+            await supabase.from('notifications').upsert([{
                 title,
                 message: body,
                 type: 'vaccination_reminder',
                 user_id: ownerId,
-            }]);
+                dedupe_key: `vaccination_due:${today}`,
+            }], { onConflict: 'user_id,dedupe_key', ignoreDuplicates: true });
             const sendPromises = tokens.map(token =>
                 admin.messaging().send({
                     token,
@@ -222,12 +224,13 @@ export const sendVaccinationReminders = async () => {
             }).join(', ');
             const title = '⚠️ Vaccination Overdue';
             const body = `Overdue vaccination(s) for ${batchNames}: ${daysOverdue}`;
-            await supabase.from('notifications').insert([{
+            await supabase.from('notifications').upsert([{
                 title,
                 message: body,
                 type: 'vaccination_overdue',
                 user_id: ownerId,
-            }]);
+                dedupe_key: `vaccination_overdue:${today}`,
+            }], { onConflict: 'user_id,dedupe_key', ignoreDuplicates: true });
             const sendPromises = tokens.map(token =>
                 admin.messaging().send({
                     token,

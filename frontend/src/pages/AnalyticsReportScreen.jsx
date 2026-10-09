@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -12,9 +12,9 @@ import {
   PhilippinePeso,
   FileText,
   TrendingUp,
-  AlertTriangle,
+
   ChevronDown,
-  X,
+
 } from 'lucide-react';
 import {
   LineChart,
@@ -34,6 +34,7 @@ import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5b
 import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
 import { API_BASE, getAuthHeaders } from '../api.js';
+import { formatCurrency, formatPricePerKg } from '../utils/formatters.js';
 // ────────────────────────────────────────────────────────────────
 
 export default function AnalyticsReportsScreen() {
@@ -63,7 +64,7 @@ export default function AnalyticsReportsScreen() {
   const [showBatchDropdown, setShowBatchDropdown] = useState(false);
 
   // --- Report modal state ---
-  const [reportModal, setReportModal] = useState(null); // null or report name
+  const aiAbortController = useRef(null);
 
   const getDateQuery = () => {
     const end = new Date();
@@ -75,12 +76,13 @@ export default function AnalyticsReportsScreen() {
   };
 
   // ---------- Fetch all data in one response ----------
-  const fetchAllData = async () => {
+  const fetchAllData = async (signal) => {
     setLoading(true);
     setError(null);
     try {
       const response = await fetch(`${API_BASE}/reports/analytics?${getDateQuery()}`, {
         headers: getAuthHeaders(),
+        signal,
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const json = await response.json();
@@ -93,6 +95,7 @@ export default function AnalyticsReportsScreen() {
       setFeedStock(data.feedStock || []);
       setVaccineStock(data.vaccineStock || []);
     } catch (err) {
+      if (err.name === 'AbortError') return;
       setError('Failed to load some data. Please refresh.');
     } finally {
       setLoading(false);
@@ -100,9 +103,9 @@ export default function AnalyticsReportsScreen() {
   };
 
   // ---------- Fetch pig price basis for analysis ----------
-  const fetchPigPriceBasis = async () => {
+  const fetchPigPriceBasis = async (signal) => {
     try {
-      const response = await fetch(`${API_BASE}/market-prices/pigs`);
+      const response = await fetch(`${API_BASE}/market-prices/pigs`, { signal });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const json = await response.json();
       if (!json.success) throw new Error(json.message || 'Pig price unavailable');
@@ -110,6 +113,7 @@ export default function AnalyticsReportsScreen() {
       setPigPriceReference(json.data || null);
       setPigPriceError(null);
     } catch (err) {
+      if (err.name === 'AbortError') return;
       console.error('Error loading pig price basis:', err);
       setPigPriceLocations([]);
       setPigPriceReference(null);
@@ -118,6 +122,9 @@ export default function AnalyticsReportsScreen() {
   };
 
   const requestAiPriceAnalysis = async () => {
+    aiAbortController.current?.abort();
+    const controller = new AbortController();
+    aiAbortController.current = controller;
     setAiAnalysisLoading(true);
     setAiAnalysisError(null);
     try {
@@ -128,6 +135,7 @@ export default function AnalyticsReportsScreen() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ locations: pigPriceLocations }),
+        signal: controller.signal,
       });
       const json = await response.json();
       if (!response.ok || !json.success) {
@@ -135,6 +143,7 @@ export default function AnalyticsReportsScreen() {
       }
       setAiAnalysis(json);
     } catch (err) {
+      if (err.name === 'AbortError') return;
       setAiAnalysis(null);
       setAiAnalysisError(
         err.message.includes('Gemini API key is not configured')
@@ -147,8 +156,13 @@ export default function AnalyticsReportsScreen() {
   };
 
   useEffect(() => {
-    fetchAllData();
+    const controller = new AbortController();
+    fetchAllData(controller.signal);
+    fetchPigPriceBasis(controller.signal);
+    return () => controller.abort();
   }, [dateRange]);
+
+  useEffect(() => () => aiAbortController.current?.abort(), []);
 
   // ---------- Filter data by selected batch ----------
   const filterByBatch = (data, batchIdField) => {
@@ -172,21 +186,7 @@ export default function AnalyticsReportsScreen() {
   );
 
   // ---------- Currency helper ----------
-  const formatCurrency = (amount) => {
-    const numericAmount = Number(amount);
-    if (!Number.isFinite(numericAmount)) return '₱0.00';
-    return `₱${numericAmount.toLocaleString('en-PH', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
-  };
 
-  const formatPricePerKg = (amount) => {
-    const numericAmount = Number(amount);
-    return Number.isFinite(numericAmount)
-      ? `₱${numericAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/kg`
-      : 'Unavailable';
-  };
 
   // ---------- Compute feed + vaccine combined expenses (safe) ----------
   const getFeedCost = () => {
@@ -209,8 +209,8 @@ export default function AnalyticsReportsScreen() {
     return Math.round(total * 100) / 100;
   };
 
-  const feedPriceMap = new Map(feedStock.map((stock) => [stock.feed_type, Number(stock.unit_price) || 0]));
-  const vaccinePriceMap = new Map(vaccineStock.map((stock) => [stock.vaccine_name, Number(stock.price_per_dose) || 0]));
+  const feedPriceMap = useMemo(() => new Map(feedStock.map((stock) => [stock.feed_type, Number(stock.unit_price) || 0])), [feedStock]);
+  const vaccinePriceMap = useMemo(() => new Map(vaccineStock.map((stock) => [stock.vaccine_name, Number(stock.price_per_dose) || 0])), [vaccineStock]);
   const totalFeedCost = useMemo(() => getFeedCost(), [filteredFeedRecords, feedStock]);
   const totalVaccineCost = useMemo(() => getVaccineCost(), [filteredVaccinationRecords, vaccineStock]);
   const combinedExpenses = totalFeedCost + totalVaccineCost;
@@ -306,18 +306,15 @@ export default function AnalyticsReportsScreen() {
   const expenseBreakdown = useMemo(() => getExpenseBreakdown(), [filteredExpenses]);
   const vaccinationSummary = useMemo(() => getVaccinationSummary(), [vaccinationRecords]);
 
-  // ---------- Report actions ----------
-  const handleViewReport = (reportName) => {
-    setReportModal(reportName);
-  };
-
-  const handleCloseModal = () => {
-    setReportModal(null);
-  };
-
   const handleDownloadReport = (reportName) => {
-    // Generate a dummy CSV file
-    const content = `Report: ${reportName}\nGenerated: ${new Date().toLocaleString()}\n\nThis is a placeholder report.\nData would be included here.`;
+    const content = [
+      `Report: ${reportName}`,
+      `Generated: ${new Date().toLocaleString()}`,
+      `Date range: ${dateRange}`,
+      `Batch: ${selectedBatch}`,
+      '',
+      'This export contains the currently loaded analytics context. Detailed records remain available in the source tables.',
+    ].join('\n');
     const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -425,32 +422,6 @@ export default function AnalyticsReportsScreen() {
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto px-4 md:px-8 lg:px-12 pb-24">
-          {/* Alerts Panel (mock) */}
-          <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg mb-4">
-            <div className="p-4 border-b border-white/20">
-              <h3 className="font-semibold text-gray-900 text-sm">Active Alerts</h3>
-            </div>
-            <div className="divide-y divide-white/20">
-              <div className="p-3 flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <div className="text-sm font-medium text-gray-900">
-                    Batch B: Growth slower than expected
-                  </div>
-                  <div className="text-xs text-gray-600 mt-0.5">Check feeding schedule</div>
-                </div>
-              </div>
-              <div className="p-3 flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <div className="text-sm font-medium text-gray-900">
-                    Feed stock for Grower Pellet below 50 kg
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
@@ -750,12 +721,6 @@ export default function AnalyticsReportsScreen() {
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => handleViewReport(report.name)}
-                      className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-semibold shadow-lg active:scale-95 transition-transform"
-                    >
-                      View
-                    </button>
-                    <button
                       onClick={() => handleDownloadReport(report.name)}
                       className="w-8 h-8 bg-white/30 backdrop-blur-lg rounded-lg flex items-center justify-center active:scale-95 transition-transform"
                     >
@@ -781,12 +746,6 @@ export default function AnalyticsReportsScreen() {
                   <div className="text-xs text-gray-600 mt-0.5">May 10, 2026</div>
                 </div>
                 <button
-                  onClick={() => handleViewReport('Growth Report Batch A')}
-                  className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-semibold shadow-lg active:scale-95 transition-transform mr-2"
-                >
-                  View
-                </button>
-                <button
                   onClick={() => handleDownloadReport('Growth_Report_BatchA_May2026')}
                   className="w-8 h-8 bg-white/30 backdrop-blur-lg rounded-lg flex items-center justify-center active:scale-95 transition-transform"
                 >
@@ -801,12 +760,6 @@ export default function AnalyticsReportsScreen() {
                   <div className="text-xs text-gray-600 mt-0.5">May 1, 2026</div>
                 </div>
                 <button
-                  onClick={() => handleViewReport('Feed Consumption Report')}
-                  className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-semibold shadow-lg active:scale-95 transition-transform mr-2"
-                >
-                  View
-                </button>
-                <button
                   onClick={() => handleDownloadReport('Feed_Consumption_Q2_2026')}
                   className="w-8 h-8 bg-white/30 backdrop-blur-lg rounded-lg flex items-center justify-center active:scale-95 transition-transform"
                 >
@@ -816,49 +769,6 @@ export default function AnalyticsReportsScreen() {
             </div>
           </div>
         </div>
-
-        {/* Report View Modal */}
-        {reportModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-5 border-b border-white/30">
-                <h2 className="text-xl font-bold text-gray-900">{reportModal}</h2>
-                <button
-                  onClick={handleCloseModal}
-                  className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all"
-                >
-                  <X className="w-4 h-4 text-gray-700" />
-                </button>
-              </div>
-              <div className="p-6">
-                <p className="text-gray-700">
-                  This is a placeholder view for the <strong>{reportModal}</strong>.
-                  <br />
-                  <br />
-                  In a real implementation, this would display the full report content (charts, tables,
-                  etc.).
-                </p>
-                <div className="mt-4 p-4 bg-white/20 rounded-xl border border-white/30">
-                  <p className="text-sm text-gray-600">Example data for {reportModal}:</p>
-                  <ul className="mt-2 text-sm text-gray-700 space-y-1">
-                    <li>• Total records: {Math.floor(Math.random() * 100) + 10}</li>
-                    <li>• Date range: {dateRange}</li>
-                    <li>• Batch: {selectedBatch}</li>
-                    <li>• Generated: {new Date().toLocaleString()}</li>
-                  </ul>
-                </div>
-                <div className="mt-4 flex justify-end">
-                  <button
-                    onClick={handleCloseModal}
-                    className="px-4 py-2 bg-green-500 text-white rounded-xl shadow-lg active:scale-95 transition-transform"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         <BottomNav active="Reports" />
       </div>

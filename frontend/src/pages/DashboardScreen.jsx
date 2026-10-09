@@ -23,6 +23,7 @@ import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5b
 import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
 import { API_BASE, getAuthHeaders } from '../api.js';
+import { formatCurrency } from '../utils/formatters.js';
 // ────────────────────────────────────────────────────────────────
 
 // Calculate profit in pesos
@@ -34,10 +35,6 @@ const calculateProfit = (weight, pricePerKg, expenses) => {
   return Math.round(Math.max(0, profit));
 };
 
-// Format number with commas
-const formatPeso = (amount) => {
-  return amount.toLocaleString('en-PH');
-};
 
 // Calculate pig size based on age (day)
 const calculatePigScale = (day) => {
@@ -500,18 +497,17 @@ export default function DashboardScreen() {
                   <div className="bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3">
                     <div className="text-xs text-gray-700 mb-1 font-medium">Estimated Profit</div>
                     <div className="text-sm font-bold text-green-600">
-                      ₱
                       {currentBatch?.weight !== undefined &&
                       currentBatch?.pricePerKg !== undefined &&
                       currentBatch?.expenses !== undefined
-                        ? formatPeso(
+                        ? formatCurrency(
                             calculateProfit(
                               currentBatch.weight,
                               currentBatch.pricePerKg,
                               currentBatch.expenses
                             )
                           )
-                        : '0'}
+                        : formatCurrency(0)}
                     </div>
                   </div>
                 </motion.div>

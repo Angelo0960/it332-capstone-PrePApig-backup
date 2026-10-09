@@ -94,6 +94,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     title TEXT NOT NULL,
     message TEXT NOT NULL,
     type VARCHAR(50) NOT NULL,
+    dedupe_key TEXT,
     is_read BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW()
 );
@@ -112,6 +113,10 @@ ALTER TABLE expenses ADD COLUMN IF NOT EXISTS owner_id UUID;
 ALTER TABLE pigs ADD COLUMN IF NOT EXISTS owner_id UUID;
 ALTER TABLE feed_stocks ADD COLUMN IF NOT EXISTS owner_id UUID;
 ALTER TABLE vaccine_stocks ADD COLUMN IF NOT EXISTS owner_id UUID;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS dedupe_key TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS notifications_user_dedupe_idx
+    ON notifications (user_id, dedupe_key)
+    WHERE dedupe_key IS NOT NULL;
 ALTER TABLE feed_records ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN NOT NULL DEFAULT FALSE;
 CREATE INDEX IF NOT EXISTS idx_pig_batches_owner ON pig_batches (owner_id);
 CREATE INDEX IF NOT EXISTS idx_feed_records_owner ON feed_records (owner_id);

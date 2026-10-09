@@ -67,9 +67,12 @@ export const fetchBatangasPigPrice = async ({ fetchImpl = fetch, now = Date.now(
   if (inFlightRequest) return inFlightRequest;
 
   inFlightRequest = (async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
     const response = await fetchImpl(PRICE_SOURCE_URL, {
-    headers: { 'User-Agent': 'PrepAPig/1.0 pig-price-monitor' },
-  });
+      headers: { 'User-Agent': 'PrepAPig/1.0 pig-price-monitor' },
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeout));
   if (!response.ok) {
     throw new Error(`Pig price source returned HTTP ${response.status}`);
   }

@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import "dotenv/config";
+import { randomUUID } from "node:crypto";
+import supabase from "./config/supabase.js";
 
 import authRouter from "./routes/authRoutes.js";
 import pigBatchRouter from "./routes/pigRoutes.js";
@@ -54,11 +56,24 @@ app.use(
 );
 
 app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// Request Logger
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.originalUrl}`);
+  const requestId = randomUUID();
+  req.requestId = requestId;
+  res.setHeader('X-Request-ID', requestId);
+  const startedAt = Date.now();
+  res.on('finish', () => console.log(JSON.stringify({
+    event: 'http_request', requestId, method: req.method,
+    path: req.originalUrl, status: res.statusCode, durationMs: Date.now() - startedAt,
+  })));
+  next();
+});
+
+app.use((req, res, next) => {
+  req.setTimeout(30_000, () => {
+    if (!res.headersSent) res.status(408).json({ success: false, message: 'Request timed out', requestId: req.requestId });
+  });
   next();
 });
 
@@ -80,6 +95,16 @@ app.get("/", (req, res) => {
   });
 });
 
+app.get('/health', (req, res) => {
+  res.json({ success: true, status: 'ok', service: 'PrepAPig Backend API' });
+});
+
+app.get('/health/ready', async (req, res) => {
+  const { error } = await supabase.from('pig_batches').select('id', { head: true, count: 'exact' });
+  if (error) return res.status(503).json({ success: false, status: 'not_ready', requestId: req.requestId });
+  return res.json({ success: true, status: 'ready' });
+});
+
 // 404 Handler
 app.use((req, res) => {
   res.status(404).json({
@@ -88,8 +113,28 @@ app.use((req, res) => {
   });
 });
 
+app.use((err, req, res, next) => {
+  console.error(JSON.stringify({ event: 'request_error', requestId: req.requestId, message: err.message }));
+  if (res.headersSent) return next(err);
+  const status = err.statusCode || err.status || 500;
+  return res.status(status).json({
+    success: false,
+    message: status >= 500 ? 'Internal server error' : err.message,
+    requestId: req.requestId,
+  });
+});
+
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+
+const shutdown = (signal) => {
+  console.log(JSON.stringify({ event: 'shutdown_started', signal }));
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(1), 10_000).unref();
+};
+
+process.once('SIGTERM', () => shutdown('SIGTERM'));
+process.once('SIGINT', () => shutdown('SIGINT'));
