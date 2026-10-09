@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import LoginScreen from './pages/LoginPage.jsx';
 const DashboardScreen = lazy(() => import('./pages/DashboardScreen.jsx'));
 const FeedsInventoryScreen = lazy(() => import('./pages/FeedsInventoryScreen.jsx'));
@@ -8,6 +8,37 @@ const VaccinationScreen = lazy(() => import('./pages/VaccinationScreen.jsx'));
 const BatchPigsScreen = lazy(() => import('./pages/BatchPigsScreen.jsx'));
 import { registerFcmToken } from './api.js';
 import './App.css';
+
+const tabKeys = ['/dashboard', '/feeds', '/reports', '/vaccination'];
+
+function PersistentTabs() {
+  const location = useLocation();
+  const currentPath = tabKeys.includes(location.pathname) ? location.pathname : '/dashboard';
+  const [visitedTabs, setVisitedTabs] = useState(() => new Set([currentPath]));
+
+  useEffect(() => {
+    setVisitedTabs((visited) => {
+      if (visited.has(currentPath)) return visited;
+      return new Set([...visited, currentPath]);
+    });
+  }, [currentPath]);
+
+  return (
+    <>
+      {tabKeys.map((path) => {
+        const shouldRender = visitedTabs.has(path) || path === currentPath;
+        if (!shouldRender) return null;
+        const screen = {
+          '/dashboard': <DashboardScreen />,
+          '/feeds': <FeedsInventoryScreen />,
+          '/reports': <AnalyticsReportsScreen />,
+          '/vaccination': <VaccinationScreen />,
+        }[path];
+        return <div className={path === currentPath ? '' : 'hidden'} key={path}>{screen}</div>;
+      })}
+    </>
+  );
+}
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -80,44 +111,23 @@ function App() {
             )
           }
         />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <DashboardScreen />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/feeds"
-          element={
-            <ProtectedRoute>
-              <FeedsInventoryScreen />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/reports"
-          element={
-            <ProtectedRoute>
-              <AnalyticsReportsScreen />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/vaccination"
-          element={
-            <ProtectedRoute>
-              <VaccinationScreen />
-            </ProtectedRoute>
-          }
-        />
-        {/* ✅ New route – make sure it's INSIDE <Routes> */}
+
+
+
+
         <Route
           path="/batch/:batchId/pigs"
           element={
             <ProtectedRoute>
               <BatchPigsScreen />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="*"
+          element={
+            <ProtectedRoute>
+              <PersistentTabs />
             </ProtectedRoute>
           }
         />
