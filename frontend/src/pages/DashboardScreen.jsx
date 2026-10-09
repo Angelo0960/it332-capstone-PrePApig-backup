@@ -64,6 +64,7 @@ export default function DashboardScreen() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
   const touchStartX = useRef(null);
+  const batchRenderFrame = useRef(null);
 
 
   // Edit pig count state
@@ -228,7 +229,18 @@ export default function DashboardScreen() {
             expenses: (batch.pig_count || 0) * 1000,
           };
         });
-        setBatches(mapped);
+        if (batchRenderFrame.current) cancelAnimationFrame(batchRenderFrame.current);
+        setCurrentBatchIndex(0);
+        setBatches(mapped.slice(0, 1));
+        let nextBatchIndex = 1;
+        const renderNextBatch = () => {
+          if (nextBatchIndex >= mapped.length) return;
+          const nextBatch = mapped[nextBatchIndex];
+          nextBatchIndex += 1;
+          setBatches((current) => [...current, nextBatch]);
+          batchRenderFrame.current = requestAnimationFrame(renderNextBatch);
+        };
+        batchRenderFrame.current = requestAnimationFrame(renderNextBatch);
       } else {
         throw new Error(json.message || 'Unknown error');
       }
@@ -307,6 +319,9 @@ export default function DashboardScreen() {
   useEffect(() => {
     fetchBatches();
     fetchNotifications();
+    return () => {
+      if (batchRenderFrame.current) cancelAnimationFrame(batchRenderFrame.current);
+    };
   }, []);
 
   // ---------- Logout ----------
