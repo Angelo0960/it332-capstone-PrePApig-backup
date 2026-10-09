@@ -327,6 +327,12 @@ export const getPigsByBatch = async (req, res) => {
                     data: [],
                 });
             }
+            if (pigsError.message?.includes("'owner_id' column")) {
+                return res.status(500).json({
+                    success: false,
+                    message: 'Database migration required: run backend/config/migrations/20261009_owner_columns.sql in Supabase.',
+                });
+            }
             throw pigsError;
         }
 
