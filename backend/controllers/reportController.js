@@ -12,10 +12,10 @@ export const getDashboardReport = async (req, res) => {
     try {
 
         const [batches, expensesResult, feeds, vaccinations] = await Promise.all([
-            supabase.from('pig_batches').select('id', { count: 'exact', head: true }),
-            supabase.from('expenses').select('amount'),
-            supabase.from('feed_records').select('id', { count: 'exact', head: true }),
-            supabase.from('vaccination_records').select('id', { count: 'exact', head: true }),
+            supabase.from('pig_batches').select('id', { count: 'exact', head: true }).eq('owner_id', req.user.id),
+            supabase.from('expenses').select('amount').eq('owner_id', req.user.id),
+            supabase.from('feed_records').select('id', { count: 'exact', head: true }).eq('owner_id', req.user.id),
+            supabase.from('vaccination_records').select('id', { count: 'exact', head: true }).eq('owner_id', req.user.id),
         ]);
         const queryErrors = [batches, expensesResult, feeds, vaccinations].filter((result) => result.error);
         if (queryErrors.length > 0) throw queryErrors[0].error;
@@ -54,7 +54,8 @@ export const getFeedReport = async (req, res) => {
 
         const { data, error } = await supabase
             .from('feed_records')
-            .select('*');
+            .select('*')
+            .eq('owner_id', req.user.id);
 
         if (error) throw error;
 
@@ -86,12 +87,12 @@ export const getAnalyticsData = async (req, res) => {
         const from = req.query.from || '1900-01-01';
         const to = req.query.to || '2999-12-31';
         const [batches, feeds, vaccinations, expenses, feedStock, vaccineStock] = await Promise.all([
-            supabase.from('pig_batches').select(analyticsFields.batches).order('created_at', { ascending: false }),
-            supabase.from('feed_records').select(analyticsFields.feeds).gte('feeding_date', from).lte('feeding_date', to).order('feeding_date', { ascending: false }),
-            supabase.from('vaccination_records').select(analyticsFields.vaccinations).gte('vaccination_date', from).lte('vaccination_date', to).order('vaccination_date', { ascending: false }),
-            supabase.from('expenses').select(analyticsFields.expenses).gte('expense_date', from).lte('expense_date', to).order('expense_date', { ascending: false }),
-            supabase.from('feed_stocks').select('feed_type,unit_price,stock_quantity'),
-            supabase.from('vaccine_stocks').select('vaccine_name,price_per_dose,stock_quantity'),
+            supabase.from('pig_batches').select(analyticsFields.batches).eq('owner_id', req.user.id).order('created_at', { ascending: false }),
+            supabase.from('feed_records').select(analyticsFields.feeds).eq('owner_id', req.user.id).gte('feeding_date', from).lte('feeding_date', to).order('feeding_date', { ascending: false }),
+            supabase.from('vaccination_records').select(analyticsFields.vaccinations).eq('owner_id', req.user.id).gte('vaccination_date', from).lte('vaccination_date', to).order('vaccination_date', { ascending: false }),
+            supabase.from('expenses').select(analyticsFields.expenses).eq('owner_id', req.user.id).gte('expense_date', from).lte('expense_date', to).order('expense_date', { ascending: false }),
+            supabase.from('feed_stocks').select('feed_type,unit_price,stock_quantity').eq('owner_id', req.user.id),
+            supabase.from('vaccine_stocks').select('vaccine_name,price_per_dose,stock_quantity').eq('owner_id', req.user.id),
         ]);
         const failed = [batches, feeds, vaccinations, expenses, feedStock, vaccineStock].find((result) => result.error);
         if (failed) throw failed.error;
@@ -118,7 +119,8 @@ export const getExpenseReport = async (req, res) => {
 
         const { data, error } = await supabase
             .from('expenses')
-            .select('*');
+            .select('*')
+            .eq('owner_id', req.user.id);
 
         if (error) throw error;
 

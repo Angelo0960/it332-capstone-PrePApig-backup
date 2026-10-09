@@ -31,47 +31,23 @@ export const sendNotificationToUser = async (userId, title, message, type) => {
 // ---------- Create and Send Notification ----------
 export const createNotification = async (req, res) => {
     try {
-        const { title, message, type, userId, recipient_token } = req.body;
-
-        // If userId is provided, send to all devices of that user
-        if (userId) {
-            await sendNotificationToUser(userId, title, message, type);
-            // Save to notifications table with user_id
-            const { data, error } = await supabase
-                .from('notifications')
-                .insert([{ title, message, type, user_id: userId }])
-                .select();
-            if (error) throw error;
-            return res.status(201).json({
-                success: true,
-                message: 'Notification sent to user',
-                data
-            });
+        const { title, message, type } = req.body;
+        const userId = req.user.id;
+        if (!title || !message || !type) {
+            return res.status(400).json({ success: false, message: 'Title, message, and type are required' });
         }
 
-        // Fallback: send to a single recipient_token (old behavior)
-        if (recipient_token) {
-            const { data, error } = await supabase
-                .from('notifications')
-                .insert([{ title, message, type, recipient_token }])
-                .select();
-            if (error) throw error;
+        await sendNotificationToUser(userId, title, message, type);
+        const { data, error } = await supabase
+            .from('notifications')
+            .insert([{ title, message, type, user_id: userId }])
+            .select();
+        if (error) throw error;
 
-            await admin.messaging().send({
-                token: recipient_token,
-                notification: { title, body: message },
-            });
-
-            return res.status(201).json({
-                success: true,
-                message: 'Notification sent to token',
-                data
-            });
-        }
-
-        return res.status(400).json({
-            success: false,
-            message: 'Either userId or recipient_token is required'
+        return res.status(201).json({
+            success: true,
+            message: 'Notification sent to user',
+            data,
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -86,6 +62,7 @@ export const getAllNotifications = async (req, res) => {
         let query = supabase
             .from('notifications')
             .select('id,user_id,title,message,type,is_read,created_at')
+            .eq('user_id', req.user.id)
             .order('created_at', { ascending: false });
         if (limit !== null) query = query.range(offset, offset + limit - 1);
         const { data, error } = await query;
@@ -113,6 +90,7 @@ export const markAsRead = async (req, res) => {
             .from('notifications')
             .update({ is_read: true })
             .eq('id', id)
+            .eq('user_id', req.user.id)
             .select();
 
         if (error) throw error;
@@ -131,11 +109,11 @@ export const markAsRead = async (req, res) => {
 
 export const markAllAsRead = async (req, res) => {
     try {
-        let query = supabase
+        const query = supabase
             .from('notifications')
             .update({ is_read: true })
             .eq('is_read', false);
-        if (req.user?.id && req.user.id !== 'admin') query = query.eq('user_id', req.user.id);
+        query.eq('user_id', req.user.id);
         const { data, error } = await query.select('id');
 
         if (error) throw error;
@@ -153,7 +131,8 @@ export const deleteNotification = async (req, res) => {
         const { error } = await supabase
             .from('notifications')
             .delete()
-            .eq('id', id);
+            .eq('id', id)
+            .eq('user_id', req.user.id);
 
         if (error) throw error;
 
@@ -169,19 +148,12 @@ export const deleteNotification = async (req, res) => {
     }
 };
 
-// ---------- Save Device Token (with admin skip) ----------
+// ---------- Save Device Token ----------
 export const saveDeviceToken = async (req, res) => {
     try {
         const { token } = req.body;
         const userId = req.user.id; // from authMiddleware
 
-        // Skip for admin (hardcoded user)
-        if (userId === 'admin') {
-            return res.json({
-                success: true,
-                message: 'Admin token registration skipped (no real user in Supabase)',
-            });
-        }
 
         const { data, error } = await supabase
             .from('user_devices')

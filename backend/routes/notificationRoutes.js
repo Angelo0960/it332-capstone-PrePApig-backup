@@ -2,18 +2,20 @@ import * as notificationController from '../controllers/notificationController.j
 import { sendVaccinationReminders } from '../services/notificationServices.js';
 import express from 'express';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
+import { validateBody } from '../middlewares/validate.js';
 
 const notificationRouter = express.Router();
+notificationRouter.use(authMiddleware);
 
 // Existing routes
-notificationRouter.post('/send', notificationController.createNotification);
-notificationRouter.get('/all', authMiddleware, notificationController.getAllNotifications);
-notificationRouter.patch('/read-all', authMiddleware, notificationController.markAllAsRead);
-notificationRouter.patch('/:id/read', authMiddleware, notificationController.markAsRead);
+notificationRouter.post('/send', validateBody({ required: ['title', 'message', 'type'] }), notificationController.createNotification);
+notificationRouter.get('/all', notificationController.getAllNotifications);
+notificationRouter.patch('/read-all', notificationController.markAllAsRead);
+notificationRouter.patch('/:id/read', notificationController.markAsRead);
 notificationRouter.delete('/:id', notificationController.deleteNotification);
 
 // NEW: save device token (requires authentication)
-notificationRouter.post('/register-token', authMiddleware, notificationController.saveDeviceToken);
+notificationRouter.post('/register-token', validateBody({ required: ['token'] }), notificationController.saveDeviceToken);
 
 // NEW: manual trigger for testing (optionally protected)
 notificationRouter.post('/trigger-feed-reminders', notificationController.triggerFeedReminders);

@@ -1,11 +1,13 @@
 import * as pigBatchController from '../controllers/pigController.js';
 import express from 'express';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
+import { validateBody } from '../middlewares/validate.js';
 
 const pigBatchRouter = express.Router();
+pigBatchRouter.use(authMiddleware);
 
 // Batch CRUD
-pigBatchRouter.post('/create', authMiddleware, pigBatchController.createBatch);
+pigBatchRouter.post('/create', validateBody({ required: ['batch_code', 'pig_count'], nonNegative: ['pig_count', 'start_weight', 'current_weight'] }), pigBatchController.createBatch);
 pigBatchRouter.get('/all', pigBatchController.getAllBatches);
 pigBatchRouter.get('/active', pigBatchController.getActiveBatches);
 pigBatchRouter.get('/summary', pigBatchController.getBatchSummary);

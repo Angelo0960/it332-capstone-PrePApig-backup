@@ -85,6 +85,7 @@ export const getAllBatches = async (req, res) => {
         let query = supabase
             .from('pig_batches')
             .select('id,batch_code,pig_count,breed,start_weight,current_weight,date_acquired,status,created_at')
+            .eq('owner_id', req.user.id)
             .order('created_at', { ascending: false });
         if (limit !== null) query = query.range(offset, offset + limit - 1);
         const { data, error } = await query;
@@ -113,6 +114,7 @@ export const getBatchById = async (req, res) => {
             .from('pig_batches')
             .select('*')
             .eq('id', id)
+            .eq('owner_id', req.user.id)
             .single();
 
         if (error) throw error;
@@ -155,6 +157,7 @@ export const updateBatch = async (req, res) => {
                 status
             })
             .eq('id', id)
+            .eq('owner_id', req.user.id)
             .select();
 
         if (error) throw error;
@@ -180,7 +183,8 @@ export const deleteBatch = async (req, res) => {
         const { error } = await supabase
             .from('pig_batches')
             .delete()
-            .eq('id', id);
+            .eq('id', id)
+            .eq('owner_id', req.user.id);
 
         if (error) throw error;
 
@@ -202,7 +206,8 @@ export const getActiveBatches = async (req, res) => {
         const { data, error } = await supabase
             .from('pig_batches')
             .select('*')
-            .eq('status', 'Active');
+            .eq('status', 'Active')
+            .eq('owner_id', req.user.id);
 
         if (error) throw error;
 
@@ -229,6 +234,7 @@ export const updateWeight = async (req, res) => {
             .from('pig_batches')
             .update({ current_weight })
             .eq('id', id)
+            .eq('owner_id', req.user.id)
             .select();
 
         if (error) throw error;
@@ -251,7 +257,8 @@ export const getBatchSummary = async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('pig_batches')
-            .select('pig_count,status');
+            .select('pig_count,status')
+            .eq('owner_id', req.user.id);
 
         if (error) throw error;
 
@@ -293,6 +300,7 @@ export const getPigsByBatch = async (req, res) => {
             .from('pig_batches')
             .select('pig_count, current_weight')
             .eq('id', batchId)
+            .eq('owner_id', req.user.id)
             .single();
 
         if (batchError) {
@@ -308,6 +316,7 @@ export const getPigsByBatch = async (req, res) => {
             .from('pigs')
             .select('*')
             .eq('batch_id', batchId)
+            .eq('owner_id', req.user.id)
             .order('created_at', { ascending: true });
 
         if (pigsError) {
@@ -331,6 +340,7 @@ export const getPigsByBatch = async (req, res) => {
             for (let i = 0; i < pigCount; i++) {
                 newPigs.push({
                     batch_id: batchId,
+                    owner_id: req.user.id,
                     weight: avgWeight,
                     health_status: 'Healthy',
                     notes: 'Auto‑generated (fallback)',
@@ -380,9 +390,19 @@ export const createPig = async (req, res) => {
             });
         }
 
+        const { data: batch, error: batchError } = await supabase
+            .from('pig_batches')
+            .select('id')
+            .eq('id', batch_id)
+            .eq('owner_id', req.user.id)
+            .single();
+        if (batchError || !batch) {
+            return res.status(404).json({ success: false, message: 'Batch not found' });
+        }
+
         const { data, error } = await supabase
             .from('pigs')
-            .insert([{ batch_id, weight, health_status, notes }])
+            .insert([{ batch_id, owner_id: req.user.id, weight, health_status, notes }])
             .select();
 
         if (error) {
@@ -412,6 +432,7 @@ export const updatePig = async (req, res) => {
             .from('pigs')
             .update({ weight, health_status, notes, updated_at: new Date() })
             .eq('id', id)
+            .eq('owner_id', req.user.id)
             .select();
 
         if (error) {
@@ -438,7 +459,8 @@ export const deletePig = async (req, res) => {
         const { error } = await supabase
             .from('pigs')
             .delete()
-            .eq('id', id);
+            .eq('id', id)
+            .eq('owner_id', req.user.id);
 
         if (error) {
             console.error('Pig delete error:', error);

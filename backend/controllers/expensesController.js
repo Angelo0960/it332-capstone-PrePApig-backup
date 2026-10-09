@@ -11,9 +11,29 @@ export const createExpense = async (req, res) => {
             description
         } = req.body;
 
+        if (!expense_type || amount === undefined || !expense_date) {
+            return res.status(400).json({ success: false, message: 'Expense type, amount, and date are required' });
+        }
+        if (!Number.isFinite(Number(amount)) || Number(amount) < 0) {
+            return res.status(400).json({ success: false, message: 'Amount must be a non-negative number' });
+        }
+
+        if (batch_id) {
+            const { data: batch, error: batchError } = await supabase
+                .from('pig_batches')
+                .select('id')
+                .eq('id', batch_id)
+                .eq('owner_id', req.user.id)
+                .single();
+            if (batchError || !batch) {
+                return res.status(404).json({ success: false, message: 'Batch not found' });
+            }
+        }
+
         const { data, error } = await supabase
             .from('expenses')
             .insert([{
+                owner_id: req.user.id,
                 batch_id,
                 expense_type,
                 amount,
@@ -45,6 +65,7 @@ export const getAllExpenses = async (req, res) => {
         let query = supabase
             .from('expenses')
             .select('id,batch_id,expense_type,amount,expense_date,description,created_at')
+            .eq('owner_id', req.user.id)
             .gte('expense_date', req.query.from || '1900-01-01')
             .lte('expense_date', req.query.to || '2999-12-31')
             .order('expense_date', { ascending: false });
@@ -76,6 +97,7 @@ export const getExpenseById = async (req, res) => {
             .from('expenses')
             .select('*')
             .eq('id', id)
+            .eq('owner_id', req.user.id)
             .single();
 
         if (error) throw error;
@@ -100,8 +122,15 @@ export const updateExpense = async (req, res) => {
 
         const { data, error } = await supabase
             .from('expenses')
-            .update(req.body)
+            .update({
+                batch_id: req.body.batch_id,
+                expense_type: req.body.expense_type,
+                amount: req.body.amount,
+                expense_date: req.body.expense_date,
+                description: req.body.description,
+            })
             .eq('id', id)
+            .eq('owner_id', req.user.id)
             .select();
 
         if (error) throw error;
@@ -128,7 +157,8 @@ export const deleteExpense = async (req, res) => {
         const { error } = await supabase
             .from('expenses')
             .delete()
-            .eq('id', id);
+            .eq('id', id)
+            .eq('owner_id', req.user.id);
 
         if (error) throw error;
 
@@ -150,7 +180,8 @@ export const getExpenseSummary = async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('expenses')
-            .select('amount');
+            .select('amount')
+            .eq('owner_id', req.user.id);
 
         if (error) throw error;
 

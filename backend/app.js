@@ -13,6 +13,10 @@ import marketPriceRouter from "./routes/marketPriceRoutes.js";
 
 import "./scheduler.js";
 
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET must be configured with at least 32 characters');
+}
+
 const app = express();
 
 const allowedOrigins = [
@@ -49,7 +53,7 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Request Logger

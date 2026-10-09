@@ -35,20 +35,6 @@
   // Login (updated)
   export const login = async (req, res) => {
     const { email, password } = req.body;
-    console.log('📥 Login attempt:', { email, password });
-
-    // ── Admin hardcoded ──
-    if (email === 'admin' && password === 'admin') {
-      const token = jwt.sign(
-        { id: 'admin', email: 'admin' },
-        process.env.JWT_SECRET,
-        { expiresIn: '1d' }
-      );
-      return res.status(200).json({
-        token,
-        farmer: { id: 'admin', name: 'Admin' }
-      });
-    }
 
     // ── Normal Supabase login ──
     try {

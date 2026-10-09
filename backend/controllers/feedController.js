@@ -13,10 +13,21 @@ export const createFeedRecord = async (req, res) => {
             notes
         } = req.body;
 
+        const { data: batch, error: batchError } = await supabase
+            .from('pig_batches')
+            .select('id')
+            .eq('id', batch_id)
+            .eq('owner_id', req.user.id)
+            .single();
+        if (batchError || !batch) {
+            return res.status(404).json({ success: false, message: 'Batch not found' });
+        }
+
         // 1. Insert the feed record
         const { data, error } = await supabase
             .from('feed_records')
             .insert([{
+                owner_id: req.user.id,
                 batch_id,
                 feed_type,
                 quantity_kg,
@@ -49,7 +60,7 @@ export const createFeedRecord = async (req, res) => {
 
                 const ownerId = batchData?.owner_id;
                 const batchCode = batchData?.batch_code || 'Batch';
-                if (!ownerId || ownerId === 'admin') return;
+                if (!ownerId) return;
 
                 const { data: devices, error: deviceError } = await supabase
                     .from('user_devices')
@@ -100,6 +111,7 @@ export const getAllFeedRecords = async (req, res) => {
         let query = supabase
             .from('feed_records')
             .select('id,batch_id,feed_type,quantity_kg,feeding_date,feeding_time,notes,created_at')
+            .eq('owner_id', req.user.id)
             .gte('feeding_date', req.query.from || '1900-01-01')
             .lte('feeding_date', req.query.to || '2999-12-31')
             .order('feeding_date', { ascending: false });
@@ -131,6 +143,7 @@ export const getFeedRecordById = async (req, res) => {
             .from('feed_records')
             .select('*')
             .eq('id', id)
+            .eq('owner_id', req.user.id)
             .single();
 
         if (error) throw error;
@@ -157,6 +170,7 @@ export const getFeedByBatch = async (req, res) => {
             .from('feed_records')
             .select('id,batch_id,feed_type,quantity_kg,feeding_date,feeding_time,notes,created_at')
             .eq('batch_id', batchId)
+            .eq('owner_id', req.user.id)
             .order('feeding_date', { ascending: false });
 
         if (error) throw error;
@@ -182,8 +196,15 @@ export const updateFeedRecord = async (req, res) => {
 
         const { data, error } = await supabase
             .from('feed_records')
-            .update(req.body)
+            .update({
+                feed_type: req.body.feed_type,
+                quantity_kg: req.body.quantity_kg,
+                feeding_date: req.body.feeding_date,
+                feeding_time: req.body.feeding_time,
+                notes: req.body.notes,
+            })
             .eq('id', id)
+            .eq('owner_id', req.user.id)
             .select();
 
         if (error) throw error;
@@ -210,7 +231,8 @@ export const deleteFeedRecord = async (req, res) => {
         const { error } = await supabase
             .from('feed_records')
             .delete()
-            .eq('id', id);
+            .eq('id', id)
+            .eq('owner_id', req.user.id);
 
         if (error) throw error;
 
@@ -233,7 +255,8 @@ export const getFeedSummary = async (req, res) => {
 
         const { data, error } = await supabase
             .from('feed_records')
-            .select('quantity_kg');
+            .select('quantity_kg')
+            .eq('owner_id', req.user.id);
 
         if (error) throw error;
 
@@ -269,6 +292,7 @@ export const getFeedStock = async (req, res) => {
         const { data, error } = await supabase
             .from('feed_stocks')
             .select('*')
+            .eq('owner_id', req.user.id)
             .order('feed_type');
 
         if (error) {
@@ -304,13 +328,14 @@ export const updateFeedStock = async (req, res) => {
         const { data, error } = await supabase
             .from('feed_stocks')
             .upsert({
+                owner_id: req.user.id,
                 feed_type,
                 stock_quantity,
                 unit_price,
                 last_updated: last_updated || new Date().toISOString().split('T')[0],
                 notes,
                 updated_at: new Date()
-            }, { onConflict: 'feed_type' })
+            }, { onConflict: 'owner_id,feed_type' })
             .select();
 
         if (error) throw error;

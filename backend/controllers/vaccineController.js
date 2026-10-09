@@ -15,10 +15,21 @@ export const createVaccination = async (req, res) => {
             status
         } = req.body;
 
+        const { data: batch, error: batchError } = await supabase
+            .from('pig_batches')
+            .select('id')
+            .eq('id', batch_id)
+            .eq('owner_id', req.user.id)
+            .single();
+        if (batchError || !batch) {
+            return res.status(404).json({ success: false, message: 'Batch not found' });
+        }
+
         // 1. Insert the vaccination record
         const { data, error } = await supabase
             .from('vaccination_records')
             .insert([{
+                owner_id: req.user.id,
                 batch_id,
                 vaccine_name,
                 vaccination_date,
@@ -41,6 +52,7 @@ export const createVaccination = async (req, res) => {
                     .from('vaccine_stocks')
                     .select('stock_quantity')
                     .eq('vaccine_name', vaccine_name)
+                    .eq('owner_id', req.user.id)
                     .single();
 
                 if (!stockError && stockData) {
@@ -51,7 +63,8 @@ export const createVaccination = async (req, res) => {
                             stock_quantity: newQuantity,
                             updated_at: new Date()
                         })
-                        .eq('vaccine_name', vaccine_name);
+                        .eq('vaccine_name', vaccine_name)
+                        .eq('owner_id', req.user.id);
                 }
             }
         }
@@ -77,7 +90,7 @@ export const createVaccination = async (req, res) => {
 
                 const ownerId = batchData?.owner_id;
                 const batchCode = batchData?.batch_code || 'Batch';
-                if (!ownerId || ownerId === 'admin') return;
+                if (!ownerId) return;
 
                 const { data: devices, error: deviceError } = await supabase
                     .from('user_devices')
@@ -128,6 +141,7 @@ export const getAllVaccinations = async (req, res) => {
         let query = supabase
             .from('vaccination_records')
             .select('id,batch_id,vaccine_name,vaccination_date,next_due_date,administered_by,dosage,notes,status,created_at')
+            .eq('owner_id', req.user.id)
             .gte('vaccination_date', req.query.from || '1900-01-01')
             .lte('vaccination_date', req.query.to || '2999-12-31')
             .order('vaccination_date', { ascending: false });
@@ -159,6 +173,7 @@ export const getVaccinationById = async (req, res) => {
             .from('vaccination_records')
             .select('*')
             .eq('id', id)
+            .eq('owner_id', req.user.id)
             .single();
 
         if (error) throw error;
@@ -185,6 +200,7 @@ export const getVaccinationsByBatch = async (req, res) => {
             .from('vaccination_records')
             .select('id,batch_id,vaccine_name,vaccination_date,next_due_date,administered_by,dosage,notes,status,created_at')
             .eq('batch_id', batchId)
+            .eq('owner_id', req.user.id)
             .order('vaccination_date', { ascending: false });
 
         if (error) throw error;
@@ -211,7 +227,8 @@ export const getUpcomingVaccinations = async (req, res) => {
         const { data, error } = await supabase
             .from('vaccination_records')
             .select('*')
-            .gte('next_due_date', today);
+            .gte('next_due_date', today)
+            .eq('owner_id', req.user.id);
 
         if (error) throw error;
 
@@ -238,6 +255,7 @@ export const getVaccineStock = async (req, res) => {
         const { data, error } = await supabase
             .from('vaccine_stocks')
             .select('*')
+            .eq('owner_id', req.user.id)
             .order('vaccine_name');
 
         if (error) {
@@ -275,13 +293,14 @@ export const updateVaccineStock = async (req, res) => {
         const { data, error } = await supabase
             .from('vaccine_stocks')
             .upsert({
+                owner_id: req.user.id,
                 vaccine_name,
                 stock_quantity,
                 expiry_date,
                 price_per_dose,
                 notes,
                 updated_at: new Date()
-            }, { onConflict: 'vaccine_name' })
+            }, { onConflict: 'owner_id,vaccine_name' })
             .select();
 
         if (error) throw error;

@@ -1,6 +1,7 @@
 import express from 'express';
 import { fetchBatangasPigPrice } from '../services/pigPriceScraper.js';
 import { generatePigPriceAnalysis } from '../services/geminiPigPriceService.js';
+import { authMiddleware } from '../middlewares/authMiddleware.js';
 
 const marketPriceRouter = express.Router();
 
@@ -17,7 +18,7 @@ marketPriceRouter.get('/pigs', async (_req, res) => {
   }
 });
 
-marketPriceRouter.post('/pigs/ai-analysis', async (req, res) => {
+marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, async (req, res) => {
   try {
     const priceData = await fetchBatangasPigPrice();
     const locations = Array.isArray(req.body?.locations) && req.body.locations.length > 0
