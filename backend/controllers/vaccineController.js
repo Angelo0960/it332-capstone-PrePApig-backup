@@ -136,9 +136,11 @@ export const createVaccination = async (req, res) => {
 
     } catch (error) {
         console.error('Error in createVaccination:', error);
-        const message = error.message?.includes("'owner_id' column")
-            ? 'Database migration required: run backend/config/migrations/20261009_add_vaccination_owner.sql in Supabase.'
-            : error.message;
+        const message = error.message?.includes('vaccine_stocks.owner_id')
+            ? 'Database migration required: run backend/config/migrations/20261010_vaccine_stock_owner.sql in Supabase.'
+            : error.message?.includes("'owner_id' column")
+                ? 'Database migration required: run backend/config/migrations/20261009_owner_columns.sql in Supabase.'
+                : error.message;
         res.status(500).json({
             success: false,
             message
@@ -292,9 +294,12 @@ export const getVaccineStock = async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching vaccine stock:', error);
+        const message = error.message?.includes('vaccine_stocks.owner_id')
+            ? 'Database migration required: run backend/config/migrations/20261010_vaccine_stock_owner.sql in Supabase.'
+            : error.message;
         res.status(500).json({
             success: false,
-            message: error.message
+            message
         });
     }
 };
@@ -339,10 +344,14 @@ export const updateVaccineStock = async (req, res) => {
             success: true,
             data
         });
+
     } catch (error) {
+        const message = error.message?.includes('vaccine_stocks.owner_id')
+            ? 'Database migration required: run backend/config/migrations/20261010_vaccine_stock_owner.sql in Supabase.'
+            : error.message;
         res.status(500).json({
             success: false,
-            message: error.message
+            message
         });
     }
 };
