@@ -119,6 +119,7 @@ export default function VaccinationScreen() {
   const [vaccinationRecords, setVaccinationRecords] = useState([]);
   const [batches, setBatches] = useState([]);
   const [vaccineStock, setVaccineStock] = useState([]);
+  const [pendingDone, setPendingDone] = useState({});
 
   // Form states
   const [vaccinationForm, setVaccinationForm] = useState({
@@ -292,7 +293,8 @@ export default function VaccinationScreen() {
   };
 
   // Direct "Mark as Done" – no modal
-  const handleDirectMarkAsDone = (batchId, vaccineName, doses) => {
+  const handleDirectMarkAsDone = async (batchId, vaccineName, doses) => {
+    setPendingDone((current) => ({ ...current, [batchId]: true }));
     const vaccinationDate = formatLocalDate();
     const batch = batches.find((item) => String(item.id) === String(batchId));
     const payload = buildVaccinationDonePayload({
@@ -301,7 +303,20 @@ export default function VaccinationScreen() {
       doses,
       nextDueDate: getNextScheduledDate(batch, vaccinationDate),
     });
-    handleSaveVaccination(payload);
+    const saved = await handleSaveVaccination(payload);
+    if (!saved) {
+      setPendingDone((current) => {
+        const next = { ...current };
+        delete next[batchId];
+        return next;
+      });
+    } else {
+      setPendingDone((current) => {
+        const next = { ...current };
+        delete next[batchId];
+        return next;
+      });
+    }
   };
 
   // Modal submit
@@ -687,7 +702,10 @@ export default function VaccinationScreen() {
                       const isAllComplete = completedCount === vaccinationSchedule.length;
                       const hasOverdue = vaccineStatuses.some((v) => v.isOverdue);
                       const hasDue = vaccineStatuses.some((v) => v.isDue);
-                      const overallStatus = isAllComplete
+                      const isPending = Boolean(pendingDone[batch.id]);
+                      const overallStatus = isPending
+                        ? 'Saving...'
+                        : isAllComplete
                         ? 'Complete'
                         : hasOverdue
                         ? 'Overdue'
@@ -791,13 +809,14 @@ export default function VaccinationScreen() {
                               if (!dueVax) return null;
                               return (
                                 <button
+                                  disabled={isPending}
                                   onClick={() => {
                                     const doses = String(dueVax.dosePerPig * pigCount);
                                     handleDirectMarkAsDone(batch.id, dueVax.vaccine, doses);
                                   }}
                                   className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-semibold py-2 rounded-lg shadow-lg active:scale-95 transition-all"
                                 >
-                                  Mark as Done
+                                  {isPending ? 'Saving...' : 'Mark as Done'}
                                 </button>
                               );
                             })()}

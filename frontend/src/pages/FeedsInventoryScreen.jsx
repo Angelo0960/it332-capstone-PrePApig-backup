@@ -132,6 +132,7 @@ export default function FeedsInventoryScreen() {
   const [feedRecords, setFeedRecords] = useState([]);
   const [batches, setBatches] = useState([]);
   const [feedStocks, setFeedStocks] = useState([]);
+  const [pendingDone, setPendingDone] = useState({});
 
   const [usageForm, setUsageForm] = useState({
     batch: '',
@@ -302,13 +303,27 @@ export default function FeedsInventoryScreen() {
   };
 
   // ----- Direct Mark as Done -----
-  const handleDirectMarkAsDone = (batchId, feedType, amount) => {
+  const handleDirectMarkAsDone = async (batchId, feedType, amount) => {
+    setPendingDone((current) => ({ ...current, [batchId]: true }));
     const payload = buildFeedDonePayload({
       batchId,
       feedType,
       amount,
     });
-    handleSaveFeedUsage(payload);
+    const saved = await handleSaveFeedUsage(payload);
+    if (!saved) {
+      setPendingDone((current) => {
+        const next = { ...current };
+        delete next[batchId];
+        return next;
+      });
+    } else {
+      setPendingDone((current) => {
+        const next = { ...current };
+        delete next[batchId];
+        return next;
+      });
+    }
   };
 
   // ----- Modal submit -----
@@ -813,9 +828,10 @@ export default function FeedsInventoryScreen() {
                       const existingToday = feedRecords.some(
                         (r) => r.batch_id === batch.id && r.feeding_date === todayStr
                       );
-                      const isDone = existingToday;
+                      const isPending = Boolean(pendingDone[batch.id]);
+                      const isDone = existingToday || isPending;
 
-                      const status = isDone ? 'completed' : 'pending';
+                      const status = isPending ? 'saving' : isDone ? 'completed' : 'pending';
                       const scheduleTime =
                         index === 0
                           ? 'Today, 5:00 PM'
@@ -834,7 +850,7 @@ export default function FeedsInventoryScreen() {
                                 {batch.name} – {batch.pigCount ?? 0} pigs · Day {batch.day}
                               </div>
                               <div className="text-xs text-gray-600 mt-1">
-                                {isDone ? 'Completed today' : `Next feeding: ${scheduleTime}`}
+                                {isPending ? 'Saving...' : isDone ? 'Completed today' : `Next feeding: ${scheduleTime}`}
                               </div>
                               <div className="text-xs text-gray-600">
                                 {feedName}, {dailyAmount} kg
@@ -854,7 +870,7 @@ export default function FeedsInventoryScreen() {
                                   : 'bg-yellow-100/80 border border-yellow-300/50 text-yellow-700'
                               }`}
                             >
-                              {isDone ? 'Completed' : 'Pending'}
+                              {isPending ? 'Saving...' : isDone ? 'Completed' : 'Pending'}
                             </span>
                           </div>
 
