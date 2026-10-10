@@ -18,6 +18,7 @@ import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5b
 import BottomNav from '../components/BottomNav';
 import { API_BASE, getAuthHeaders } from '../api.js';
 import { buildVaccinationDonePayload } from '../utils/markDonePayloads.js';
+import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 
 // Standard vaccination schedule by age
 const vaccinationSchedule = [
@@ -123,6 +124,11 @@ export default function VaccinationScreen() {
 
   // Fetch batches
   const fetchBatches = async () => {
+    const cacheKey = `batches:${getUserCacheKey()}`;
+    const cached = readCache(cacheKey);
+    if (Array.isArray(cached) && cached.length > 0) {
+      setBatches(cached);
+    }
     try {
       const res = await fetch(`${API_BASE}/pigs/all?limit=100`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -152,6 +158,7 @@ export default function VaccinationScreen() {
           };
         });
         setBatches(mapped);
+        writeCache(cacheKey, mapped);
         setUseMock(false);
       } else {
         throw new Error('No batches found');
@@ -167,6 +174,12 @@ export default function VaccinationScreen() {
   const fetchVaccinations = async () => {
     setLoading(true);
     setError(null);
+    const cacheKey = `vaccination-records:${getUserCacheKey()}:${selectedBatch}`;
+    const cached = readCache(cacheKey);
+    if (Array.isArray(cached)) {
+      setVaccinationRecords(cached);
+      setLoading(false);
+    }
     try {
       let url = `${API_BASE}/vaccinations/all?limit=100`;
       if (selectedBatch !== 'all') {
@@ -176,7 +189,9 @@ export default function VaccinationScreen() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success) {
-        setVaccinationRecords(json.data || []);
+        const records = json.data || [];
+        setVaccinationRecords(records);
+        writeCache(cacheKey, records);
         setUseMock(false);
       } else {
         throw new Error(json.message || 'No records');
@@ -196,12 +211,17 @@ export default function VaccinationScreen() {
 
   // Fetch vaccine stock
   const fetchVaccineStock = async () => {
+    const cacheKey = `vaccine-stock:${getUserCacheKey()}`;
+    const cached = readCache(cacheKey);
+    if (Array.isArray(cached)) setVaccineStock(cached);
     try {
       const res = await fetch(`${API_BASE}/vaccinations/stock`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed to fetch stock');
       const json = await res.json();
       if (json.success) {
-        setVaccineStock(json.data || []);
+        const stocks = json.data || [];
+        setVaccineStock(stocks);
+        writeCache(cacheKey, stocks);
       }
     } catch (err) {
       console.warn('Could not fetch vaccine stock:', err.message);

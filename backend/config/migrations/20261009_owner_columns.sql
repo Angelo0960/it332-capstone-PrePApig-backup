@@ -40,8 +40,14 @@ CREATE INDEX IF NOT EXISTS idx_pig_batches_owner_created_at
 CREATE INDEX IF NOT EXISTS idx_feed_records_owner
   ON public.feed_records (owner_id);
 
+CREATE INDEX IF NOT EXISTS idx_feed_records_owner_date
+  ON public.feed_records (owner_id, feeding_date DESC);
+
 CREATE INDEX IF NOT EXISTS idx_vaccination_records_owner
   ON public.vaccination_records (owner_id);
+
+CREATE INDEX IF NOT EXISTS idx_vaccination_records_owner_date
+  ON public.vaccination_records (owner_id, vaccination_date DESC);
 
 CREATE INDEX IF NOT EXISTS idx_expenses_owner
   ON public.expenses (owner_id);

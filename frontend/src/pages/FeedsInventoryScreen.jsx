@@ -20,6 +20,7 @@ import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
 import { API_BASE, getAuthHeaders } from '../api.js';
 import { buildFeedDonePayload } from '../utils/markDonePayloads.js';
+import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 // ────────────────────────────────────────────────────────────────
 
 // Mock data
@@ -148,6 +149,11 @@ export default function FeedsInventoryScreen() {
 
   // Fetch functions
   const fetchBatches = async () => {
+    const cacheKey = `batches:${getUserCacheKey()}`;
+    const cached = readCache(cacheKey);
+    if (Array.isArray(cached) && cached.length > 0) {
+      setBatches(cached);
+    }
     try {
       const res = await fetch(`${API_BASE}/pigs/all?limit=100`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -172,6 +178,7 @@ export default function FeedsInventoryScreen() {
           };
         });
         setBatches(mapped);
+        writeCache(cacheKey, mapped);
         setUseMock(false);
       } else {
         throw new Error('No batches found');
@@ -186,6 +193,12 @@ export default function FeedsInventoryScreen() {
   const fetchFeedRecords = async () => {
     setLoading(true);
     setError(null);
+    const cacheKey = `feed-records:${getUserCacheKey()}:${selectedBatch}`;
+    const cached = readCache(cacheKey);
+    if (Array.isArray(cached)) {
+      setFeedRecords(cached);
+      setLoading(false);
+    }
     try {
       let url = `${API_BASE}/feeds/all?limit=100`;
       if (selectedBatch !== 'all') {
@@ -195,7 +208,9 @@ export default function FeedsInventoryScreen() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success) {
-        setFeedRecords(json.data || []);
+        const records = json.data || [];
+        setFeedRecords(records);
+        writeCache(cacheKey, records);
         setUseMock(false);
       } else {
         throw new Error(json.message || 'No records');
@@ -214,12 +229,17 @@ export default function FeedsInventoryScreen() {
   };
 
   const fetchFeedStock = async () => {
+    const cacheKey = `feed-stock:${getUserCacheKey()}`;
+    const cached = readCache(cacheKey);
+    if (Array.isArray(cached)) setFeedStocks(cached);
     try {
       const res = await fetch(`${API_BASE}/feeds/stock`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed to fetch stock');
       const json = await res.json();
       if (json.success) {
-        setFeedStocks(json.data || []);
+        const stocks = json.data || [];
+        setFeedStocks(stocks);
+        writeCache(cacheKey, stocks);
         setUseMock(false);
       }
     } catch (err) {
