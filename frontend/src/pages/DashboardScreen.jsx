@@ -698,8 +698,8 @@ export default function DashboardScreen() {
 
         {/* Add Batch Modal */}
         {showAddBatch && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-sm md:max-w-md lg:max-w-lg max-h-[80vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center responsive-modal-overlay bg-black/50 backdrop-blur-sm p-4">
+            <div className="responsive-modal bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-sm md:max-w-md lg:max-w-lg max-h-[80vh] overflow-y-auto">
               <div className="flex items-center justify-between p-5 border-b border-white/30">
                 <h2 className="text-lg font-bold text-gray-900">Add New Batch</h2>
                 <button
@@ -792,8 +792,8 @@ export default function DashboardScreen() {
 
         {/* Edit Pig Count Modal */}
         {showEditPigModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-sm md:max-w-md lg:max-w-lg">
+          <div className="fixed inset-0 z-50 flex items-center justify-center responsive-modal-overlay bg-black/50 backdrop-blur-sm p-4">
+            <div className="responsive-modal bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-sm md:max-w-md lg:max-w-lg">
               <div className="flex items-center justify-between p-5 border-b border-white/30">
                 <h2 className="text-lg font-bold text-gray-900">Edit Pig Count</h2>
                 <button
@@ -836,8 +836,8 @@ export default function DashboardScreen() {
 
         {/* Profile Modal */}
         {showProfileModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-sm md:max-w-md lg:max-w-lg">
+          <div className="fixed inset-0 z-50 flex items-center justify-center responsive-modal-overlay bg-black/50 backdrop-blur-sm p-4">
+            <div className="responsive-modal bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-sm md:max-w-md lg:max-w-lg">
               <div className="flex items-center justify-between p-5 border-b border-white/30">
                 <h2 className="text-lg font-bold text-gray-900">Profile</h2>
                 <button
@@ -875,8 +875,8 @@ export default function DashboardScreen() {
 
         {/* Notifications Panel */}
         {showNotifications && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-[90%] md:w-[70%] lg:w-[50%] max-h-[70%] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center responsive-modal-overlay bg-black/50 backdrop-blur-sm p-4">
+            <div className="responsive-modal bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-[90%] md:w-[70%] lg:w-[50%] max-h-[70%] overflow-y-auto">
               <div className="flex items-center justify-between p-4 border-b border-white/30">
                 <h2 className="text-lg font-bold text-gray-900">Notifications</h2>
                 <button

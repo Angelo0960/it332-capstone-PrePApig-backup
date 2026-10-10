@@ -837,8 +837,8 @@ export default function VaccinationScreen() {
 
         {/* Record Vaccination Modal */}
         {showRecordVaccination && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-sm md:max-w-md lg:max-w-lg max-h-[80%] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center responsive-modal-overlay bg-black/50 backdrop-blur-sm p-4">
+            <div className="responsive-modal bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-sm md:max-w-md lg:max-w-lg max-h-[80%] overflow-y-auto">
               <div className="flex items-center justify-between p-5 border-b border-white/30">
                 <h2 className="text-lg font-bold text-gray-900">Record Vaccination</h2>
                 <button
@@ -936,8 +936,8 @@ export default function VaccinationScreen() {
 
         {/* Restock Vaccine Modal */}
         {showRestockVaccine && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-sm md:max-w-md lg:max-w-lg max-h-[80%] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center responsive-modal-overlay bg-black/50 backdrop-blur-sm p-4">
+            <div className="responsive-modal bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-sm md:max-w-md lg:max-w-lg max-h-[80%] overflow-y-auto">
               <div className="flex items-center justify-between p-5 border-b border-white/30">
                 <h2 className="text-lg font-bold text-gray-900">Restock Vaccine</h2>
                 <button
