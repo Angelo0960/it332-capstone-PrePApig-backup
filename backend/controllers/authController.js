@@ -1,5 +1,6 @@
   import supabase from '../config/supabase.js';
   import jwt from 'jsonwebtoken';
+  import { revokeToken } from '../middlewares/authMiddleware.js';
 
   // Register
   export const register = async (req, res) => {
@@ -77,6 +78,12 @@
   // Logout
   export const logout = async (req, res) => {
     try {
+      const authHeader = req.headers.authorization;
+      const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      if (token) {
+        const decoded = jwt.decode(token);
+        revokeToken(token, decoded?.exp ? decoded.exp * 1000 : undefined);
+      }
       const { error } = await supabase.auth.signOut();
       if (error) {
         return res.status(400).json({

@@ -10,7 +10,7 @@ vaccinationRouter.use(authMiddleware);
 vaccinationRouter.post('/create', validateBody({ required: ['batch_id', 'vaccine_name', 'vaccination_date'], nonNegative: ['dosage'] }), vaccinationController.createVaccination);
 vaccinationRouter.get('/all', vaccinationController.getAllVaccinations);
 vaccinationRouter.get('/stock', vaccinationController.getVaccineStock);
-vaccinationRouter.post('/stock/update', validateBody({ required: ['vaccine_name', 'stock_quantity'], nonNegative: ['stock_quantity', 'price_per_dose'] }), vaccinationController.updateVaccineStock); // ✅ NEW
+vaccinationRouter.post('/stock/update', validateBody({ required: ['vaccine_name'], nonNegative: ['stock_quantity', 'price_per_dose'] }), vaccinationController.updateVaccineStock);
 vaccinationRouter.get('/batch/:batchId', vaccinationController.getVaccinationsByBatch);
 vaccinationRouter.get('/upcoming', vaccinationController.getUpcomingVaccinations);
 

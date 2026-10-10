@@ -25,7 +25,34 @@ export const createVaccination = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Batch not found' });
         }
 
-        // 1. Insert the vaccination record
+        // Deduct stock before creating the record. If the record insert fails,
+        // restore the previous quantity so the two operations stay consistent.
+        const dosageNum = Number(dosage) || 0;
+        let previousStock = null;
+        let stockUpdated = false;
+        if (dosageNum > 0) {
+            const { data: stockData, error: stockError } = await supabase
+                .from('vaccine_stocks')
+                .select('stock_quantity')
+                .eq('vaccine_name', vaccine_name)
+                .eq('owner_id', req.user.id)
+                .maybeSingle();
+            if (stockError) throw stockError;
+            if (stockData) {
+                previousStock = Number(stockData.stock_quantity) || 0;
+                const { error: updateError } = await supabase
+                    .from('vaccine_stocks')
+                    .update({
+                        stock_quantity: Math.max(0, previousStock - dosageNum),
+                        updated_at: new Date()
+                    })
+                    .eq('vaccine_name', vaccine_name)
+                    .eq('owner_id', req.user.id);
+                if (updateError) throw updateError;
+                stockUpdated = true;
+            }
+        }
+
         const { data, error } = await supabase
             .from('vaccination_records')
             .insert([{
@@ -41,32 +68,15 @@ export const createVaccination = async (req, res) => {
             }])
             .select();
 
-        if (error) throw error;
-
-        // 2. Deduct from vaccine stock (if dosage is provided)
-        if (dosage) {
-            const dosageNum = Number(dosage) || 0;
-            if (dosageNum > 0) {
-                // Get current stock
-                const { data: stockData, error: stockError } = await supabase
+        if (error) {
+            if (stockUpdated) {
+                await supabase
                     .from('vaccine_stocks')
-                    .select('stock_quantity')
+                    .update({ stock_quantity: previousStock, updated_at: new Date() })
                     .eq('vaccine_name', vaccine_name)
-                    .eq('owner_id', req.user.id)
-                    .single();
-
-                if (!stockError && stockData) {
-                    const newQuantity = Math.max(0, stockData.stock_quantity - dosageNum);
-                    await supabase
-                        .from('vaccine_stocks')
-                        .update({ 
-                            stock_quantity: newQuantity,
-                            updated_at: new Date()
-                        })
-                        .eq('vaccine_name', vaccine_name)
-                        .eq('owner_id', req.user.id);
-                }
+                    .eq('owner_id', req.user.id);
             }
+            throw error;
         }
 
         res.status(201).json({
@@ -198,13 +208,17 @@ export const getVaccinationById = async (req, res) => {
 export const getVaccinationsByBatch = async (req, res) => {
     try {
         const { batchId } = req.params;
+        const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit) || 100, 1), 500) : null;
+        const offset = Math.max(Number(req.query.offset) || 0, 0);
 
-        const { data, error } = await supabase
+        let query = supabase
             .from('vaccination_records')
             .select('id,batch_id,vaccine_name,vaccination_date,next_due_date,administered_by,dosage,notes,status,created_at')
             .eq('batch_id', batchId)
             .eq('owner_id', req.user.id)
             .order('vaccination_date', { ascending: false });
+        if (limit !== null) query = query.range(offset, offset + limit - 1);
+        const { data, error } = await query;
 
         if (error) throw error;
 
@@ -289,8 +303,21 @@ export const getVaccineStock = async (req, res) => {
 export const updateVaccineStock = async (req, res) => {
     try {
         const { vaccine_name, stock_quantity, expiry_date, price_per_dose, notes } = req.body;
-        if (!vaccine_name || stock_quantity === undefined) {
-            return res.status(400).json({ success: false, message: 'Missing required fields' });
+        if (!vaccine_name || (stock_quantity === undefined && price_per_dose === undefined && expiry_date === undefined && notes === undefined)) {
+            return res.status(400).json({ success: false, message: 'Vaccine name and an update value are required' });
+        }
+
+        const { data: existing, error: existingError } = await supabase
+            .from('vaccine_stocks')
+            .select('stock_quantity,expiry_date,price_per_dose,notes')
+            .eq('owner_id', req.user.id)
+            .eq('vaccine_name', vaccine_name)
+            .maybeSingle();
+        if (existingError) throw existingError;
+
+        const addedQuantity = stock_quantity === undefined ? 0 : Number(stock_quantity);
+        if (!Number.isFinite(addedQuantity) || addedQuantity < 0) {
+            return res.status(400).json({ success: false, message: 'Stock quantity must be non-negative' });
         }
 
         const { data, error } = await supabase
@@ -298,10 +325,10 @@ export const updateVaccineStock = async (req, res) => {
             .upsert({
                 owner_id: req.user.id,
                 vaccine_name,
-                stock_quantity,
-                expiry_date,
-                price_per_dose,
-                notes,
+                stock_quantity: Number(existing?.stock_quantity || 0) + addedQuantity,
+                expiry_date: expiry_date === undefined ? existing?.expiry_date : expiry_date,
+                price_per_dose: price_per_dose === undefined ? existing?.price_per_dose : price_per_dose,
+                notes: notes === undefined ? existing?.notes : notes,
                 updated_at: new Date()
             }, { onConflict: 'owner_id,vaccine_name' })
             .select();

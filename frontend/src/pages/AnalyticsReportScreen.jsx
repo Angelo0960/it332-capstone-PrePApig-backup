@@ -214,6 +214,13 @@ export default function AnalyticsReportsScreen() {
   const totalFeedCost = useMemo(() => getFeedCost(), [filteredFeedRecords, feedStock]);
   const totalVaccineCost = useMemo(() => getVaccineCost(), [filteredVaccinationRecords, vaccineStock]);
   const combinedExpenses = totalFeedCost + totalVaccineCost;
+  const selectedBatches = selectedBatch === 'All Batches'
+    ? batches
+    : batches.filter((b) => b.batch_code === selectedBatch);
+  const salesRevenue = selectedBatches.reduce((sum, batch) => {
+    const price = Number(batch.sale_price_per_kg);
+    return price > 0 ? sum + (Number(batch.current_weight) || 0) * price : sum;
+  }, 0);
 
   // ---------- Computed data for charts ----------
 
@@ -570,13 +577,7 @@ export default function AnalyticsReportsScreen() {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-700">Revenue from Sales</span>
                 <span className="font-bold text-green-600">
-                  ₱
-                  {(selectedBatch === 'All Batches'
-                    ? batches
-                    : batches.filter((b) => b.batch_code === selectedBatch)
-                  )
-                    .reduce((sum, b) => sum + (Number(b.current_weight) || 0) * 180, 0)
-                    .toLocaleString()}
+                  {salesRevenue > 0 ? formatCurrency(salesRevenue) : 'Unavailable'}
                 </span>
               </div>
               <div className="border-t border-white/30 pt-2">
@@ -608,24 +609,12 @@ export default function AnalyticsReportsScreen() {
                 <span className="font-bold text-gray-900">Net Profit</span>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-green-600">
-                    {formatCurrency(
-                      (selectedBatch === 'All Batches'
-                        ? batches
-                        : batches.filter((b) => b.batch_code === selectedBatch)
-                      ).reduce((sum, b) => sum + (Number(b.current_weight) || 0) * 180, 0) -
-                        combinedExpenses
-                    )}
+                    {salesRevenue > 0 ? formatCurrency(salesRevenue - combinedExpenses) : 'Unavailable'}
                   </div>
                   <span className="px-2 py-0.5 bg-green-500 text-white rounded-full text-xs font-semibold">
-                    {Math.round(
-                      ((selectedBatch === 'All Batches'
-                        ? batches
-                        : batches.filter((b) => b.batch_code === selectedBatch)
-                      ).reduce((sum, b) => sum + (Number(b.current_weight) || 0) * 180, 0) /
-                        (combinedExpenses || 1) -
-                        1) * 100
-                    )}
-                    % margin
+                    {salesRevenue > 0 && combinedExpenses > 0
+                      ? `${Math.round(((salesRevenue / combinedExpenses) - 1) * 100)}% margin`
+                      : 'Margin unavailable'}
                   </span>
                 </div>
               </div>

@@ -238,8 +238,8 @@ export default function DashboardScreen() {
             health: health,
             feed: feed,
             weight: batch.current_weight || batch.start_weight || 0,
-            pricePerKg: 180,
-            expenses: (batch.pig_count || 0) * 1000,
+            pricePerKg: null,
+            expenses: null,
           };
         });
         if (batchRenderFrame.current) cancelAnimationFrame(batchRenderFrame.current);
@@ -525,9 +525,7 @@ export default function DashboardScreen() {
                   <div className="bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3">
                     <div className="text-xs text-gray-700 mb-1 font-medium">Estimated Profit</div>
                     <div className="text-sm font-bold text-green-600">
-                      {currentBatch?.weight !== undefined &&
-                      currentBatch?.pricePerKg !== undefined &&
-                      currentBatch?.expenses !== undefined
+                      {currentBatch?.pricePerKg > 0 && currentBatch?.expenses !== null
                         ? formatCurrency(
                             calculateProfit(
                               currentBatch.weight,
@@ -535,7 +533,7 @@ export default function DashboardScreen() {
                               currentBatch.expenses
                             )
                           )
-                        : formatCurrency(0)}
+                        : 'Unavailable'}
                     </div>
                   </div>
                 </div>

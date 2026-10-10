@@ -19,6 +19,7 @@ import BottomNav from '../components/BottomNav';
 import { API_BASE, getAuthHeaders } from '../api.js';
 import { buildVaccinationDonePayload } from '../utils/markDonePayloads.js';
 import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
+import { formatLocalDate } from '../utils/dates.js';
 
 // Standard vaccination schedule by age
 const vaccinationSchedule = [
@@ -34,6 +35,19 @@ const isVaccinationDue = (day, vaccine) => {
 };
 const isVaccinationOverdue = (day, vaccine) => {
   return day > vaccine.maxDay;
+};
+
+const getNextScheduledDate = (batch, vaccinationDate) => {
+  if (!batch?.dateAcquired) return null;
+  const acquired = new Date(`${batch.dateAcquired}T00:00:00`);
+  const administered = new Date(`${vaccinationDate}T00:00:00`);
+  if (Number.isNaN(acquired.getTime()) || Number.isNaN(administered.getTime())) return null;
+  const ageDays = Math.max(0, Math.floor((administered - acquired) / (1000 * 60 * 60 * 24)));
+  const next = vaccinationSchedule.find((item) => item.minDay > ageDays);
+  if (!next) return null;
+  const due = new Date(acquired);
+  due.setDate(due.getDate() + next.minDay);
+  return formatLocalDate(due);
 };
 
 // Mock data fallback
@@ -102,8 +116,8 @@ export default function VaccinationScreen() {
   const [useMock, setUseMock] = useState(false);
 
   // Data
-  const [vaccinationRecords, setVaccinationRecords] = useState(MOCK_RECORDS);
-  const [batches, setBatches] = useState(MOCK_BATCHES);
+  const [vaccinationRecords, setVaccinationRecords] = useState([]);
+  const [batches, setBatches] = useState([]);
   const [vaccineStock, setVaccineStock] = useState([]);
 
   // Form states
@@ -111,7 +125,7 @@ export default function VaccinationScreen() {
     batch: '',
     vaccineType: '',
     doses: '',
-    date: new Date().toISOString().split('T')[0],
+    date: formatLocalDate(),
     notes: '',
   });
   const [restockForm, setRestockForm] = useState({
@@ -119,7 +133,7 @@ export default function VaccinationScreen() {
     doses: '',
     cost: '',
     expiryDate: '',
-    purchaseDate: new Date().toISOString().split('T')[0],
+    purchaseDate: formatLocalDate(),
   });
 
   // Fetch batches
@@ -164,9 +178,9 @@ export default function VaccinationScreen() {
         throw new Error('No batches found');
       }
     } catch (err) {
-      console.warn('Using mock batches:', err.message);
-      setUseMock(true);
-      setBatches(MOCK_BATCHES);
+      console.warn('Could not fetch batches:', err.message);
+      setUseMock(false);
+      setBatches([]);
     }
   };
 
@@ -197,13 +211,10 @@ export default function VaccinationScreen() {
         throw new Error(json.message || 'No records');
       }
     } catch (err) {
-      console.warn('Using mock records:', err.message);
-      setUseMock(true);
-      if (selectedBatch === 'all') {
-        setVaccinationRecords(MOCK_RECORDS);
-      } else {
-        setVaccinationRecords(MOCK_RECORDS.filter((r) => r.batch_id === selectedBatch));
-      }
+      console.warn('Could not fetch vaccination records:', err.message);
+      setUseMock(false);
+      setVaccinationRecords([]);
+      setError('Unable to load vaccination records. Please retry.');
     } finally {
       setLoading(false);
     }
@@ -255,14 +266,18 @@ export default function VaccinationScreen() {
       if (json.success) {
         const savedRecord = Array.isArray(json.data) ? json.data[0] : json.data;
         if (savedRecord && (selectedBatch === 'all' || String(savedRecord.batch_id) === String(selectedBatch))) {
-          setVaccinationRecords((records) => [savedRecord, ...records]);
+          setVaccinationRecords((records) => {
+            const updatedRecords = [savedRecord, ...records];
+            writeCache(`vaccination-records:${getUserCacheKey()}:${selectedBatch}`, updatedRecords);
+            return updatedRecords;
+          });
         }
         setShowRecordVaccination(false);
         setVaccinationForm({
           batch: '',
           vaccineType: '',
           doses: '',
-          date: new Date().toISOString().split('T')[0],
+          date: formatLocalDate(),
           notes: '',
         });
         void fetchVaccineStock();
@@ -278,10 +293,13 @@ export default function VaccinationScreen() {
 
   // Direct "Mark as Done" – no modal
   const handleDirectMarkAsDone = (batchId, vaccineName, doses) => {
+    const vaccinationDate = formatLocalDate();
+    const batch = batches.find((item) => String(item.id) === String(batchId));
     const payload = buildVaccinationDonePayload({
       batchId,
       vaccineName,
       doses,
+      nextDueDate: getNextScheduledDate(batch, vaccinationDate),
     });
     handleSaveVaccination(payload);
   };
@@ -295,9 +313,10 @@ export default function VaccinationScreen() {
       vaccination_date: vaccinationForm.date,
       dosage: parseInt(vaccinationForm.doses, 10) || 0,
       notes: vaccinationForm.notes,
-      next_due_date: new Date(new Date(vaccinationForm.date).getTime() + 30 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split('T')[0],
+      next_due_date: getNextScheduledDate(
+        batches.find((batch) => String(batch.id) === String(vaccinationForm.batch)),
+        vaccinationForm.date
+      ),
       administered_by: 'Farmer',
       status: 'Completed',
     };
@@ -338,7 +357,7 @@ export default function VaccinationScreen() {
           doses: '',
           cost: '',
           expiryDate: '',
-          purchaseDate: new Date().toISOString().split('T')[0],
+          purchaseDate: formatLocalDate(),
         });
         fetchVaccineStock();
       } else {
@@ -389,7 +408,7 @@ export default function VaccinationScreen() {
     [selectedBatch, vaccinationRecords, vaccineStock]
   );
   const filteredRecords = vaccinationRecords;
-  const scheduleBatches = batches.length > 0 ? batches : MOCK_BATCHES;
+  const scheduleBatches = batches;
 
   const { totalDoses, uniqueVaccines } = useMemo(() => ({
     totalDoses: vaccinationRecords.reduce((sum, r) => sum + (Number(r.dosage) || 0), 0),

@@ -165,13 +165,17 @@ export const getFeedRecordById = async (req, res) => {
 export const getFeedByBatch = async (req, res) => {
     try {
         const { batchId } = req.params;
+        const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit) || 100, 1), 500) : null;
+        const offset = Math.max(Number(req.query.offset) || 0, 0);
 
-        const { data, error } = await supabase
+        let query = supabase
             .from('feed_records')
             .select('id,batch_id,feed_type,quantity_kg,feeding_date,feeding_time,notes,created_at')
             .eq('batch_id', batchId)
             .eq('owner_id', req.user.id)
             .order('feeding_date', { ascending: false });
+        if (limit !== null) query = query.range(offset, offset + limit - 1);
+        const { data, error } = await query;
 
         if (error) throw error;
 
@@ -321,8 +325,21 @@ export const getFeedStock = async (req, res) => {
 export const updateFeedStock = async (req, res) => {
     try {
         const { feed_type, stock_quantity, unit_price, last_updated, notes } = req.body;
-        if (!feed_type || stock_quantity === undefined) {
-            return res.status(400).json({ success: false, message: 'Missing required fields' });
+        if (!feed_type || (stock_quantity === undefined && unit_price === undefined)) {
+            return res.status(400).json({ success: false, message: 'Feed type and an update value are required' });
+        }
+
+        const { data: existing, error: existingError } = await supabase
+            .from('feed_stocks')
+            .select('stock_quantity,unit_price,last_updated,notes')
+            .eq('owner_id', req.user.id)
+            .eq('feed_type', feed_type)
+            .maybeSingle();
+        if (existingError) throw existingError;
+
+        const addedQuantity = stock_quantity === undefined ? 0 : Number(stock_quantity);
+        if (!Number.isFinite(addedQuantity) || addedQuantity < 0) {
+            return res.status(400).json({ success: false, message: 'Stock quantity must be non-negative' });
         }
 
         const { data, error } = await supabase
@@ -330,10 +347,10 @@ export const updateFeedStock = async (req, res) => {
             .upsert({
                 owner_id: req.user.id,
                 feed_type,
-                stock_quantity,
-                unit_price,
-                last_updated: last_updated || new Date().toISOString().split('T')[0],
-                notes,
+                stock_quantity: Number(existing?.stock_quantity || 0) + addedQuantity,
+                unit_price: unit_price === undefined ? existing?.unit_price : unit_price,
+                last_updated: last_updated || existing?.last_updated || new Date().toISOString().split('T')[0],
+                notes: notes === undefined ? existing?.notes : notes,
                 updated_at: new Date()
             }, { onConflict: 'owner_id,feed_type' })
             .select();

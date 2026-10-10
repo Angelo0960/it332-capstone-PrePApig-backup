@@ -48,6 +48,7 @@ export const createBatch = async (req, res) => {
             for (let i = 0; i < totalPigs; i++) {
                 pigs.push({
                     batch_id: newBatch.id,
+                    owner_id,
                     weight: avgWeight,
                     health_status: 'Healthy',
                     notes: `Auto‑generated on batch creation (breed: ${breed || 'Unknown'})`,

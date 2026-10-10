@@ -21,6 +21,7 @@ import BottomNav from '../components/BottomNav';
 import { API_BASE, getAuthHeaders } from '../api.js';
 import { buildFeedDonePayload } from '../utils/markDonePayloads.js';
 import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
+import { formatLocalDate } from '../utils/dates.js';
 // ────────────────────────────────────────────────────────────────
 
 // Mock data
@@ -128,15 +129,15 @@ export default function FeedsInventoryScreen() {
   const [error, setError] = useState(null);
   const [useMock, setUseMock] = useState(false);
 
-  const [feedRecords, setFeedRecords] = useState(MOCK_FEED_RECORDS);
-  const [batches, setBatches] = useState(MOCK_BATCHES);
-  const [feedStocks, setFeedStocks] = useState(MOCK_FEED_STOCKS);
+  const [feedRecords, setFeedRecords] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [feedStocks, setFeedStocks] = useState([]);
 
   const [usageForm, setUsageForm] = useState({
     batch: '',
     feedType: '',
     amount: '',
-    date: new Date().toISOString().split('T')[0],
+    date: formatLocalDate(),
     notes: '',
   });
 
@@ -144,7 +145,7 @@ export default function FeedsInventoryScreen() {
     feedType: '',
     quantity: '',
     unitCost: '',
-    date: new Date().toISOString().split('T')[0],
+    date: formatLocalDate(),
   });
 
   // Fetch functions
@@ -184,9 +185,9 @@ export default function FeedsInventoryScreen() {
         throw new Error('No batches found');
       }
     } catch (err) {
-      console.warn('Using mock batches:', err.message);
-      setUseMock(true);
-      setBatches(MOCK_BATCHES);
+      console.warn('Could not fetch batches:', err.message);
+      setUseMock(false);
+      setBatches([]);
     }
   };
 
@@ -216,13 +217,10 @@ export default function FeedsInventoryScreen() {
         throw new Error(json.message || 'No records');
       }
     } catch (err) {
-      console.warn('Using mock feed records:', err.message);
-      setUseMock(true);
-      if (selectedBatch === 'all') {
-        setFeedRecords(MOCK_FEED_RECORDS);
-      } else {
-        setFeedRecords(MOCK_FEED_RECORDS.filter((r) => r.batch_id === selectedBatch));
-      }
+      console.warn('Could not fetch feed records:', err.message);
+      setUseMock(false);
+      setFeedRecords([]);
+      setError('Unable to load feed records. Please retry.');
     } finally {
       setLoading(false);
     }
@@ -244,8 +242,8 @@ export default function FeedsInventoryScreen() {
       }
     } catch (err) {
       console.warn('Could not fetch feed stock:', err.message);
-      setFeedStocks(MOCK_FEED_STOCKS);
-      setUseMock(true);
+      setFeedStocks([]);
+      setUseMock(false);
     }
   };
 
@@ -277,14 +275,18 @@ export default function FeedsInventoryScreen() {
       if (json.success) {
         const savedRecord = Array.isArray(json.data) ? json.data[0] : json.data;
         if (savedRecord && (selectedBatch === 'all' || String(savedRecord.batch_id) === String(selectedBatch))) {
-          setFeedRecords((records) => [savedRecord, ...records]);
+          setFeedRecords((records) => {
+            const updatedRecords = [savedRecord, ...records];
+            writeCache(`feed-records:${getUserCacheKey()}:${selectedBatch}`, updatedRecords);
+            return updatedRecords;
+          });
         }
         setShowRecordUsage(false);
         setUsageForm({
           batch: '',
           feedType: '',
           amount: '',
-          date: new Date().toISOString().split('T')[0],
+          date: formatLocalDate(),
           notes: '',
         });
         void fetchFeedStock();
@@ -364,7 +366,7 @@ export default function FeedsInventoryScreen() {
           feedType: '',
           quantity: '',
           unitCost: '',
-          date: new Date().toISOString().split('T')[0],
+          date: formatLocalDate(),
         });
         fetchFeedStock();
       } else {
@@ -456,7 +458,7 @@ export default function FeedsInventoryScreen() {
   );
 
   // ----- Today's date for checking existing feedings -----
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = formatLocalDate();
 
   return (
     <div className="mobile-screen-shell min-h-screen w-full relative overflow-hidden flex flex-col">
@@ -952,7 +954,7 @@ export default function FeedsInventoryScreen() {
                       batch: '',
                       feedType: '',
                       amount: '',
-                      date: new Date().toISOString().split('T')[0],
+                      date: formatLocalDate(),
                       notes: '',
                     });
                   }}
@@ -1055,7 +1057,7 @@ export default function FeedsInventoryScreen() {
                       feedType: '',
                       quantity: '',
                       unitCost: '',
-                      date: new Date().toISOString().split('T')[0],
+                      date: formatLocalDate(),
                     });
                   }}
                   className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all"

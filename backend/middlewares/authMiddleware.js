@@ -1,5 +1,21 @@
 import jwt from 'jsonwebtoken';
 
+const revokedTokens = new Map();
+
+export const revokeToken = (token, expiresAt) => {
+    revokedTokens.set(token, expiresAt || Date.now() + 24 * 60 * 60 * 1000);
+};
+
+const isTokenRevoked = (token) => {
+    const expiresAt = revokedTokens.get(token);
+    if (!expiresAt) return false;
+    if (expiresAt <= Date.now()) {
+        revokedTokens.delete(token);
+        return false;
+    }
+    return true;
+};
+
 export const authMiddleware = (req, res, next) => {
     const authHeader = req.headers.authorization;
 
@@ -11,6 +27,9 @@ export const authMiddleware = (req, res, next) => {
 
     const token = authHeader.split(' ')[1];
 
+    if (isTokenRevoked(token)) {
+        return res.status(401).json({ success: false, message: 'Token has been revoked' });
+    }
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
