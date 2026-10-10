@@ -33,8 +33,10 @@ textarea {
 }
 
 .mobile-page-content {
+  min-height: 0;
   padding-bottom: calc(6rem + env(safe-area-inset-bottom));
   overscroll-behavior-y: contain;
+  touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
 }
 
