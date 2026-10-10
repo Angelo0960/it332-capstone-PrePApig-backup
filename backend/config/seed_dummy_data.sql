@@ -10,6 +10,7 @@ ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS owner_id UUID;
 ALTER TABLE public.pigs ADD COLUMN IF NOT EXISTS owner_id UUID;
 ALTER TABLE public.feed_stocks ADD COLUMN IF NOT EXISTS owner_id UUID;
 ALTER TABLE public.vaccine_stocks ADD COLUMN IF NOT EXISTS owner_id UUID;
+ALTER TABLE public.pig_batches ADD COLUMN IF NOT EXISTS sale_price_per_kg NUMERIC(10,2);
 ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS dedupe_key TEXT;
 ALTER TABLE public.feed_stocks DROP CONSTRAINT IF EXISTS feed_stocks_feed_type_key;
 ALTER TABLE public.vaccine_stocks DROP CONSTRAINT IF EXISTS vaccine_stocks_vaccine_name_key;

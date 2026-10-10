@@ -10,6 +10,7 @@ export const createBatch = async (req, res) => {
             breed,
             start_weight,
             current_weight,
+            sale_price_per_kg,
             date_acquired,
             status
         } = req.body;
@@ -25,6 +26,7 @@ export const createBatch = async (req, res) => {
                 breed,
                 start_weight,
                 current_weight,
+                sale_price_per_kg: sale_price_per_kg || null,
                 date_acquired,
                 status,
                 owner_id

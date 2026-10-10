@@ -1,7 +1,7 @@
 import supabase from '../config/supabase.js';
 
 const analyticsFields = {
-    batches: 'id,batch_code,pig_count,start_weight,current_weight,date_acquired,status,created_at',
+    batches: 'id,batch_code,pig_count,start_weight,current_weight,sale_price_per_kg,date_acquired,status,created_at',
     feeds: 'id,batch_id,feed_type,quantity_kg,feeding_date,feeding_time,notes,created_at',
     vaccinations: 'id,batch_id,vaccine_name,vaccination_date,next_due_date,administered_by,dosage,notes,status,created_at',
     expenses: 'id,batch_id,expense_type,amount,expense_date,description,created_at',

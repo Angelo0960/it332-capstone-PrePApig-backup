@@ -78,6 +78,7 @@ export default function DashboardScreen() {
     pig_count: '',
     breed: '',
     start_weight: '',
+    sale_price_per_kg: '',
     date_acquired: '',
     status: 'Active',
   });
@@ -389,6 +390,7 @@ export default function DashboardScreen() {
           breed: newBatch.breed || 'Unknown',
           start_weight: parseFloat(newBatch.start_weight),
           current_weight: parseFloat(newBatch.start_weight),
+          sale_price_per_kg: newBatch.sale_price_per_kg ? parseFloat(newBatch.sale_price_per_kg) : null,
           date_acquired: newBatch.date_acquired,
           status: 'Active',
         }),
@@ -398,7 +400,7 @@ export default function DashboardScreen() {
       if (json.success) {
         await fetchBatches();
         setShowAddBatch(false);
-        setNewBatch({ pig_count: '', breed: '', start_weight: '', date_acquired: '', status: 'Active' });
+        setNewBatch({ pig_count: '', breed: '', start_weight: '', sale_price_per_kg: '', date_acquired: '', status: 'Active' });
       } else {
         throw new Error(json.message || 'Unknown error');
       }
@@ -707,6 +709,7 @@ export default function DashboardScreen() {
                       pig_count: '',
                       breed: '',
                       start_weight: '',
+                      sale_price_per_kg: '',
                       date_acquired: '',
                       status: 'Active',
                     });
@@ -761,6 +764,21 @@ export default function DashboardScreen() {
                     onChange={(e) => setNewBatch({ ...newBatch, start_weight: e.target.value })}
                     placeholder="15"
                     step="0.1"
+                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">
+                    Sale Price per kg (optional)
+                  </label>
+                  <input
+                    type="number"
+                    value={newBatch.sale_price_per_kg}
+                    onChange={(e) => setNewBatch({ ...newBatch, sale_price_per_kg: e.target.value })}
+                    placeholder="e.g. 180"
+                    min="0"
+                    step="0.01"
                     className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
                   />
                 </div>

@@ -52,6 +52,7 @@ export default function AnalyticsReportsScreen() {
   const [vaccineStock, setVaccineStock] = useState([]);
   const [pigPriceLocations, setPigPriceLocations] = useState(['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Nasugbu']);
   const [pigPriceReference, setPigPriceReference] = useState(null);
+  const [facebookPriceSources, setFacebookPriceSources] = useState([]);
   const [pigPriceError, setPigPriceError] = useState(null);
   const [aiAnalysis, setAiAnalysis] = useState(null);
   const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
@@ -111,6 +112,7 @@ export default function AnalyticsReportsScreen() {
       if (!json.success) throw new Error(json.message || 'Pig price unavailable');
       setPigPriceLocations(json.priceSourceLocations || []);
       setPigPriceReference(json.data || null);
+      setFacebookPriceSources(json.facebookPriceSources || []);
       setPigPriceError(null);
     } catch (err) {
       if (err.name === 'AbortError') return;
@@ -213,14 +215,22 @@ export default function AnalyticsReportsScreen() {
   const vaccinePriceMap = useMemo(() => new Map(vaccineStock.map((stock) => [stock.vaccine_name, Number(stock.price_per_dose) || 0])), [vaccineStock]);
   const totalFeedCost = useMemo(() => getFeedCost(), [filteredFeedRecords, feedStock]);
   const totalVaccineCost = useMemo(() => getVaccineCost(), [filteredVaccinationRecords, vaccineStock]);
-  const combinedExpenses = totalFeedCost + totalVaccineCost;
+  const manualExpenses = useMemo(
+    () => filteredExpenses.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0),
+    [filteredExpenses]
+  );
+  const combinedExpenses = totalFeedCost + totalVaccineCost + manualExpenses;
   const selectedBatches = selectedBatch === 'All Batches'
     ? batches
     : batches.filter((b) => b.batch_code === selectedBatch);
+  const referencePrice = Number(pigPriceReference?.pricePhpPerKg);
   const salesRevenue = selectedBatches.reduce((sum, batch) => {
-    const price = Number(batch.sale_price_per_kg);
+    const recordedPrice = Number(batch.sale_price_per_kg);
+    const price = recordedPrice > 0 ? recordedPrice : referencePrice > 0 ? referencePrice : 0;
     return price > 0 ? sum + (Number(batch.current_weight) || 0) * price : sum;
   }, 0);
+  const hasRecordedSalePrice = selectedBatches.some((batch) => Number(batch.sale_price_per_kg) > 0);
+  const usesProvincialEstimate = !hasRecordedSalePrice && referencePrice > 0 && selectedBatches.length > 0;
 
   // ---------- Computed data for charts ----------
 
@@ -246,10 +256,15 @@ export default function AnalyticsReportsScreen() {
       selectedBatch === 'All Batches'
         ? batches
         : batches.filter((b) => b.batch_code === selectedBatch);
-    const pricedBatches = targetBatches.filter((batch) => Number(batch.sale_price_per_kg) > 0);
+    const pricedBatches = targetBatches.filter(
+      (batch) => Number(batch.sale_price_per_kg) > 0 || referencePrice > 0
+    );
     if (pricedBatches.length === 0) return [];
     const totalRevenue = pricedBatches.reduce(
-      (sum, b) => sum + (Number(b.current_weight) || 0) * Number(b.sale_price_per_kg),
+      (sum, b) => {
+        const price = Number(b.sale_price_per_kg) > 0 ? Number(b.sale_price_per_kg) : referencePrice;
+        return sum + (Number(b.current_weight) || 0) * price;
+      },
       0
     );
     const months = {};
@@ -309,7 +324,7 @@ export default function AnalyticsReportsScreen() {
   const feedConsumptionData = useMemo(() => getFeedConsumptionData(), [filteredFeedRecords]);
   const profitTrend = useMemo(
     () => getProfitTrend(),
-    [batches, selectedBatch, filteredExpenses, combinedExpenses]
+    [batches, selectedBatch, filteredExpenses, combinedExpenses, pigPriceReference]
   );
   const expenseBreakdown = useMemo(() => getExpenseBreakdown(), [filteredExpenses]);
   const vaccinationSummary = useMemo(() => getVaccinationSummary(), [vaccinationRecords]);
@@ -338,12 +353,12 @@ export default function AnalyticsReportsScreen() {
   };
 
   return (
-    <div className="min-h-screen w-full relative overflow-hidden flex flex-col">
+    <div className="mobile-screen-shell w-full relative overflow-hidden flex flex-col">
       <div className="absolute inset-0">
         <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover" />
       </div>
 
-      <div className="relative z-10 flex flex-col flex-1 min-h-screen">
+      <div className="relative z-10 flex flex-col flex-1 min-h-0">
         {/* Header */}
         <div className="px-4 md:px-8 lg:px-12 pt-3 pb-3">
           <div className="flex items-center justify-between">
@@ -429,7 +444,7 @@ export default function AnalyticsReportsScreen() {
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24">
+        <div className="flex-1 min-h-0 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24">
           {/* Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
@@ -507,6 +522,13 @@ export default function AnalyticsReportsScreen() {
               </div>
             )}
             {pigPriceError && <div className="text-xs text-red-600">{pigPriceError}</div>}
+            {facebookPriceSources.length > 0 && (
+              <div className="text-[10px] text-gray-600 mb-2">
+                Facebook public search sources: {facebookPriceSources.map((source) => (
+                  <a key={source.location} href={source.url} target="_blank" rel="noreferrer" className="underline mr-2">{source.location}</a>
+                ))}
+              </div>
+            )}
             {aiAnalysisError && <div className="text-xs text-red-600 mt-2">{aiAnalysisError}</div>}
             {aiAnalysis && (
               <div className="bg-purple-100/50 border border-purple-300/50 rounded-xl p-3 mt-3">
@@ -580,6 +602,11 @@ export default function AnalyticsReportsScreen() {
                   {salesRevenue > 0 ? formatCurrency(salesRevenue) : 'Unavailable'}
                 </span>
               </div>
+              {usesProvincialEstimate && (
+                <div className="text-[10px] text-amber-700 mb-2">
+                  Revenue uses the latest Batangas provincial farmgate reference because no batch sale price was recorded.
+                </div>
+              )}
               <div className="border-t border-white/30 pt-2">
                 <div className="text-xs text-gray-600 mb-2">Expenses:</div>
                 <div className="flex items-center justify-between text-sm mb-1">

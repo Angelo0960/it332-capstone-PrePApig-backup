@@ -2,6 +2,12 @@ const PRICE_SOURCE_URL =
   'https://baboyph.com/data/hog-farmgate-household-regional.csv';
 const BATANGAS_PSGC = '0401000000';
 const PRICE_SOURCE_LOCATIONS = ['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Nasugbu'];
+const FACEBOOK_PRICE_SOURCES = PRICE_SOURCE_LOCATIONS.map((location) => ({
+  location,
+  source: 'Facebook public search (manual verification required)',
+  url: `https://www.facebook.com/public/${encodeURIComponent(`${location} Batangas baboy presyo`)}`,
+  status: 'unverified',
+}));
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 let cache = { expiresAt: 0, value: null };
@@ -95,6 +101,7 @@ export const fetchBatangasPigPrice = async ({ fetchImpl = fetch, now = Date.now(
     success: true,
     data: latest,
     priceSourceLocations: PRICE_SOURCE_LOCATIONS,
+    facebookPriceSources: FACEBOOK_PRICE_SOURCES,
     basis: priceRows,
     basisSummary: {
       records: priceRows.length,
@@ -113,7 +120,7 @@ export const fetchBatangasPigPrice = async ({ fetchImpl = fetch, now = Date.now(
       unit: latest.unit,
       prices: priceRows.map(({ period, pricePhpPerKg }) => ({ period, pricePhpPerKg })),
       instruction:
-        'Use these provincial price points with the farm cost data to assess a reasonable selling-price range. Do not present the result as a Calaca-only quote.',
+        'Use these provincial price points with the farm cost data to assess a reasonable selling-price range. Do not present the result as a Calaca-only quote. Facebook public posts/pages/groups may be checked separately, but every Facebook price must include a direct public URL, posting date, location, and unit; mark it unavailable when it cannot be verified.',
     },
     fetchedAt: new Date(now).toISOString(),
     cacheExpiresAt: new Date(now + CACHE_TTL_MS).toISOString(),
