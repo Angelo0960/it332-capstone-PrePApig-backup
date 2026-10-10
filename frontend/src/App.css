@@ -43,7 +43,15 @@ textarea {
 .mobile-screen-layer {
   height: 100%;
   min-height: 0 !important;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-screen-layer .mobile-page-content {
+  flex: none;
+  overflow: visible !important;
 }
 
 .mobile-page-content {
