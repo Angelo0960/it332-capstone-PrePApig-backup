@@ -130,6 +130,8 @@ CREATE INDEX IF NOT EXISTS idx_pigs_owner ON pigs (owner_id);
 CREATE INDEX IF NOT EXISTS idx_feed_stocks_owner ON feed_stocks (owner_id);
 CREATE INDEX IF NOT EXISTS idx_vaccine_stocks_owner ON vaccine_stocks (owner_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_created_at ON notifications (user_id, created_at DESC);
+ALTER TABLE feed_stocks DROP CONSTRAINT IF EXISTS feed_stocks_feed_type_key;
+ALTER TABLE vaccine_stocks DROP CONSTRAINT IF EXISTS vaccine_stocks_vaccine_name_key;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_feed_stocks_owner_type ON feed_stocks (owner_id, feed_type);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_vaccine_stocks_owner_name ON vaccine_stocks (owner_id, vaccine_name);
 
