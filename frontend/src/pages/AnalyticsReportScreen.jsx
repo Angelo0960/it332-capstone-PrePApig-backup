@@ -422,7 +422,7 @@ export default function AnalyticsReportsScreen() {
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-8 lg:px-12 pb-24">
+        <div className="flex-1 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24">
           {/* Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">

@@ -208,7 +208,7 @@ export default function BatchPigsScreen() {
         </div>
 
         {/* Pig List */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-8 lg:px-12 pb-24">
+        <div className="flex-1 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24">
           {loading ? (
             <div className="flex items-center justify-center h-40 text-gray-600">Loading...</div>
           ) : error ? (

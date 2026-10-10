@@ -483,7 +483,7 @@ export default function DashboardScreen() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-8 lg:px-12 pb-24">
+        <div className="flex-1 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24">
           {batches.length > 0 && currentBatch && (
             <>
               <>
