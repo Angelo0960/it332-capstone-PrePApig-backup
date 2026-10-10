@@ -397,12 +397,12 @@ export default function VaccinationScreen() {
   }), [vaccinationRecords]);
 
   return (
-    <div className="min-h-screen w-full relative overflow-hidden flex flex-col">
+    <div className="mobile-screen-shell min-h-screen w-full relative overflow-hidden flex flex-col">
       <div className="absolute inset-0">
         <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover" />
       </div>
 
-      <div className="relative z-10 flex flex-col flex-1 min-h-screen">
+      <div className="mobile-screen-layer relative z-10 flex flex-col flex-1 min-h-screen">
         {/* Header */}
         <div className="px-4 md:px-8 lg:px-12 pt-3 pb-2 flex items-center justify-between">
           <div className="flex items-center gap-3">
