@@ -52,6 +52,7 @@ export default function AnalyticsReportsScreen() {
   const [vaccineStock, setVaccineStock] = useState([]);
   const [pigPriceLocations, setPigPriceLocations] = useState(['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Nasugbu']);
   const [pigPriceReference, setPigPriceReference] = useState(null);
+  const [pricePoints, setPricePoints] = useState([]);
   const [facebookPriceSources, setFacebookPriceSources] = useState([]);
   const [pigPriceError, setPigPriceError] = useState(null);
   const [aiAnalysis, setAiAnalysis] = useState(null);
@@ -112,6 +113,7 @@ export default function AnalyticsReportsScreen() {
       if (!json.success) throw new Error(json.message || 'Pig price unavailable');
       setPigPriceLocations(json.priceSourceLocations || []);
       setPigPriceReference(json.data || null);
+      setPricePoints(json.pricePoints || []);
       setFacebookPriceSources(json.facebookPriceSources || []);
       setPigPriceError(null);
     } catch (err) {
@@ -519,6 +521,19 @@ export default function AnalyticsReportsScreen() {
             {pigPriceReference && (
               <div className="text-xs text-gray-600 mb-2">
                 Provincial reference: <span className="font-bold text-green-600">{formatPricePerKg(pigPriceReference.pricePhpPerKg)}</span> ({pigPriceReference.period}).
+              </div>
+            )}
+            {pricePoints.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+                {pricePoints.slice(0, 3).map((point) => (
+                  <div key={point.location} className="bg-white/50 rounded-xl p-3 border border-white/40">
+                    <div className="text-xs text-gray-600">{point.location}</div>
+                    <div className="text-lg font-bold text-green-700">
+                      {point.pricePhpPerKg == null ? 'Unavailable' : formatPricePerKg(point.pricePhpPerKg)}
+                    </div>
+                    <div className="text-[10px] text-gray-500">{point.source}</div>
+                  </div>
+                ))}
               </div>
             )}
             {pigPriceError && <div className="text-xs text-red-600">{pigPriceError}</div>}

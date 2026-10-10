@@ -2,6 +2,11 @@ const PRICE_SOURCE_URL =
   'https://baboyph.com/data/hog-farmgate-household-regional.csv';
 const BATANGAS_PSGC = '0401000000';
 const PRICE_SOURCE_LOCATIONS = ['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Nasugbu'];
+const LOCAL_PRICE_POINTS = [
+  { location: 'Calaca', pricePhpPerKg: 120, unit: 'PHP/kg', source: 'User-provided local reference', status: 'reference' },
+  { location: 'Tuy', pricePhpPerKg: 190, unit: 'PHP/kg', source: 'User-provided local reference', status: 'reference' },
+  { location: 'Nasugbu', pricePhpPerKg: 210, unit: 'PHP/kg', source: 'User-provided local reference', status: 'reference' },
+];
 const FACEBOOK_PRICE_SOURCES = PRICE_SOURCE_LOCATIONS.map((location) => ({
   location,
   source: 'Facebook public search (manual verification required)',
@@ -101,6 +106,7 @@ export const fetchBatangasPigPrice = async ({ fetchImpl = fetch, now = Date.now(
     success: true,
     data: latest,
     priceSourceLocations: PRICE_SOURCE_LOCATIONS,
+    pricePoints: LOCAL_PRICE_POINTS,
     facebookPriceSources: FACEBOOK_PRICE_SOURCES,
     basis: priceRows,
     basisSummary: {
