@@ -162,12 +162,12 @@ export default function BatchPigsScreen() {
   const avgWeight = pigs.length > 0 ? totalWeight / pigs.length : 0;
 
   return (
-    <div className="min-h-screen w-full relative overflow-hidden flex flex-col">
+    <div className="mobile-screen-shell w-full relative overflow-hidden flex flex-col">
       <div className="absolute inset-0">
         <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover" />
       </div>
 
-      <div className="relative z-10 flex flex-col flex-1 min-h-screen">
+      <div className="relative z-10 flex flex-col flex-1 min-h-0">
         {/* Header */}
         <div className="px-4 md:px-8 lg:px-12 pt-3 pb-2 flex items-center gap-3">
           <button
@@ -208,7 +208,7 @@ export default function BatchPigsScreen() {
         </div>
 
         {/* Pig List */}
-        <div className="flex-1 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24">
+        <div className="flex-1 min-h-0 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24">
           {loading ? (
             <div className="flex items-center justify-center h-40 text-gray-600">Loading...</div>
           ) : error ? (
