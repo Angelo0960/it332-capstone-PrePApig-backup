@@ -11,5 +11,6 @@ reportRouter.get('/feeds', reportController.getFeedReport);
 
 reportRouter.get('/expenses', reportController.getExpenseReport);
 reportRouter.get('/analytics', reportController.getAnalyticsData);
+reportRouter.get('/analytics.proto', reportController.getAnalyticsDataProto);
 
 export default reportRouter;

@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "description": "PrepAPig: AI-Powered Pig Growth Tracker with Vaccination Scheduling and Feed Consumption System",
   "main": "index.js",
- "scripts": {
-  "start": "node app.js",
-  "dev": "nodemon app.js",
-  "test": "node --test tests/*.test.js"
-},
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "test": "node --test tests/*.test.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Angelo0960/it332-capstone-PrePApig.git"
@@ -28,6 +28,7 @@
     "firebase-admin": "^14.1.0",
     "jsonwebtoken": "^9.0.3",
     "node-cron": "^4.6.0",
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "protobufjs": "^7.6.6"
   }
 }
