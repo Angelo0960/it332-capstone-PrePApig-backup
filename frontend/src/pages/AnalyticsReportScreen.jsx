@@ -187,6 +187,12 @@ export default function AnalyticsReportsScreen() {
     if (!selectedPoint) return;
     localStorage.setItem('prepapig:selected-price-location', selectedPoint.location);
     localStorage.setItem('prepapig:selected-price-per-kg', String(selectedPoint.pricePhpPerKg));
+    window.dispatchEvent(new CustomEvent('prepapig:price-selection-changed', {
+      detail: {
+        location: selectedPoint.location,
+        pricePerKg: Number(selectedPoint.pricePhpPerKg),
+      },
+    }));
   }, [pricePoints, selectedPriceLocation]);
 
   useEffect(() => () => aiAbortController.current?.abort(), []);

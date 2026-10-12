@@ -259,6 +259,7 @@ export default function DashboardScreen() {
             health: health,
             feed: feed,
             weight: batch.current_weight || batch.start_weight || 0,
+            recordedPricePerKg: recordedPrice > 0 ? recordedPrice : null,
             pricePerKg: estimatedPrice,
             expenses: 0,
           };
@@ -356,6 +357,22 @@ export default function DashboardScreen() {
     return () => {
       if (batchRenderFrame.current) cancelAnimationFrame(batchRenderFrame.current);
     };
+  }, []);
+
+  useEffect(() => {
+    const applySelectedPrice = (event) => {
+      const selectedPrice = Number(event.detail?.pricePerKg);
+      if (!Number.isFinite(selectedPrice) || selectedPrice <= 0) return;
+      setBatches((current) => current.map((batch) => ({
+        ...batch,
+        pricePerKg: Number(batch.recordedPricePerKg) > 0
+          ? batch.recordedPricePerKg
+          : selectedPrice,
+      })));
+    };
+
+    window.addEventListener('prepapig:price-selection-changed', applySelectedPrice);
+    return () => window.removeEventListener('prepapig:price-selection-changed', applySelectedPrice);
   }, []);
 
   // ---------- Logout ----------
