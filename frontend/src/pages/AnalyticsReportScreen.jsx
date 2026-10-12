@@ -53,6 +53,7 @@ export default function AnalyticsReportsScreen() {
   const [pigPriceLocations, setPigPriceLocations] = useState(['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Nasugbu']);
   const [pigPriceReference, setPigPriceReference] = useState(null);
   const [pricePoints, setPricePoints] = useState([]);
+  const [selectedPriceLocation, setSelectedPriceLocation] = useState(null);
   const [facebookPriceSources, setFacebookPriceSources] = useState([]);
   const [pigPriceError, setPigPriceError] = useState(null);
   const [aiAnalysis, setAiAnalysis] = useState(null);
@@ -166,6 +167,12 @@ export default function AnalyticsReportsScreen() {
     return () => controller.abort();
   }, [dateRange]);
 
+  useEffect(() => {
+    if (pricePoints.length > 0 && !pricePoints.some((point) => point.location === selectedPriceLocation)) {
+      setSelectedPriceLocation(pricePoints[0].location);
+    }
+  }, [pricePoints, selectedPriceLocation]);
+
   useEffect(() => () => aiAbortController.current?.abort(), []);
 
   // ---------- Filter data by selected batch ----------
@@ -226,13 +233,23 @@ export default function AnalyticsReportsScreen() {
     ? batches
     : batches.filter((b) => b.batch_code === selectedBatch);
   const referencePrice = Number(pigPriceReference?.pricePhpPerKg);
+  const selectedPricePoint = pricePoints.find((point) => point.location === selectedPriceLocation);
+  const selectedPrice = Number(selectedPricePoint?.pricePhpPerKg);
+  const chosenPrice = selectedPrice > 0 ? selectedPrice : referencePrice;
   const salesRevenue = selectedBatches.reduce((sum, batch) => {
     const recordedPrice = Number(batch.sale_price_per_kg);
-    const price = recordedPrice > 0 ? recordedPrice : referencePrice > 0 ? referencePrice : 0;
+    const price = selectedPrice > 0
+      ? selectedPrice
+      : recordedPrice > 0
+        ? recordedPrice
+        : referencePrice > 0
+          ? referencePrice
+          : 0;
     return price > 0 ? sum + (Number(batch.current_weight) || 0) * price : sum;
   }, 0);
   const hasRecordedSalePrice = selectedBatches.some((batch) => Number(batch.sale_price_per_kg) > 0);
-  const usesProvincialEstimate = !hasRecordedSalePrice && referencePrice > 0 && selectedBatches.length > 0;
+  const usesSelectedPrice = selectedPrice > 0 && selectedBatches.length > 0;
+  const usesProvincialEstimate = !usesSelectedPrice && !hasRecordedSalePrice && referencePrice > 0 && selectedBatches.length > 0;
 
   // ---------- Computed data for charts ----------
 
@@ -259,12 +276,16 @@ export default function AnalyticsReportsScreen() {
         ? batches
         : batches.filter((b) => b.batch_code === selectedBatch);
     const pricedBatches = targetBatches.filter(
-      (batch) => Number(batch.sale_price_per_kg) > 0 || referencePrice > 0
+      (batch) => selectedPrice > 0 || Number(batch.sale_price_per_kg) > 0 || referencePrice > 0
     );
     if (pricedBatches.length === 0) return [];
     const totalRevenue = pricedBatches.reduce(
       (sum, b) => {
-        const price = Number(b.sale_price_per_kg) > 0 ? Number(b.sale_price_per_kg) : referencePrice;
+        const price = selectedPrice > 0
+          ? selectedPrice
+          : Number(b.sale_price_per_kg) > 0
+            ? Number(b.sale_price_per_kg)
+            : referencePrice;
         return sum + (Number(b.current_weight) || 0) * price;
       },
       0
@@ -326,7 +347,7 @@ export default function AnalyticsReportsScreen() {
   const feedConsumptionData = useMemo(() => getFeedConsumptionData(), [filteredFeedRecords]);
   const profitTrend = useMemo(
     () => getProfitTrend(),
-    [batches, selectedBatch, filteredExpenses, combinedExpenses, pigPriceReference]
+    [batches, selectedBatch, filteredExpenses, combinedExpenses, selectedPrice, referencePrice]
   );
   const expenseBreakdown = useMemo(() => getExpenseBreakdown(), [filteredExpenses]);
   const vaccinationSummary = useMemo(() => getVaccinationSummary(), [vaccinationRecords]);
@@ -524,16 +545,34 @@ export default function AnalyticsReportsScreen() {
               </div>
             )}
             {pricePoints.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
-                {pricePoints.slice(0, 3).map((point) => (
-                  <div key={point.location} className="bg-white/50 rounded-xl p-3 border border-white/40">
-                    <div className="text-xs text-gray-600">{point.location}</div>
-                    <div className="text-lg font-bold text-green-700">
-                      {point.pricePhpPerKg == null ? 'Unavailable' : formatPricePerKg(point.pricePhpPerKg)}
-                    </div>
-                    <div className="text-[10px] text-gray-500">{point.source}</div>
-                  </div>
-                ))}
+              <div className="mb-3">
+                <div className="text-xs text-gray-700 font-semibold mb-2">Choose a price for estimated profit</div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {pricePoints.slice(0, 3).map((point) => {
+                    const isSelected = point.location === selectedPriceLocation;
+                    return (
+                      <button
+                        key={point.location}
+                        type="button"
+                        onClick={() => setSelectedPriceLocation(point.location)}
+                        className={`text-left rounded-xl p-3 border transition-all ${
+                          isSelected
+                            ? 'bg-green-100/80 border-green-500 ring-2 ring-green-400/40'
+                            : 'bg-white/50 border-white/40 hover:bg-white/70'
+                        }`}
+                      >
+                        <div className="text-xs text-gray-600">{point.location}</div>
+                        <div className="text-lg font-bold text-green-700">
+                          {point.pricePhpPerKg == null ? 'Unavailable' : formatPricePerKg(point.pricePhpPerKg)}
+                        </div>
+                        <div className="text-[10px] text-gray-500">{point.source}</div>
+                        <div className="text-[10px] font-semibold text-gray-700 mt-1">
+                          {isSelected ? 'Selected for profit estimate' : 'Select price'}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
             {pigPriceError && <div className="text-xs text-red-600">{pigPriceError}</div>}
@@ -617,6 +656,11 @@ export default function AnalyticsReportsScreen() {
                   {salesRevenue > 0 ? formatCurrency(salesRevenue) : 'Unavailable'}
                 </span>
               </div>
+              {usesSelectedPrice && (
+                <div className="text-[10px] text-green-700 mb-2">
+                  Estimated profit uses the selected {selectedPriceLocation} price of {formatPricePerKg(chosenPrice)} per kg.
+                </div>
+              )}
               {usesProvincialEstimate && (
                 <div className="text-[10px] text-amber-700 mb-2">
                   Revenue uses the latest Batangas provincial farmgate reference because no batch sale price was recorded.
