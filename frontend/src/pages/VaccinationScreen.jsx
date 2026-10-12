@@ -494,7 +494,7 @@ export default function VaccinationScreen() {
                         : 'text-gray-700 hover:bg-pink-100/70'
                     }`}
                   >
-                    {batch.name} · {batch.pigCount ?? 0} pigs
+                    {batch.name} · {batch.pigCount ?? 0} pigs · Day {batch.day ?? 0} · {batch.breed || 'Unknown'}
                   </button>
                 ))}
               </div>

@@ -24,6 +24,7 @@ import BottomNav from '../components/BottomNav';
 import { API_BASE, getAuthHeaders } from '../api.js';
 import { formatCurrency } from '../utils/formatters.js';
 import { getUserCacheKey } from '../utils/cache.js';
+import { PIG_BREEDS } from '../utils/breeds.js';
 // ────────────────────────────────────────────────────────────────
 
 const DEFAULT_ESTIMATED_PRICE_PER_KG = 170;
@@ -789,15 +790,18 @@ export default function DashboardScreen() {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-2">
-                    Breed (optional)
+                    Breed
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={newBatch.breed}
                     onChange={(e) => setNewBatch({ ...newBatch, breed: e.target.value })}
-                    placeholder="Landrace"
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  />
+                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
+                  >
+                    <option value="">Select breed...</option>
+                    {PIG_BREEDS.map((breed) => (
+                      <option key={breed} value={breed}>{breed}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>

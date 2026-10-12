@@ -373,7 +373,7 @@ export const updateFeedStock = async (req, res) => {
 export const getFeedOverview = async (req, res) => {
     try {
         const [batches, records, stock] = await Promise.all([
-            supabase.from('pig_batches').select('id,batch_code,pig_count,date_acquired,created_at').eq('owner_id', req.user.id).order('created_at', { ascending: false }).range(0, 24),
+            supabase.from('pig_batches').select('id,batch_code,pig_count,breed,date_acquired,created_at').eq('owner_id', req.user.id).order('created_at', { ascending: false }).range(0, 24),
             supabase.from('feed_records').select('id,batch_id,feed_type,quantity_kg,feeding_date,feeding_time,notes,created_at').eq('owner_id', req.user.id).order('feeding_date', { ascending: false }).range(0, 24),
             supabase.from('feed_stocks').select('id,feed_type,stock_quantity,unit_price,last_updated,notes,updated_at').eq('owner_id', req.user.id).order('feed_type'),
         ]);
