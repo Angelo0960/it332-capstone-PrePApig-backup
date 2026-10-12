@@ -95,10 +95,30 @@ export const getAllBatches = async (req, res) => {
 
         if (error) throw error;
 
+        res.status(200).json({
+            success: true,
+            count: batches.length,
+            data: batches
+        });
+    } catch (error) {
+        console.error('Error fetching batches:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+export const getBatchFinancialSummary = async (req, res) => {
+    try {
+        const { data: batches, error: batchesError } = await supabase
+            .from('pig_batches')
+            .select('id,sale_price_per_kg,current_weight')
+            .eq('owner_id', req.user.id);
+        if (batchesError) throw batchesError;
+
         const batchIds = (batches || []).map((batch) => batch.id);
-        if (batchIds.length === 0) {
-            return res.status(200).json({ success: true, count: 0, data: [] });
-        }
+        if (batchIds.length === 0) return res.json({ success: true, data: [] });
 
         const [expensesResult, feedsResult, vaccinationsResult, feedStockResult, vaccineStockResult] = await Promise.all([
             supabase.from('expenses').select('batch_id,amount').eq('owner_id', req.user.id).in('batch_id', batchIds),
@@ -107,38 +127,29 @@ export const getAllBatches = async (req, res) => {
             supabase.from('feed_stocks').select('feed_type,unit_price').eq('owner_id', req.user.id),
             supabase.from('vaccine_stocks').select('vaccine_name,price_per_dose').eq('owner_id', req.user.id),
         ]);
-        const relatedErrors = [expensesResult, feedsResult, vaccinationsResult, feedStockResult, vaccineStockResult]
+        const failed = [expensesResult, feedsResult, vaccinationsResult, feedStockResult, vaccineStockResult]
             .find((result) => result.error);
-        if (relatedErrors) throw relatedErrors.error;
+        if (failed) throw failed.error;
 
         const feedPrices = new Map((feedStockResult.data || []).map((stock) => [stock.feed_type, Number(stock.unit_price) || 0]));
         const vaccinePrices = new Map((vaccineStockResult.data || []).map((stock) => [stock.vaccine_name, Number(stock.price_per_dose) || 0]));
-        const expensesByBatch = new Map(batchIds.map((id) => [id, 0]));
-        for (const expense of expensesResult.data || []) {
-            expensesByBatch.set(expense.batch_id, (expensesByBatch.get(expense.batch_id) || 0) + (Number(expense.amount) || 0));
-        }
-        for (const record of feedsResult.data || []) {
-            expensesByBatch.set(record.batch_id, (expensesByBatch.get(record.batch_id) || 0) + ((Number(record.quantity_kg) || 0) * (feedPrices.get(record.feed_type) || 0)));
-        }
-        for (const record of vaccinationsResult.data || []) {
-            expensesByBatch.set(record.batch_id, (expensesByBatch.get(record.batch_id) || 0) + ((Number(record.dosage) || 0) * (vaccinePrices.get(record.vaccine_name) || 0)));
-        }
-        const data = (batches || []).map((batch) => ({
-            ...batch,
-            estimated_expenses: Math.round((expensesByBatch.get(batch.id) || 0) * 100) / 100,
-        }));
+        const totals = new Map(batchIds.map((id) => [id, 0]));
+        for (const expense of expensesResult.data || []) totals.set(expense.batch_id, (totals.get(expense.batch_id) || 0) + (Number(expense.amount) || 0));
+        for (const record of feedsResult.data || []) totals.set(record.batch_id, (totals.get(record.batch_id) || 0) + ((Number(record.quantity_kg) || 0) * (feedPrices.get(record.feed_type) || 0)));
+        for (const record of vaccinationsResult.data || []) totals.set(record.batch_id, (totals.get(record.batch_id) || 0) + ((Number(record.dosage) || 0) * (vaccinePrices.get(record.vaccine_name) || 0)));
 
-        res.status(200).json({
+        res.json({
             success: true,
-            count: data.length,
-            data
+            data: batches.map((batch) => ({
+                batch_id: batch.id,
+                current_weight: Number(batch.current_weight) || 0,
+                sale_price_per_kg: Number(batch.sale_price_per_kg) || null,
+                total_expenses: Math.round((totals.get(batch.id) || 0) * 100) / 100,
+            })),
         });
     } catch (error) {
-        console.error('Error fetching batches:', error);
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        console.error('Error fetching batch financial summary:', error);
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -399,10 +410,7 @@ export const getPigsByBatch = async (req, res) => {
 
                 if (insertError) {
                     console.error('Pig insert error:', insertError);
-                    return res.status(200).json({
-                        success: true,
-                        data: [],
-                    });
+                    throw insertError;
                 }
 
                 pigs = inserted;

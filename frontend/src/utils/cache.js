@@ -32,3 +32,12 @@ export const writeCache = (key, data) => {
     // Caching is optional; private browsing or a full storage quota should not break the UI.
   }
 };
+
+export const invalidateCache = (key) => {
+  try {
+    localStorage.removeItem(`${CACHE_PREFIX}${key}`);
+    localStorage.removeItem(`prepapig:${key}`);
+  } catch {
+    // Cache invalidation is optional and must not block a successful mutation.
+  }
+};

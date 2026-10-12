@@ -24,58 +24,6 @@ import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 import { formatLocalDate } from '../utils/dates.js';
 // ────────────────────────────────────────────────────────────────
 
-// Mock data
-const MOCK_BATCHES = [
-  { id: 'A', name: 'Batch A', day: 34, pigCount: 12 },
-  { id: 'B', name: 'Batch B', day: 21, pigCount: 8 },
-  { id: 'C', name: 'Batch C', day: 48, pigCount: 15 },
-];
-
-const MOCK_FEED_RECORDS = [
-  {
-    id: '1',
-    batch_id: 'A',
-    batch_name: 'Batch A',
-    feed_type: 'Grower Pellet',
-    quantity_kg: 48,
-    feeding_date: '2026-05-11',
-    notes: 'Regular feeding',
-  },
-  {
-    id: '2',
-    batch_id: 'B',
-    batch_name: 'Batch B',
-    feed_type: 'Starter Mash',
-    quantity_kg: 32,
-    feeding_date: '2026-05-10',
-    notes: '',
-  },
-  {
-    id: '3',
-    batch_id: 'A',
-    batch_name: 'Batch A',
-    feed_type: 'Grower Pellet',
-    quantity_kg: 45,
-    feeding_date: '2026-05-09',
-    notes: '',
-  },
-  {
-    id: '4',
-    batch_id: 'C',
-    batch_name: 'Batch C',
-    feed_type: 'Grower Pellet',
-    quantity_kg: 60,
-    feeding_date: '2026-05-08',
-    notes: '',
-  },
-];
-
-const MOCK_FEED_STOCKS = [
-  { feed_type: 'Starter Mash', unit_price: 29.0, stock_quantity: 48, last_updated: 'May 5, 2026' },
-  { feed_type: 'Grower Pellet', unit_price: 28.5, stock_quantity: 245, last_updated: 'May 1, 2026' },
-  { feed_type: 'Finisher', unit_price: 27.0, stock_quantity: 120, last_updated: 'Apr 28, 2026' },
-];
-
 // Helpers
 const getFeedTypeForAge = (day) => {
   if (day <= 21) return 'starter';
@@ -127,7 +75,6 @@ export default function FeedsInventoryScreen() {
   const [showBatchMenu, setShowBatchMenu] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [useMock, setUseMock] = useState(false);
 
   const [feedRecords, setFeedRecords] = useState([]);
   const [batches, setBatches] = useState([]);
@@ -181,13 +128,13 @@ export default function FeedsInventoryScreen() {
         });
         setBatches(mapped);
         writeCache(cacheKey, mapped);
-        setUseMock(false);
+
       } else {
         throw new Error('No batches found');
       }
     } catch (err) {
       console.warn('Could not fetch batches:', err.message);
-      setUseMock(false);
+
       setBatches([]);
     }
   };
@@ -213,13 +160,13 @@ export default function FeedsInventoryScreen() {
         const records = json.data || [];
         setFeedRecords(records);
         writeCache(cacheKey, records);
-        setUseMock(false);
+
       } else {
         throw new Error(json.message || 'No records');
       }
     } catch (err) {
       console.warn('Could not fetch feed records:', err.message);
-      setUseMock(false);
+
       setFeedRecords([]);
       setError('Unable to load feed records. Please retry.');
     } finally {
@@ -239,12 +186,12 @@ export default function FeedsInventoryScreen() {
         const stocks = json.data || [];
         setFeedStocks(stocks);
         writeCache(cacheKey, stocks);
-        setUseMock(false);
+
       }
     } catch (err) {
       console.warn('Could not fetch feed stock:', err.message);
       setFeedStocks([]);
-      setUseMock(false);
+
     }
   };
 
@@ -291,6 +238,7 @@ export default function FeedsInventoryScreen() {
           notes: '',
         });
         void fetchFeedStock();
+        window.dispatchEvent(new Event('prepapig:financial-data-changed'));
         return true;
       } else {
         throw new Error(json.message || 'Unknown error');
@@ -384,6 +332,7 @@ export default function FeedsInventoryScreen() {
           date: formatLocalDate(),
         });
         fetchFeedStock();
+        window.dispatchEvent(new Event('prepapig:financial-data-changed'));
       } else {
         throw new Error(json.message || 'Unknown error');
       }
@@ -494,11 +443,7 @@ export default function FeedsInventoryScreen() {
             <h1 className="text-xl font-bold text-gray-900">Feeds Inventory</h1>
           </div>
           <div className="flex items-center gap-2">
-            {useMock && (
-              <span className="text-xs text-yellow-600 bg-yellow-100/80 px-2 py-0.5 rounded-full">
-                Offline Mode
-              </span>
-            )}
+
             <button className="relative w-9 h-9 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all">
               {isOnline ? (
                 <>

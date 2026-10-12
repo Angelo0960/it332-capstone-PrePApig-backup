@@ -1,6 +1,19 @@
 import supabase from '../config/supabase.js';
 import admin from '../config/firebase.js';
 
+const getTodayInTimezone = () => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: process.env.APP_TIMEZONE || 'Asia/Manila',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).formatToParts(new Date()).reduce((result, part) => {
+        if (part.type !== 'literal') result[part.type] = part.value;
+        return result;
+    }, {});
+    return `${parts.year}-${parts.month}-${parts.day}`;
+};
+
 // CREATE – inserts vaccination, deducts stock, sends notifications
 export const createVaccination = async (req, res) => {
     try {
@@ -241,7 +254,7 @@ export const getVaccinationsByBatch = async (req, res) => {
 // UPCOMING VACCINATIONS
 export const getUpcomingVaccinations = async (req, res) => {
     try {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getTodayInTimezone();
 
         const { data, error } = await supabase
             .from('vaccination_records')

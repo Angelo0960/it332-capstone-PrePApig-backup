@@ -50,50 +50,6 @@ const getNextScheduledDate = (batch, vaccinationDate) => {
   return formatLocalDate(due);
 };
 
-// Mock data fallback
-const MOCK_BATCHES = [
-  { id: 'A', name: 'Batch A', day: 34, pigCount: 12 },
-  { id: 'B', name: 'Batch B', day: 21, pigCount: 8 },
-  { id: 'C', name: 'Batch C', day: 48, pigCount: 15 },
-];
-
-const MOCK_RECORDS = [
-  {
-    id: '1',
-    batch_id: 'A',
-    batch_name: 'Batch A',
-    vaccine_name: 'Swine Fever',
-    dosage: 12,
-    vaccination_date: '2026-05-10',
-    notes: 'Booster shot',
-  },
-  {
-    id: '2',
-    batch_id: 'B',
-    batch_name: 'Batch B',
-    vaccine_name: 'E. Coli',
-    dosage: 8,
-    vaccination_date: '2026-05-05',
-    notes: '',
-  },
-  {
-    id: '3',
-    batch_id: 'A',
-    batch_name: 'Batch A',
-    vaccine_name: 'PRRS',
-    dosage: 12,
-    vaccination_date: '2026-04-28',
-    notes: '',
-  },
-];
-
-// Default vaccine prices (fallback if stock not available)
-const DEFAULT_PRICES = {
-  'Swine Fever': 45.0,
-  'E. Coli': 38.5,
-  'PRRS': 52.0,
-  'Porcine Circovirus': 48.0,
-};
 
 // Map select value to vaccine name
 const VACCINE_NAME_MAP = {
@@ -113,7 +69,6 @@ export default function VaccinationScreen() {
   const [showBatchMenu, setShowBatchMenu] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [useMock, setUseMock] = useState(false);
 
   // Data
   const [vaccinationRecords, setVaccinationRecords] = useState([]);
@@ -174,13 +129,13 @@ export default function VaccinationScreen() {
         });
         setBatches(mapped);
         writeCache(cacheKey, mapped);
-        setUseMock(false);
+
       } else {
         throw new Error('No batches found');
       }
     } catch (err) {
       console.warn('Could not fetch batches:', err.message);
-      setUseMock(false);
+
       setBatches([]);
     }
   };
@@ -207,13 +162,13 @@ export default function VaccinationScreen() {
         const records = json.data || [];
         setVaccinationRecords(records);
         writeCache(cacheKey, records);
-        setUseMock(false);
+
       } else {
         throw new Error(json.message || 'No records');
       }
     } catch (err) {
       console.warn('Could not fetch vaccination records:', err.message);
-      setUseMock(false);
+
       setVaccinationRecords([]);
       setError('Unable to load vaccination records. Please retry.');
     } finally {
@@ -282,6 +237,7 @@ export default function VaccinationScreen() {
           notes: '',
         });
         void fetchVaccineStock();
+        window.dispatchEvent(new Event('prepapig:financial-data-changed'));
         return true;
       } else {
         throw new Error(json.message || 'Unknown error');
@@ -375,6 +331,7 @@ export default function VaccinationScreen() {
           purchaseDate: formatLocalDate(),
         });
         fetchVaccineStock();
+        window.dispatchEvent(new Event('prepapig:financial-data-changed'));
       } else {
         throw new Error(json.message || 'Unknown error');
       }
@@ -398,10 +355,8 @@ export default function VaccinationScreen() {
     if (!name) return 0;
     const trimmed = name.trim();
     const stock = vaccineStock.find((s) => s.vaccine_name?.trim() === trimmed);
-    if (stock && typeof stock.price_per_dose === 'number' && !isNaN(stock.price_per_dose)) {
-      return stock.price_per_dose;
-    }
-    return DEFAULT_PRICES[trimmed] || 0;
+    const price = Number(stock?.price_per_dose);
+    return Number.isFinite(price) && price >= 0 ? price : 0;
   };
 
   const calculateBatchVaccinationExpense = (batchId) => {
@@ -449,11 +404,7 @@ export default function VaccinationScreen() {
             <h1 className="text-xl font-bold text-gray-900">Vaccination Manager</h1>
           </div>
           <div className="flex items-center gap-2">
-            {useMock && (
-              <span className="text-xs text-yellow-600 bg-yellow-100/80 px-2 py-0.5 rounded-full">
-                Offline Mode
-              </span>
-            )}
+
             <div className="relative">
               {isOnline ? (
                 <Cloud className="w-5 h-5 text-green-600" />

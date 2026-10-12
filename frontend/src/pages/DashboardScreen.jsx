@@ -23,6 +23,7 @@ import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
 import { API_BASE, getAuthHeaders } from '../api.js';
 import { formatCurrency } from '../utils/formatters.js';
+import { getUserCacheKey } from '../utils/cache.js';
 // ────────────────────────────────────────────────────────────────
 
 const DEFAULT_ESTIMATED_PRICE_PER_KG = 170;
@@ -105,12 +106,6 @@ export default function DashboardScreen() {
   };
   const user = getUserFromToken();
 
-  // Feed stock data - mock (can be replaced later)
-  const feedStocks = [
-    { type: 'Starter Mash', stock: 48 },
-    { type: 'Grower Pellet', stock: 245 },
-    { type: 'Finisher', stock: 120 },
-  ];
 
   // Helper functions for feed scheduling
   const getFeedTypeForAge = (day) => {
@@ -208,7 +203,7 @@ export default function DashboardScreen() {
     try {
       const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
       if (Array.isArray(cached) && cached.length > 0) {
-        const savedPrice = Number(localStorage.getItem('prepapig:selected-price-per-kg'));
+        const savedPrice = Number(localStorage.getItem(`prepapig:${getUserCacheKey()}:selected-price-per-kg`));
         const cachedWithEstimate = cached.map((batch) => ({
           ...batch,
           pricePerKg: Number(batch.pricePerKg) > 0
@@ -227,10 +222,17 @@ export default function DashboardScreen() {
       localStorage.removeItem(cacheKey);
     }
     try {
-      const res = await fetch(`${API_BASE}/pigs/all?limit=20`, { headers: getAuthHeaders() });
+      const [res, financialRes] = await Promise.all([
+        fetch(`${API_BASE}/pigs/all?limit=20`, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE}/pigs/financial-summary`, { headers: getAuthHeaders() }),
+      ]);
       if (!res.ok) throw new Error('Failed to fetch batches');
-      const json = await res.json();
+      const [json, financialJson] = await Promise.all([
+        res.json(),
+        financialRes.ok ? financialRes.json() : Promise.resolve({ data: [] }),
+      ]);
       if (json.success) {
+        const financialByBatch = new Map((financialJson.data || []).map((item) => [item.batch_id, item]));
         const mapped = json.data.map((batch) => {
           const acquired = new Date(batch.date_acquired);
           const now = new Date();
@@ -240,8 +242,9 @@ export default function DashboardScreen() {
           const vaccination = Math.min(100, Math.floor((day / 50) * 100));
           const health = 80;
           const feed = Math.max(0, 100 - Math.floor(day / 1.2));
-          const savedPrice = Number(localStorage.getItem('prepapig:selected-price-per-kg'));
+          const savedPrice = Number(localStorage.getItem(`prepapig:${getUserCacheKey()}:selected-price-per-kg`));
           const recordedPrice = Number(batch.sale_price_per_kg);
+          const financial = financialByBatch.get(batch.id);
           const estimatedPrice = recordedPrice > 0
             ? recordedPrice
             : savedPrice > 0
@@ -261,7 +264,7 @@ export default function DashboardScreen() {
             weight: batch.current_weight || batch.start_weight || 0,
             recordedPricePerKg: recordedPrice > 0 ? recordedPrice : null,
             pricePerKg: estimatedPrice,
-            expenses: Number(batch.estimated_expenses) || 0,
+            expenses: Number(financial?.total_expenses) || 0,
           };
         });
         if (batchRenderFrame.current) cancelAnimationFrame(batchRenderFrame.current);
@@ -357,6 +360,12 @@ export default function DashboardScreen() {
     return () => {
       if (batchRenderFrame.current) cancelAnimationFrame(batchRenderFrame.current);
     };
+  }, []);
+
+  useEffect(() => {
+    const refreshFinancials = () => fetchBatches();
+    window.addEventListener('prepapig:financial-data-changed', refreshFinancials);
+    return () => window.removeEventListener('prepapig:financial-data-changed', refreshFinancials);
   }, []);
 
   useEffect(() => {

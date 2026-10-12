@@ -124,9 +124,12 @@ CREATE INDEX IF NOT EXISTS idx_pig_batches_owner ON pig_batches (owner_id);
 CREATE INDEX IF NOT EXISTS idx_pig_batches_owner_created_at ON pig_batches (owner_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_feed_records_owner ON feed_records (owner_id);
 CREATE INDEX IF NOT EXISTS idx_feed_records_owner_date ON feed_records (owner_id, feeding_date DESC);
+CREATE INDEX IF NOT EXISTS idx_feed_records_owner_batch_date ON feed_records (owner_id, batch_id, feeding_date DESC);
 CREATE INDEX IF NOT EXISTS idx_vaccination_records_owner ON vaccination_records (owner_id);
 CREATE INDEX IF NOT EXISTS idx_vaccination_records_owner_date ON vaccination_records (owner_id, vaccination_date DESC);
+CREATE INDEX IF NOT EXISTS idx_vaccination_records_owner_batch_date ON vaccination_records (owner_id, batch_id, vaccination_date DESC);
 CREATE INDEX IF NOT EXISTS idx_expenses_owner ON expenses (owner_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_owner_batch_date ON expenses (owner_id, batch_id, expense_date DESC);
 CREATE INDEX IF NOT EXISTS idx_pigs_owner ON pigs (owner_id);
 CREATE INDEX IF NOT EXISTS idx_feed_stocks_owner ON feed_stocks (owner_id);
 CREATE INDEX IF NOT EXISTS idx_vaccine_stocks_owner ON vaccine_stocks (owner_id);
@@ -145,6 +148,9 @@ CREATE INDEX IF NOT EXISTS idx_vaccination_records_date ON vaccination_records (
 CREATE INDEX IF NOT EXISTS idx_vaccination_records_due_status ON vaccination_records (next_due_date, status);
 CREATE INDEX IF NOT EXISTS idx_vaccination_records_batch ON vaccination_records (batch_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses (expense_date DESC);
+
+ALTER TABLE pig_batches DROP CONSTRAINT IF EXISTS pig_batches_batch_code_key;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pig_batches_owner_batch_code ON pig_batches (owner_id, batch_code);
 
 -- RLS is enabled for direct database access. The backend uses the service-role
 -- key and still applies owner_id filters in every controller.

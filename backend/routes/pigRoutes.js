@@ -9,6 +9,7 @@ pigBatchRouter.use(authMiddleware);
 // Batch CRUD
 pigBatchRouter.post('/create', validateBody({ required: ['batch_code', 'pig_count'], nonNegative: ['pig_count', 'start_weight', 'current_weight'] }), pigBatchController.createBatch);
 pigBatchRouter.get('/all', pigBatchController.getAllBatches);
+pigBatchRouter.get('/financial-summary', pigBatchController.getBatchFinancialSummary);
 pigBatchRouter.get('/active', pigBatchController.getActiveBatches);
 pigBatchRouter.get('/summary', pigBatchController.getBatchSummary);
 

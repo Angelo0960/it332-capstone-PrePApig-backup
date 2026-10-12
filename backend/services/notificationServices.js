@@ -1,6 +1,22 @@
 import supabase from '../config/supabase.js';
 import admin from '../config/firebase.js';
 
+const APP_TIMEZONE = process.env.APP_TIMEZONE || 'Asia/Manila';
+const getDateInTimezone = (date = new Date(), dayOffset = 0) => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: APP_TIMEZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).formatToParts(date).reduce((result, part) => {
+        if (part.type !== 'literal') result[part.type] = part.value;
+        return result;
+    }, {});
+    const localDate = new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day)));
+    localDate.setUTCDate(localDate.getUTCDate() + dayOffset);
+    return localDate.toISOString().slice(0, 10);
+};
+
 /**
  * Send daily feed reminders and overdue vaccination alerts.
  * Runs via cron job.
@@ -8,7 +24,7 @@ import admin from '../config/firebase.js';
 
 // ----- Feed reminders (unchanged) -----
 export const sendDailyFeedReminders = async () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getDateInTimezone();
 
     console.log(`🔍 Checking feed records for ${today}...`);
 
@@ -107,7 +123,7 @@ export const sendDailyFeedReminders = async () => {
 
 // ----- Vaccination reminders (due + overdue) -----
 export const sendVaccinationReminders = async () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getDateInTimezone();
 
     console.log(`🔍 Checking vaccinations due or overdue for ${today}...`);
 
@@ -133,7 +149,7 @@ export const sendVaccinationReminders = async () => {
 
     // 2. Fetch overdue vaccinations (next_due_date < today)
     // Also send reminders for records already marked 'Overdue' (e.g., once a week)
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const sevenDaysAgo = getDateInTimezone(new Date(), -7);
     const { data: alreadyOverdue } = await supabase
         .from('vaccination_records')
         .select(`

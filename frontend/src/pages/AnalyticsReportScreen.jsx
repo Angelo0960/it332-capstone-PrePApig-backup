@@ -35,6 +35,7 @@ import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
 import { API_BASE, getAuthHeaders } from '../api.js';
 import { formatCurrency, formatPricePerKg } from '../utils/formatters.js';
+import { getUserCacheKey } from '../utils/cache.js';
 // ────────────────────────────────────────────────────────────────
 
 const DEFAULT_PRICE_POINTS = [
@@ -60,7 +61,7 @@ export default function AnalyticsReportsScreen() {
   const [pigPriceReference, setPigPriceReference] = useState(null);
   const [pricePoints, setPricePoints] = useState(DEFAULT_PRICE_POINTS);
   const [selectedPriceLocation, setSelectedPriceLocation] = useState(() => (
-    localStorage.getItem('prepapig:selected-price-location') || null
+    localStorage.getItem(`prepapig:${getUserCacheKey()}:selected-price-location`) || null
   ));
   const [facebookPriceSources, setFacebookPriceSources] = useState([]);
   const [pigPriceError, setPigPriceError] = useState(null);
@@ -185,8 +186,8 @@ export default function AnalyticsReportsScreen() {
   useEffect(() => {
     const selectedPoint = pricePoints.find((point) => point.location === selectedPriceLocation);
     if (!selectedPoint) return;
-    localStorage.setItem('prepapig:selected-price-location', selectedPoint.location);
-    localStorage.setItem('prepapig:selected-price-per-kg', String(selectedPoint.pricePhpPerKg));
+    localStorage.setItem(`prepapig:${getUserCacheKey()}:selected-price-location`, selectedPoint.location);
+    localStorage.setItem(`prepapig:${getUserCacheKey()}:selected-price-per-kg`, String(selectedPoint.pricePhpPerKg));
     window.dispatchEvent(new CustomEvent('prepapig:price-selection-changed', {
       detail: {
         location: selectedPoint.location,
