@@ -37,6 +37,12 @@ import { API_BASE, getAuthHeaders } from '../api.js';
 import { formatCurrency, formatPricePerKg } from '../utils/formatters.js';
 // ────────────────────────────────────────────────────────────────
 
+const DEFAULT_PRICE_POINTS = [
+  { location: 'Calaca', pricePhpPerKg: 120, unit: 'PHP/kg', source: 'User-provided local reference', status: 'reference' },
+  { location: 'Tuy', pricePhpPerKg: 190, unit: 'PHP/kg', source: 'User-provided local reference', status: 'reference' },
+  { location: 'Nasugbu', pricePhpPerKg: 210, unit: 'PHP/kg', source: 'User-provided local reference', status: 'reference' },
+];
+
 export default function AnalyticsReportsScreen() {
   const navigate = useNavigate();
   const [isOnline] = useState(true);
@@ -52,7 +58,7 @@ export default function AnalyticsReportsScreen() {
   const [vaccineStock, setVaccineStock] = useState([]);
   const [pigPriceLocations, setPigPriceLocations] = useState(['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Nasugbu']);
   const [pigPriceReference, setPigPriceReference] = useState(null);
-  const [pricePoints, setPricePoints] = useState([]);
+  const [pricePoints, setPricePoints] = useState(DEFAULT_PRICE_POINTS);
   const [selectedPriceLocation, setSelectedPriceLocation] = useState(null);
   const [facebookPriceSources, setFacebookPriceSources] = useState([]);
   const [pigPriceError, setPigPriceError] = useState(null);
@@ -120,8 +126,9 @@ export default function AnalyticsReportsScreen() {
     } catch (err) {
       if (err.name === 'AbortError') return;
       console.error('Error loading pig price basis:', err);
-      setPigPriceLocations([]);
+      setPigPriceLocations(DEFAULT_PRICE_POINTS.map((point) => point.location));
       setPigPriceReference(null);
+      setPricePoints(DEFAULT_PRICE_POINTS);
       setPigPriceError('Price sources unavailable');
     }
   };
