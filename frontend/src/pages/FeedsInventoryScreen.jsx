@@ -113,11 +113,11 @@ export default function FeedsInventoryScreen() {
           if (batch.date_acquired) {
             const acquired = new Date(batch.date_acquired);
             const now = new Date();
-            day = Math.max(0, Math.floor((now - acquired) / (1000 * 60 * 60 * 24)));
+            day = (Number(batch.age_on_acquisition) || 0) + Math.max(0, Math.floor((now - acquired) / (1000 * 60 * 60 * 24)));
           } else if (batch.created_at) {
             const created = new Date(batch.created_at);
             const now = new Date();
-            day = Math.max(0, Math.floor((now - created) / (1000 * 60 * 60 * 24)));
+            day = (Number(batch.age_on_acquisition) || 0) + Math.max(0, Math.floor((now - created) / (1000 * 60 * 60 * 24)));
           }
           return {
             id: batch.id,
@@ -206,9 +206,9 @@ export default function FeedsInventoryScreen() {
       const mappedBatches = (overview.batches || []).map((batch) => {
         const sourceDate = batch.date_acquired || batch.created_at;
         const day = sourceDate
-          ? Math.max(0, Math.floor((new Date() - new Date(sourceDate)) / (1000 * 60 * 60 * 24)))
+          ? (Number(batch.age_on_acquisition) || 0) + Math.max(0, Math.floor((new Date() - new Date(sourceDate)) / (1000 * 60 * 60 * 24)))
           : 0;
-        return { id: batch.id, name: batch.batch_code || `Batch ${batch.id}`, day, pigCount: batch.pig_count || 0, breed: batch.breed || 'Unknown' };
+        return { id: batch.id, name: batch.batch_code || `Batch ${batch.id}`, day, pigCount: batch.pig_count || 0, breed: batch.breed || 'Unknown', age_on_acquisition: batch.age_on_acquisition || 0 };
       });
       setBatches(mappedBatches);
       setFeedRecords(overview.records || []);

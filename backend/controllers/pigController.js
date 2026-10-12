@@ -11,6 +11,7 @@ export const createBatch = async (req, res) => {
             start_weight,
             current_weight,
             sale_price_per_kg,
+            age_on_acquisition,
             date_acquired,
             status
         } = req.body;
@@ -27,6 +28,7 @@ export const createBatch = async (req, res) => {
                 start_weight,
                 current_weight,
                 sale_price_per_kg: sale_price_per_kg || null,
+                age_on_acquisition: Math.max(0, parseInt(age_on_acquisition, 10) || 0),
                 date_acquired,
                 status,
                 owner_id
@@ -87,7 +89,7 @@ export const getAllBatches = async (req, res) => {
         const offset = Math.max(Number(req.query.offset) || 0, 0);
         let query = supabase
             .from('pig_batches')
-            .select('id,batch_code,pig_count,breed,start_weight,current_weight,sale_price_per_kg,date_acquired,status,created_at')
+            .select('id,batch_code,pig_count,breed,start_weight,current_weight,sale_price_per_kg,age_on_acquisition,date_acquired,status,created_at')
             .eq('owner_id', req.user.id)
             .order('created_at', { ascending: false });
         if (limit !== null) query = query.range(offset, offset + limit - 1);
@@ -189,6 +191,7 @@ export const updateBatch = async (req, res) => {
             start_weight,
             current_weight,
             sale_price_per_kg,
+            age_on_acquisition,
             date_acquired,
             status
         } = req.body;
@@ -202,6 +205,7 @@ export const updateBatch = async (req, res) => {
                 start_weight,
                 current_weight,
                 sale_price_per_kg: sale_price_per_kg || null,
+                age_on_acquisition: Math.max(0, parseInt(age_on_acquisition, 10) || 0),
                 date_acquired,
                 status
             })

@@ -17,6 +17,7 @@ CREATE TABLE pig_batches (
     start_weight DECIMAL(10,2),
     current_weight DECIMAL(10,2),
     sale_price_per_kg DECIMAL(10,2),
+    age_on_acquisition INTEGER NOT NULL DEFAULT 0,
     date_acquired DATE,
     status VARCHAR(20) DEFAULT 'Active',
     created_at TIMESTAMP DEFAULT NOW()

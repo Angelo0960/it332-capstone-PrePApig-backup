@@ -28,6 +28,11 @@ import { PIG_BREEDS } from '../utils/breeds.js';
 // ────────────────────────────────────────────────────────────────
 
 const DEFAULT_ESTIMATED_PRICE_PER_KG = 170;
+const getDateAcquiredFromAge = (ageDays) => {
+  const date = new Date();
+  date.setDate(date.getDate() - Math.max(0, Number.parseInt(ageDays, 10) || 0));
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
 
 // Calculate profit in pesos
 const calculateProfit = (weight, pricePerKg, expenses) => {
@@ -81,6 +86,7 @@ export default function DashboardScreen() {
   const [newBatch, setNewBatch] = useState({
     pig_count: '',
     breed: '',
+    age_on_acquisition: '',
     start_weight: '',
     sale_price_per_kg: '',
     date_acquired: '',
@@ -237,7 +243,8 @@ export default function DashboardScreen() {
         const mapped = json.data.map((batch) => {
           const acquired = new Date(batch.date_acquired);
           const now = new Date();
-          const day = Math.max(0, Math.floor((now - acquired) / (1000 * 60 * 60 * 24)));
+          const ageAtAcquisition = Number(batch.age_on_acquisition) || 0;
+          const day = ageAtAcquisition + Math.max(0, Math.floor((now - acquired) / (1000 * 60 * 60 * 24)));
           const name = batch.batch_code || `Batch ${batch.id}`;
           const growth = Math.min(100, Math.floor(day / 0.5));
           const vaccination = Math.min(100, Math.floor((day / 50) * 100));
@@ -420,10 +427,12 @@ export default function DashboardScreen() {
 
   // ---------- Handle adding a batch ----------
   const handleAddBatch = async () => {
-    if (!newBatch.pig_count || !newBatch.start_weight || !newBatch.date_acquired) {
-      alert('Please fill in all required fields (Number of Pigs, Start Weight, Date Acquired)');
+    if (!newBatch.pig_count || !newBatch.start_weight || newBatch.age_on_acquisition === '') {
+      alert('Please fill in all required fields (Number of Pigs, Pig Age, Start Weight)');
       return;
     }
+
+    const dateAcquired = newBatch.date_acquired || getDateAcquiredFromAge(newBatch.age_on_acquisition);
 
     const batchCode = generateBatchCode();
 
@@ -438,7 +447,8 @@ export default function DashboardScreen() {
           start_weight: parseFloat(newBatch.start_weight),
           current_weight: parseFloat(newBatch.start_weight),
           sale_price_per_kg: newBatch.sale_price_per_kg ? parseFloat(newBatch.sale_price_per_kg) : null,
-          date_acquired: newBatch.date_acquired,
+          age_on_acquisition: parseInt(newBatch.age_on_acquisition, 10) || 0,
+          date_acquired: dateAcquired,
           status: 'Active',
         }),
       });
@@ -447,7 +457,7 @@ export default function DashboardScreen() {
       if (json.success) {
         await fetchBatches();
         setShowAddBatch(false);
-        setNewBatch({ pig_count: '', breed: '', start_weight: '', sale_price_per_kg: '', date_acquired: '', status: 'Active' });
+        setNewBatch({ pig_count: '', breed: '', age_on_acquisition: '', start_weight: '', sale_price_per_kg: '', date_acquired: '', status: 'Active' });
       } else {
         throw new Error(json.message || 'Unknown error');
       }
@@ -755,6 +765,7 @@ export default function DashboardScreen() {
                     setNewBatch({
                       pig_count: '',
                       breed: '',
+                      age_on_acquisition: '',
                       start_weight: '',
                       sale_price_per_kg: '',
                       date_acquired: '',
@@ -802,6 +813,20 @@ export default function DashboardScreen() {
                       <option key={breed} value={breed}>{breed}</option>
                     ))}
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">
+                    Pig Age (days)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newBatch.age_on_acquisition}
+                    onChange={(e) => setNewBatch({ ...newBatch, age_on_acquisition: e.target.value })}
+                    placeholder="e.g. 30"
+                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
+                  />
                 </div>
 
                 <div>

@@ -372,7 +372,7 @@ export const updateVaccineStock = async (req, res) => {
 export const getVaccinationOverview = async (req, res) => {
     try {
         const [batches, records, stock] = await Promise.all([
-            supabase.from('pig_batches').select('id,batch_code,pig_count,breed,start_weight,current_weight,date_acquired,status,created_at').eq('owner_id', req.user.id).order('created_at', { ascending: false }).range(0, 24),
+            supabase.from('pig_batches').select('id,batch_code,pig_count,breed,age_on_acquisition,start_weight,current_weight,date_acquired,status,created_at').eq('owner_id', req.user.id).order('created_at', { ascending: false }).range(0, 24),
             supabase.from('vaccination_records').select('id,batch_id,vaccine_name,vaccination_date,next_due_date,administered_by,dosage,notes,status,created_at').eq('owner_id', req.user.id).order('vaccination_date', { ascending: false }).range(0, 24),
             supabase.from('vaccine_stocks').select('id,vaccine_name,stock_quantity,expiry_date,price_per_dose,notes,updated_at').eq('owner_id', req.user.id).order('vaccine_name'),
         ]);
