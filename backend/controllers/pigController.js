@@ -87,13 +87,46 @@ export const getAllBatches = async (req, res) => {
         const offset = Math.max(Number(req.query.offset) || 0, 0);
         let query = supabase
             .from('pig_batches')
-            .select('id,batch_code,pig_count,breed,start_weight,current_weight,date_acquired,status,created_at')
+            .select('id,batch_code,pig_count,breed,start_weight,current_weight,sale_price_per_kg,date_acquired,status,created_at')
             .eq('owner_id', req.user.id)
             .order('created_at', { ascending: false });
         if (limit !== null) query = query.range(offset, offset + limit - 1);
-        const { data, error } = await query;
+        const { data: batches, error } = await query;
 
         if (error) throw error;
+
+        const batchIds = (batches || []).map((batch) => batch.id);
+        if (batchIds.length === 0) {
+            return res.status(200).json({ success: true, count: 0, data: [] });
+        }
+
+        const [expensesResult, feedsResult, vaccinationsResult, feedStockResult, vaccineStockResult] = await Promise.all([
+            supabase.from('expenses').select('batch_id,amount').eq('owner_id', req.user.id).in('batch_id', batchIds),
+            supabase.from('feed_records').select('batch_id,feed_type,quantity_kg').eq('owner_id', req.user.id).in('batch_id', batchIds),
+            supabase.from('vaccination_records').select('batch_id,vaccine_name,dosage').eq('owner_id', req.user.id).in('batch_id', batchIds),
+            supabase.from('feed_stocks').select('feed_type,unit_price').eq('owner_id', req.user.id),
+            supabase.from('vaccine_stocks').select('vaccine_name,price_per_dose').eq('owner_id', req.user.id),
+        ]);
+        const relatedErrors = [expensesResult, feedsResult, vaccinationsResult, feedStockResult, vaccineStockResult]
+            .find((result) => result.error);
+        if (relatedErrors) throw relatedErrors.error;
+
+        const feedPrices = new Map((feedStockResult.data || []).map((stock) => [stock.feed_type, Number(stock.unit_price) || 0]));
+        const vaccinePrices = new Map((vaccineStockResult.data || []).map((stock) => [stock.vaccine_name, Number(stock.price_per_dose) || 0]));
+        const expensesByBatch = new Map(batchIds.map((id) => [id, 0]));
+        for (const expense of expensesResult.data || []) {
+            expensesByBatch.set(expense.batch_id, (expensesByBatch.get(expense.batch_id) || 0) + (Number(expense.amount) || 0));
+        }
+        for (const record of feedsResult.data || []) {
+            expensesByBatch.set(record.batch_id, (expensesByBatch.get(record.batch_id) || 0) + ((Number(record.quantity_kg) || 0) * (feedPrices.get(record.feed_type) || 0)));
+        }
+        for (const record of vaccinationsResult.data || []) {
+            expensesByBatch.set(record.batch_id, (expensesByBatch.get(record.batch_id) || 0) + ((Number(record.dosage) || 0) * (vaccinePrices.get(record.vaccine_name) || 0)));
+        }
+        const data = (batches || []).map((batch) => ({
+            ...batch,
+            estimated_expenses: Math.round((expensesByBatch.get(batch.id) || 0) * 100) / 100,
+        }));
 
         res.status(200).json({
             success: true,
@@ -144,6 +177,7 @@ export const updateBatch = async (req, res) => {
             breed,
             start_weight,
             current_weight,
+            sale_price_per_kg,
             date_acquired,
             status
         } = req.body;
@@ -156,6 +190,7 @@ export const updateBatch = async (req, res) => {
                 breed,
                 start_weight,
                 current_weight,
+                sale_price_per_kg: sale_price_per_kg || null,
                 date_acquired,
                 status
             })

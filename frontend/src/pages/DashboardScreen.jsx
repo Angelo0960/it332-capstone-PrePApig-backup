@@ -33,7 +33,7 @@ const calculateProfit = (weight, pricePerKg, expenses) => {
   if (expenses === undefined || expenses === null) return 0;
   const revenue = weight * pricePerKg;
   const profit = revenue - expenses;
-  return Math.round(Math.max(0, profit));
+  return Math.round(profit);
 };
 
 
@@ -261,7 +261,7 @@ export default function DashboardScreen() {
             weight: batch.current_weight || batch.start_weight || 0,
             recordedPricePerKg: recordedPrice > 0 ? recordedPrice : null,
             pricePerKg: estimatedPrice,
-            expenses: 0,
+            expenses: Number(batch.estimated_expenses) || 0,
           };
         });
         if (batchRenderFrame.current) cancelAnimationFrame(batchRenderFrame.current);
