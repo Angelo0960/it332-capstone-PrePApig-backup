@@ -59,7 +59,9 @@ export default function AnalyticsReportsScreen() {
   const [pigPriceLocations, setPigPriceLocations] = useState(['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Nasugbu']);
   const [pigPriceReference, setPigPriceReference] = useState(null);
   const [pricePoints, setPricePoints] = useState(DEFAULT_PRICE_POINTS);
-  const [selectedPriceLocation, setSelectedPriceLocation] = useState(null);
+  const [selectedPriceLocation, setSelectedPriceLocation] = useState(() => (
+    localStorage.getItem('prepapig:selected-price-location') || null
+  ));
   const [facebookPriceSources, setFacebookPriceSources] = useState([]);
   const [pigPriceError, setPigPriceError] = useState(null);
   const [aiAnalysis, setAiAnalysis] = useState(null);
@@ -178,6 +180,13 @@ export default function AnalyticsReportsScreen() {
     if (pricePoints.length > 0 && !pricePoints.some((point) => point.location === selectedPriceLocation)) {
       setSelectedPriceLocation(pricePoints[0].location);
     }
+  }, [pricePoints, selectedPriceLocation]);
+
+  useEffect(() => {
+    const selectedPoint = pricePoints.find((point) => point.location === selectedPriceLocation);
+    if (!selectedPoint) return;
+    localStorage.setItem('prepapig:selected-price-location', selectedPoint.location);
+    localStorage.setItem('prepapig:selected-price-per-kg', String(selectedPoint.pricePhpPerKg));
   }, [pricePoints, selectedPriceLocation]);
 
   useEffect(() => () => aiAbortController.current?.abort(), []);

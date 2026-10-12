@@ -25,6 +25,8 @@ import { API_BASE, getAuthHeaders } from '../api.js';
 import { formatCurrency } from '../utils/formatters.js';
 // ────────────────────────────────────────────────────────────────
 
+const DEFAULT_ESTIMATED_PRICE_PER_KG = 170;
+
 // Calculate profit in pesos
 const calculateProfit = (weight, pricePerKg, expenses) => {
   if (!weight || !pricePerKg || weight === 0 || pricePerKg === 0) return 0;
@@ -206,8 +208,18 @@ export default function DashboardScreen() {
     try {
       const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
       if (Array.isArray(cached) && cached.length > 0) {
+        const savedPrice = Number(localStorage.getItem('prepapig:selected-price-per-kg'));
+        const cachedWithEstimate = cached.map((batch) => ({
+          ...batch,
+          pricePerKg: Number(batch.pricePerKg) > 0
+            ? batch.pricePerKg
+            : savedPrice > 0
+              ? savedPrice
+              : DEFAULT_ESTIMATED_PRICE_PER_KG,
+          expenses: batch.expenses === null || batch.expenses === undefined ? 0 : batch.expenses,
+        }));
         setCurrentBatchIndex(0);
-        setBatches(cached);
+        setBatches(cachedWithEstimate);
         setLoading(false);
         renderedCache = true;
       }
@@ -228,6 +240,14 @@ export default function DashboardScreen() {
           const vaccination = Math.min(100, Math.floor((day / 50) * 100));
           const health = 80;
           const feed = Math.max(0, 100 - Math.floor(day / 1.2));
+          const savedPrice = Number(localStorage.getItem('prepapig:selected-price-per-kg'));
+          const recordedPrice = Number(batch.sale_price_per_kg);
+          const estimatedPrice = recordedPrice > 0
+            ? recordedPrice
+            : savedPrice > 0
+              ? savedPrice
+              : DEFAULT_ESTIMATED_PRICE_PER_KG;
+
           return {
             id: batch.id,
             name: name,
@@ -239,8 +259,8 @@ export default function DashboardScreen() {
             health: health,
             feed: feed,
             weight: batch.current_weight || batch.start_weight || 0,
-            pricePerKg: null,
-            expenses: null,
+            pricePerKg: estimatedPrice,
+            expenses: 0,
           };
         });
         if (batchRenderFrame.current) cancelAnimationFrame(batchRenderFrame.current);
@@ -527,7 +547,7 @@ export default function DashboardScreen() {
                   <div className="bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3">
                     <div className="text-xs text-gray-700 mb-1 font-medium">Estimated Profit</div>
                     <div className="text-sm font-bold text-green-600">
-                      {currentBatch?.pricePerKg > 0 && currentBatch?.expenses !== null
+                      {currentBatch?.pricePerKg > 0
                         ? formatCurrency(
                             calculateProfit(
                               currentBatch.weight,
