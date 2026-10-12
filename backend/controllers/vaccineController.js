@@ -367,4 +367,20 @@ export const updateVaccineStock = async (req, res) => {
             message
         });
     }
+}
+
+export const getVaccinationOverview = async (req, res) => {
+    try {
+        const [batches, records, stock] = await Promise.all([
+            supabase.from('pig_batches').select('id,batch_code,pig_count,breed,start_weight,current_weight,date_acquired,status,created_at').eq('owner_id', req.user.id).order('created_at', { ascending: false }).range(0, 24),
+            supabase.from('vaccination_records').select('id,batch_id,vaccine_name,vaccination_date,next_due_date,administered_by,dosage,notes,status,created_at').eq('owner_id', req.user.id).order('vaccination_date', { ascending: false }).range(0, 24),
+            supabase.from('vaccine_stocks').select('id,vaccine_name,stock_quantity,expiry_date,price_per_dose,notes,updated_at').eq('owner_id', req.user.id).order('vaccine_name'),
+        ]);
+        const failed = [batches, records, stock].find((result) => result.error);
+        if (failed) throw failed.error;
+        res.json({ success: true, data: { batches: batches.data || [], records: records.data || [], stock: stock.data || [] } });
+    } catch (error) {
+        console.error('Error fetching vaccination overview:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
 };

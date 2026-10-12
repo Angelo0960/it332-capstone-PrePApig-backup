@@ -195,12 +195,40 @@ export default function FeedsInventoryScreen() {
     }
   };
 
+  const fetchFeedOverview = async () => {
+    const userKey = getUserCacheKey();
+    try {
+      const res = await fetch(`${API_BASE}/feeds/overview`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || 'Failed to load feed overview');
+      const overview = json.data || {};
+      const mappedBatches = (overview.batches || []).map((batch) => {
+        const sourceDate = batch.date_acquired || batch.created_at;
+        const day = sourceDate
+          ? Math.max(0, Math.floor((new Date() - new Date(sourceDate)) / (1000 * 60 * 60 * 24)))
+          : 0;
+        return { id: batch.id, name: batch.batch_code || `Batch ${batch.id}`, day, pigCount: batch.pig_count || 0 };
+      });
+      setBatches(mappedBatches);
+      setFeedRecords(overview.records || []);
+      setFeedStocks(overview.stock || []);
+      writeCache(`batches:${userKey}`, mappedBatches);
+      writeCache(`feed-records:${userKey}:all`, overview.records || []);
+      writeCache(`feed-stock:${userKey}`, overview.stock || []);
+      setLoading(false);
+    } catch (err) {
+      console.warn('Could not fetch feed overview:', err.message);
+      void Promise.all([fetchBatches(), fetchFeedStock(), fetchFeedRecords()]);
+    }
+  };
+
   useEffect(() => {
-    fetchBatches();
-    fetchFeedStock();
+    fetchFeedOverview();
   }, []);
 
   useEffect(() => {
+    if (selectedBatch === 'all') return;
     fetchFeedRecords();
   }, [selectedBatch]);
 

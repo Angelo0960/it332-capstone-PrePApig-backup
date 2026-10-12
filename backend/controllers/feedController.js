@@ -369,3 +369,19 @@ export const updateFeedStock = async (req, res) => {
         });
     }
 };
+
+export const getFeedOverview = async (req, res) => {
+    try {
+        const [batches, records, stock] = await Promise.all([
+            supabase.from('pig_batches').select('id,batch_code,pig_count,date_acquired,created_at').eq('owner_id', req.user.id).order('created_at', { ascending: false }).range(0, 24),
+            supabase.from('feed_records').select('id,batch_id,feed_type,quantity_kg,feeding_date,feeding_time,notes,created_at').eq('owner_id', req.user.id).order('feeding_date', { ascending: false }).range(0, 24),
+            supabase.from('feed_stocks').select('id,feed_type,stock_quantity,unit_price,last_updated,notes,updated_at').eq('owner_id', req.user.id).order('feed_type'),
+        ]);
+        const failed = [batches, records, stock].find((result) => result.error);
+        if (failed) throw failed.error;
+        res.json({ success: true, data: { batches: batches.data || [], records: records.data || [], stock: stock.data || [] } });
+    } catch (error) {
+        console.error('Error fetching feed overview:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};

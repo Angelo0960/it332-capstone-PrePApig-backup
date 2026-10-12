@@ -9,6 +9,7 @@ feedRouter.use(authMiddleware);
 // Feed record routes
 feedRouter.post('/create', validateBody({ required: ['batch_id', 'feed_type', 'quantity_kg', 'feeding_date'], nonNegative: ['quantity_kg'] }), feedController.createFeedRecord);
 feedRouter.get('/all', feedController.getAllFeedRecords);
+feedRouter.get('/overview', feedController.getFeedOverview);
 feedRouter.get('/batch/:batchId', feedController.getFeedByBatch);
 feedRouter.get('/summary', feedController.getFeedSummary);
 

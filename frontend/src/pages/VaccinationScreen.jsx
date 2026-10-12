@@ -196,13 +196,51 @@ export default function VaccinationScreen() {
     }
   };
 
+  const fetchVaccinationOverview = async () => {
+    const userKey = getUserCacheKey();
+    try {
+      const res = await fetch(`${API_BASE}/vaccinations/overview`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || 'Failed to load vaccination overview');
+      const overview = json.data || {};
+      const mappedBatches = (overview.batches || []).map((batch) => {
+        const sourceDate = batch.date_acquired || batch.created_at;
+        const day = sourceDate
+          ? Math.max(0, Math.floor((new Date() - new Date(sourceDate)) / (1000 * 60 * 60 * 24)))
+          : 0;
+        return {
+          id: batch.id,
+          name: batch.batch_code || `Batch ${batch.id}`,
+          day,
+          pigCount: batch.pig_count || 0,
+          breed: batch.breed,
+          startWeight: batch.start_weight,
+          currentWeight: batch.current_weight,
+          dateAcquired: batch.date_acquired,
+          status: batch.status,
+        };
+      });
+      setBatches(mappedBatches);
+      setVaccinationRecords(overview.records || []);
+      setVaccineStock(overview.stock || []);
+      writeCache(`batches:${userKey}`, mappedBatches);
+      writeCache(`vaccination-records:${userKey}:all`, overview.records || []);
+      writeCache(`vaccine-stock:${userKey}`, overview.stock || []);
+      setLoading(false);
+    } catch (err) {
+      console.warn('Could not fetch vaccination overview:', err.message);
+      void Promise.all([fetchBatches(), fetchVaccineStock(), fetchVaccinations()]);
+    }
+  };
+
   // Load data
   useEffect(() => {
-    fetchBatches();
-    fetchVaccineStock();
+    fetchVaccinationOverview();
   }, []);
 
   useEffect(() => {
+    if (selectedBatch === 'all') return;
     fetchVaccinations();
   }, [selectedBatch]);
 
