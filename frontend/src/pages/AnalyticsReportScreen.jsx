@@ -32,6 +32,7 @@ import {
 } from 'recharts';
 import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.webp';
 import BottomNav from '../components/BottomNav';
+import HarvestSales from '../components/HarvestSales.jsx';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
 import { API_BASE, getAuthHeaders } from '../api.js';
 import { formatCurrency, formatPricePerKg } from '../utils/formatters.js';
@@ -55,8 +56,10 @@ export default function AnalyticsReportsScreen() {
   const [feedRecords, setFeedRecords] = useState([]);
   const [vaccinationRecords, setVaccinationRecords] = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [financial, setFinancial] = useState(null);
+  const [financialError, setFinancialError] = useState(null);
+  const [financialRevision, setFinancialRevision] = useState(0);
   const [feedStock, setFeedStock] = useState([]);
-  const [vaccineStock, setVaccineStock] = useState([]);
   const [pigPriceLocations, setPigPriceLocations] = useState(['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Nasugbu']);
   const [pigPriceReference, setPigPriceReference] = useState(null);
   const [pricePoints, setPricePoints] = useState(DEFAULT_PRICE_POINTS);
@@ -105,7 +108,6 @@ export default function AnalyticsReportsScreen() {
       setVaccinationRecords(data.vaccinationRecords || []);
       setExpenses(data.expenses || []);
       setFeedStock(data.feedStock || []);
-      setVaccineStock(data.vaccineStock || []);
     } catch (err) {
       if (err.name === 'AbortError') return;
       setError('Failed to load some data. Please refresh.');
@@ -178,6 +180,25 @@ export default function AnalyticsReportsScreen() {
   }, [dateRange]);
 
   useEffect(() => {
+    const controller = new AbortController();
+    setFinancial(null);
+    setFinancialError(null);
+    const batch = batches.find((row) => row.batch_code === selectedBatch);
+    if (selectedBatch !== 'All Batches' && !batch) return () => controller.abort();
+    const batchQuery = batch ? `&batch_id=${encodeURIComponent(batch.id)}` : '';
+    fetch(`${API_BASE}/reports/financial?${getDateQuery()}${batchQuery}`, {
+      headers: getAuthHeaders(), signal: controller.signal,
+    }).then(async (response) => {
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || 'Financial report unavailable');
+      setFinancial(result.data);
+    }).catch((err) => {
+      if (err.name !== 'AbortError') setFinancialError('Recorded financial results unavailable. Please refresh.');
+    });
+    return () => controller.abort();
+  }, [dateRange, selectedBatch, batches, financialRevision]);
+
+  useEffect(() => {
     if (pricePoints.length > 0 && !pricePoints.some((point) => point.location === selectedPriceLocation)) {
       setSelectedPriceLocation(pricePoints[0].location);
     }
@@ -222,30 +243,22 @@ export default function AnalyticsReportsScreen() {
   // ---------- Currency helper ----------
 
 
-  // ---------- Compute feed + vaccine combined expenses (safe) ----------
-  const knownPrice = (value) => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : null;
-  const recordCost = (records, prices, nameField, quantityField) => {
+  // ---------- Current-price feed valuation (estimate only) ----------
+  const getFeedCost = () => {
     let total = 0;
-    for (const record of records) {
-      const price = prices.get(record[nameField]);
-      const quantity = knownPrice(record[quantityField]);
-      if (price == null || quantity == null) return null;
-      total += quantity * price;
-    }
+    filteredFeedRecords.forEach((rec) => {
+      const qty = parseFloat(rec.quantity_kg) || 0;
+      const price = feedPriceMap.get(rec.feed_type) || 0;
+      total += qty * price;
+    });
     return Math.round(total * 100) / 100;
   };
-  const feedPriceMap = useMemo(() => new Map(feedStock.map((stock) => [stock.feed_type, knownPrice(stock.unit_price)])), [feedStock]);
-  const vaccinePriceMap = useMemo(() => new Map(vaccineStock.map((stock) => [stock.vaccine_name, knownPrice(stock.price_per_dose)])), [vaccineStock]);
-  const totalFeedCost = useMemo(() => recordCost(filteredFeedRecords, feedPriceMap, 'feed_type', 'quantity_kg'), [filteredFeedRecords, feedPriceMap]);
-  const totalVaccineCost = useMemo(() => recordCost(filteredVaccinationRecords, vaccinePriceMap, 'vaccine_name', 'dosage'), [filteredVaccinationRecords, vaccinePriceMap]);
-  const manualExpenses = useMemo(
-    () => filteredExpenses.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0),
-    [filteredExpenses]
-  );
-  const combinedExpenses = totalFeedCost == null || totalVaccineCost == null ? null : totalFeedCost + totalVaccineCost + manualExpenses;
+
+  const feedPriceMap = useMemo(() => new Map(feedStock.map((stock) => [stock.feed_type, Number(stock.unit_price) || 0])), [feedStock]);
+  const totalFeedCost = useMemo(() => getFeedCost(), [filteredFeedRecords, feedStock]);
   const selectedBatches = selectedBatch === 'All Batches'
-    ? batches
-    : batches.filter((b) => b.batch_code === selectedBatch);
+    ? batches.filter((b) => b.status?.toLowerCase() === 'active')
+    : batches.filter((b) => b.batch_code === selectedBatch && b.status?.toLowerCase() === 'active');
   const referencePrice = Number(pigPriceReference?.pricePhpPerKg);
   const selectedPricePoint = pricePoints.find((point) => point.location === selectedPriceLocation);
   const selectedPrice = Number(selectedPricePoint?.pricePhpPerKg);
@@ -261,6 +274,7 @@ export default function AnalyticsReportsScreen() {
           : 0;
     return price > 0 ? sum + (Number(batch.current_weight) || 0) * price : sum;
   }, 0);
+  const estimateAvailable = !loading && !error && selectedBatches.length > 0 && selectedBatches.every((batch) => Number(batch.current_weight) > 0 && (selectedPrice > 0 || Number(batch.sale_price_per_kg) > 0 || referencePrice > 0));
   const hasRecordedSalePrice = selectedBatches.some((batch) => Number(batch.sale_price_per_kg) > 0);
   const usesSelectedPrice = selectedPrice > 0 && selectedBatches.length > 0;
   const usesProvincialEstimate = !usesSelectedPrice && !hasRecordedSalePrice && referencePrice > 0 && selectedBatches.length > 0;
@@ -283,46 +297,6 @@ export default function AnalyticsReportsScreen() {
     }));
   };
 
-  // 3. Profit trend (uses combined expenses)
-  const getProfitTrend = () => {
-    if (combinedExpenses == null) return [];
-    const targetBatches =
-      selectedBatch === 'All Batches'
-        ? batches
-        : batches.filter((b) => b.batch_code === selectedBatch);
-    const pricedBatches = targetBatches.filter(
-      (batch) => selectedPrice > 0 || Number(batch.sale_price_per_kg) > 0 || referencePrice > 0
-    );
-    if (pricedBatches.length === 0) return [];
-    const totalRevenue = pricedBatches.reduce(
-      (sum, b) => {
-        const price = selectedPrice > 0
-          ? selectedPrice
-          : Number(b.sale_price_per_kg) > 0
-            ? Number(b.sale_price_per_kg)
-            : referencePrice;
-        return sum + (Number(b.current_weight) || 0) * price;
-      },
-      0
-    );
-    const months = {};
-    filteredExpenses.forEach((e) => {
-      const date = new Date(e.expense_date);
-      const month = date.toLocaleString('en-US', { month: 'short' });
-      if (!months[month]) months[month] = 0;
-      months[month] += Number(e.amount);
-    });
-    const monthNames = Object.keys(months).sort(
-      (a, b) => new Date(`1 ${a} 2026`) - new Date(`1 ${b} 2026`)
-    );
-    const combinedPerMonth = combinedExpenses / (monthNames.length || 1);
-    const revenuePerMonth = totalRevenue / (monthNames.length || 1);
-    return monthNames.map((month) => ({
-      month,
-      profit: Math.round((revenuePerMonth - combinedPerMonth) * 10) / 10,
-    }));
-  };
-
   // 4. Expense breakdown (still uses the expenses table)
   const getExpenseBreakdown = () => {
     const breakdown = {};
@@ -341,14 +315,14 @@ export default function AnalyticsReportsScreen() {
 
   // 5. Vaccination summary
   const getVaccinationSummary = () => {
-    const totalDoses = vaccinationRecords.reduce(
+    const totalDoses = filteredVaccinationRecords.reduce(
       (sum, r) => sum + (Number(r.dosage) || 0),
       0
     );
-    const completed = vaccinationRecords.filter(
+    const completed = filteredVaccinationRecords.filter(
       (r) => r.status?.toLowerCase() === 'completed'
     ).length;
-    const scheduled = vaccinationRecords.filter(
+    const scheduled = filteredVaccinationRecords.filter(
       (r) => r.status?.toLowerCase() === 'scheduled'
     ).length;
     return { totalDoses, completed, scheduled };
@@ -360,12 +334,9 @@ export default function AnalyticsReportsScreen() {
     [feedStock]
   );
   const feedConsumptionData = useMemo(() => getFeedConsumptionData(), [filteredFeedRecords]);
-  const profitTrend = useMemo(
-    () => getProfitTrend(),
-    [batches, selectedBatch, filteredExpenses, combinedExpenses, selectedPrice, referencePrice]
-  );
+  const profitTrend = financial?.monthly || [];
   const expenseBreakdown = useMemo(() => getExpenseBreakdown(), [filteredExpenses]);
-  const vaccinationSummary = useMemo(() => getVaccinationSummary(), [vaccinationRecords]);
+  const vaccinationSummary = useMemo(() => getVaccinationSummary(), [filteredVaccinationRecords]);
 
   const handleDownloadReport = (reportName) => {
     const content = [
@@ -374,7 +345,12 @@ export default function AnalyticsReportsScreen() {
       `Date range: ${dateRange}`,
       `Batch: ${selectedBatch}`,
       '',
-      'This export contains the currently loaded analytics context. Detailed records remain available in the source tables.',
+      `Actual recorded sales: ${financial ? financial.actualRevenue : 'Unavailable'}`,
+      `Recorded expenses: ${financial ? financial.recordedExpenses : 'Unavailable'}`,
+      `Recorded profit: ${financial ? financial.recordedProfit : 'Unavailable'}`,
+      'Basis: Sales minus recorded expenses by transaction date; unrecorded costs excluded.',
+      'Month,Recorded sales,Recorded expenses,Recorded profit',
+      ...(financial?.monthly || []).map((row) => `${row.month},${row.revenue},${row.expenses},${row.profit}`),
     ].join('\n');
     const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -509,13 +485,13 @@ export default function AnalyticsReportsScreen() {
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
               <div className="flex items-center gap-2 mb-2">
                 <PhilippinePeso className="w-4 h-4 text-purple-600" />
-                <span className="text-xs text-gray-700 font-semibold">Total Expenses</span>
+                <span className="text-xs text-gray-700 font-semibold">Recorded expenses (period)</span>
               </div>
               <div className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight break-words">
-                {formatCurrency(combinedExpenses)}
+                {financial ? formatCurrency(financial.recordedExpenses) : 'Unavailable'}
               </div>
               <div className="text-xs text-gray-600">
-                Feed: {formatCurrency(totalFeedCost)} · Vaccine: {formatCurrency(totalVaccineCost)}
+                Feed: {formatCurrency(totalFeedCost)} · Vaccine: Unavailable
               </div>
             </div>
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
@@ -663,37 +639,46 @@ export default function AnalyticsReportsScreen() {
 
           {/* Profit Analysis */}
           <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg mb-4">
-            <h3 className="font-semibold text-gray-900 mb-3">Profit Summary (This Period)</h3>
+            <h3 className="font-semibold text-gray-900 mb-3">Financial Summary</h3>
+            <div className="space-y-2 mb-3 text-sm">
+              <div className="flex justify-between"><span>Actual recorded sales (period)</span><strong>{financial ? formatCurrency(financial.actualRevenue) : 'Unavailable'}</strong></div>
+              <div className="flex justify-between"><span>Recorded expenses (period)</span><strong>{financial ? formatCurrency(financial.recordedExpenses) : 'Unavailable'}</strong></div>
+              <div className="flex justify-between"><span>Recorded profit (period)</span><strong>{financial ? formatCurrency(financial.recordedProfit) : 'Unavailable'}</strong></div>
+              <p className="text-xs text-gray-600">Sales minus recorded expenses by transaction date. Unrecorded costs are excluded. Zero sales means no sales recorded for this period.</p>
+              {financialError && <p className="text-xs text-red-700">{financialError}</p>}
+            </div>
+            <HarvestSales batches={batches} onChanged={() => setFinancialRevision((value) => value + 1)} />
+            <p className="text-xs text-gray-600 mb-3">Estimates below use current standing weight of active batches and current prices, not historical revenue. Feed valuation is shown for reference and excluded from recorded profit. Vaccine cost is unavailable without recorded dose costs. Costs entered in expenses may be incomplete.</p>
             <div className="space-y-2 mb-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-700">Revenue from Sales</span>
+                <span className="text-gray-700">Estimated standing pig value (current)</span>
                 <span className="font-bold text-green-600">
-                  {salesRevenue > 0 ? formatCurrency(salesRevenue) : 'Unavailable'}
+                  {estimateAvailable ? formatCurrency(salesRevenue) : 'Unavailable'}
                 </span>
               </div>
               {usesSelectedPrice && (
                 <div className="text-[10px] text-green-700 mb-2">
-                  Estimated profit uses the selected {selectedPriceLocation} price of {formatPricePerKg(chosenPrice)} per kg.
+                  Standing value estimate uses the selected {selectedPriceLocation} price of {formatPricePerKg(chosenPrice)} per kg.
                 </div>
               )}
               {usesProvincialEstimate && (
                 <div className="text-[10px] text-amber-700 mb-2">
-                  Revenue uses the latest Batangas provincial farmgate reference because no batch sale price was recorded.
+                  Estimated value uses the latest Batangas provincial farmgate reference.
                 </div>
               )}
               <div className="border-t border-white/30 pt-2">
                 <div className="text-xs text-gray-600 mb-2">Expenses:</div>
                 <div className="flex items-center justify-between text-sm mb-1">
-                  <span className="text-gray-700 ml-2">Feeds (consumed)</span>
+                  <span className="text-gray-700 ml-2">Feeds (current-price estimate)</span>
                   <span className="text-gray-900">{formatCurrency(totalFeedCost)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm mb-1">
-                  <span className="text-gray-700 ml-2">Vaccines</span>
-                  <span className="text-gray-900">{formatCurrency(totalVaccineCost)}</span>
+                  <span className="text-gray-700 ml-2">Vaccine cost (dose costs unavailable)</span>
+                  <span className="text-gray-900">Unavailable</span>
                 </div>
                 {expenseBreakdown.length > 0 && (
                   <div className="flex items-center justify-between text-sm mb-1">
-                    <span className="text-gray-700 ml-2">Other (manual)</span>
+                    <span className="text-gray-700 ml-2">Recorded expenses</span>
                     <span className="text-gray-900">
                       {formatCurrency(
                         filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
@@ -702,20 +687,20 @@ export default function AnalyticsReportsScreen() {
                   </div>
                 )}
                 <div className="flex items-center justify-between text-sm font-semibold border-t border-white/30 pt-2 mt-2">
-                  <span className="text-gray-900">Total Expenses</span>
-                  <span className="text-red-600">{formatCurrency(combinedExpenses)}</span>
+                  <span className="text-gray-900">Recorded expenses (period)</span>
+                  <span className="text-red-600">{financial ? formatCurrency(financial.recordedExpenses) : 'Unavailable'}</span>
                 </div>
               </div>
               <div className="flex items-center justify-between bg-green-100/60 rounded-lg p-3 mt-3">
-                <span className="font-bold text-gray-900">Net Profit</span>
+                <span className="font-bold text-gray-900">Estimated value less recorded costs</span>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-green-600">
-                    {salesRevenue > 0 && combinedExpenses != null ? formatCurrency(salesRevenue - combinedExpenses) : 'Unavailable'}
+                    {estimateAvailable && financial ? formatCurrency(salesRevenue - financial.recordedExpenses) : 'Unavailable'}
                   </div>
                   <span className="px-2 py-0.5 bg-green-500 text-white rounded-full text-xs font-semibold">
-                    {salesRevenue > 0 && combinedExpenses > 0
-                      ? `${Math.round(((salesRevenue / combinedExpenses) - 1) * 100)}% margin`
-                      : 'Margin unavailable'}
+                    {estimateAvailable
+                      ? 'Estimate only'
+                      : 'Estimate unavailable'}
                   </span>
                 </div>
               </div>
@@ -765,7 +750,8 @@ export default function AnalyticsReportsScreen() {
 
             {/* Profit Trend */}
             <div className="bg-white/40 rounded-xl p-3">
-              <div className="text-sm font-semibold text-gray-900 mb-2">Monthly Profit Trend</div>
+              <div className="text-sm font-semibold text-gray-900 mb-2">Monthly Recorded Profit</div>
+              {profitTrend.length === 0 && <p className="text-xs text-gray-600">{financial ? 'No dated sales or expenses recorded in this period.' : 'Recorded monthly results unavailable.'}</p>}
               <ResponsiveContainer width="100%" height={120}>
                 <BarChart data={profitTrend}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />

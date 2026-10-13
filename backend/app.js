@@ -9,6 +9,7 @@ import pigBatchRouter from "./routes/pigRoutes.js";
 import feedRouter from "./routes/feedRoutes.js";
 import vaccinationRouter from "./routes/vaccineRoutes.js";
 import expensesRouter from "./routes/expensesRoutes.js";
+import salesRouter from "./routes/salesRoutes.js";
 import reportRouter from "./routes/reportRoutes.js";
 import notificationRouter from "./routes/notificationRoutes.js";
 import marketPriceRouter from "./routes/marketPriceRoutes.js";
@@ -84,6 +85,7 @@ app.use("/feeds", feedRouter);
 app.use("/vaccinations", vaccinationRouter);
 app.use("/expenses", expensesRouter);
 app.use("/reports", reportRouter);
+app.use("/sales", salesRouter);
 app.use("/notifications", notificationRouter);
 app.use("/market-prices", marketPriceRouter);
 

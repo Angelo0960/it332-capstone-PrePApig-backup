@@ -1,0 +1,10 @@
+import express from 'express';
+import { authMiddleware } from '../middlewares/authMiddleware.js';
+import { listSales, saveSale, deleteSale } from '../controllers/salesController.js';
+const router = express.Router();
+router.use(authMiddleware);
+router.get('/', listSales);
+router.post('/', saveSale);
+router.put('/:id', saveSale);
+router.delete('/:id', deleteSale);
+export default router;
