@@ -6,7 +6,8 @@ const FeedsInventoryScreen = lazy(() => import('./pages/FeedsInventoryScreen.jsx
 const AnalyticsReportsScreen = lazy(() => import('./pages/AnalyticsReportScreen.jsx'));
 const VaccinationScreen = lazy(() => import('./pages/VaccinationScreen.jsx'));
 const BatchPigsScreen = lazy(() => import('./pages/BatchPigsScreen.jsx'));
-import { registerFcmToken } from './api.js';
+const FarmManagementScreen = lazy(() => import('./pages/FarmManagementScreen.jsx'));
+import { registerFcmToken, API_BASE, getAuthHeaders } from './api.js';
 import './App.css';
 
 const tabKeys = ['/dashboard', '/feeds', '/reports', '/vaccination'];
@@ -63,6 +64,14 @@ function App() {
       const token = localStorage.getItem('token');
       if (!token || token === 'null' || token === 'undefined') return;
 
+      try {
+        const response = await fetch(`${API_BASE}/management/settings`, { headers: getAuthHeaders() });
+        if (!response.ok) return;
+        const settings = await response.json();
+        if (!settings.preferences.push_enabled) return;
+      } catch {
+        return;
+      }
       const { generateToken, onMessageListener } = await import('./services/firebase.js');
       const fcmToken = await generateToken();
       if (fcmToken) {
@@ -101,6 +110,7 @@ function App() {
     <BrowserRouter>
       <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
       <Routes>
+        {['mortality', 'treatments', 'expenses', 'settings'].map((section) => <Route key={section} path={`/${section}`} element={<ProtectedRoute><FarmManagementScreen key={section} section={section} /></ProtectedRoute>} />)}
         <Route
           path="/"
           element={

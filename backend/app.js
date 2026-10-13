@@ -12,6 +12,7 @@ import expensesRouter from "./routes/expensesRoutes.js";
 import reportRouter from "./routes/reportRoutes.js";
 import notificationRouter from "./routes/notificationRoutes.js";
 import marketPriceRouter from "./routes/marketPriceRoutes.js";
+import managementRouter from './routes/managementRoutes.js';
 
 import "./scheduler.js";
 
@@ -86,6 +87,7 @@ app.use("/expenses", expensesRouter);
 app.use("/reports", reportRouter);
 app.use("/notifications", notificationRouter);
 app.use("/market-prices", marketPriceRouter);
+app.use('/management', managementRouter);
 
 // Root Route
 app.get("/", (req, res) => {

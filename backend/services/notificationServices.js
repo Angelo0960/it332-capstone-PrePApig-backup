@@ -1,6 +1,12 @@
 import supabase from '../config/supabase.js';
 import admin from '../config/firebase.js';
 
+async function preferencesFor(userId) {
+    const { data, error } = await supabase.from('notification_preferences').select('feed_reminders,vaccination_reminders,push_enabled').eq('user_id', userId).maybeSingle();
+    if (error) throw new Error('Unable to read notification preferences');
+    return data || { feed_reminders: true, vaccination_reminders: true, push_enabled: true };
+}
+
 const APP_TIMEZONE = process.env.APP_TIMEZONE || 'Asia/Manila';
 const getDateInTimezone = (date = new Date(), dayOffset = 0) => {
     const parts = new Intl.DateTimeFormat('en-CA', {
@@ -68,6 +74,8 @@ export const sendDailyFeedReminders = async () => {
     }
 
     for (const [ownerId, userRecords] of userMap) {
+        const preferences = await preferencesFor(ownerId);
+        if (!preferences.feed_reminders) continue;
         const { data: devices, error: tokenError } = await supabase
             .from('user_devices')
             .select('fcm_token')
@@ -78,11 +86,7 @@ export const sendDailyFeedReminders = async () => {
             continue;
         }
 
-        const tokens = devices.map(d => d.fcm_token);
-        if (tokens.length === 0) {
-            console.log(`⚠️ No tokens for user ${ownerId}, skipping.`);
-            continue;
-        }
+        const tokens = preferences.push_enabled ? (devices || []).map(d => d.fcm_token) : [];
 
         const batchCodes = [...new Set(userRecords.map(r => r.pig_batches?.batch_code || 'Unknown'))];
         const totalKg = userRecords.reduce((sum, r) => sum + Number(r.quantity_kg), 0);
@@ -192,13 +196,15 @@ export const sendVaccinationReminders = async () => {
     }
 
     for (const [ownerId, { due, overdue }] of userMap) {
+        const preferences = await preferencesFor(ownerId);
+        if (!preferences.vaccination_reminders) continue;
         const { data: devices } = await supabase
             .from('user_devices')
             .select('fcm_token')
             .eq('user_id', ownerId);
 
-        const tokens = devices.map(d => d.fcm_token);
-        if (tokens.length === 0) continue;
+        const tokens = preferences.push_enabled ? (devices || []).map(d => d.fcm_token) : [];
+
 
         // Due notifications
         if (due.length > 0) {
