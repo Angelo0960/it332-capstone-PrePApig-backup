@@ -1,3 +1,4 @@
+import { pagination } from '../services/pagination.js';
 import supabase from '../config/supabase.js';
 
 // ===== BATCH CRUD =====
@@ -47,26 +48,26 @@ export const createBatch = async (req, res) => {
 
 export const getAllBatches = async (req, res) => {
     try {
-        const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit) || 100, 1), 500) : null;
-        const offset = Math.max(Number(req.query.offset) || 0, 0);
+        const { limit, offset } = pagination(req.query);
         let query = supabase
             .from('pig_batches')
             .select('id,batch_code,pig_count,breed,start_weight,current_weight,sale_price_per_kg,age_on_acquisition,date_acquired,status,created_at')
             .eq('owner_id', req.user.id)
             .order('created_at', { ascending: false });
-        if (limit !== null) query = query.range(offset, offset + limit - 1);
+        query = query.order('id', { ascending: false }).range(offset, offset + limit - 1);
         const { data: batches, error } = await query;
 
         if (error) throw error;
 
         res.status(200).json({
             success: true,
+            pagination: { limit, offset },
             count: batches.length,
             data: batches
         });
     } catch (error) {
         console.error('Error fetching batches:', error);
-        res.status(500).json({
+        res.status(error.status || 500).json({
             success: false,
             message: error.message
         });

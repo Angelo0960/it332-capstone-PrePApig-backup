@@ -1,3 +1,4 @@
+import { pagination } from '../services/pagination.js';
 import supabase from '../config/supabase.js';
 const validExpenseDate = (value) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
 
@@ -61,8 +62,7 @@ export const createExpense = async (req, res) => {
 // VIEW ALL
 export const getAllExpenses = async (req, res) => {
     try {
-        const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit) || 100, 1), 500) : null;
-        const offset = Math.max(Number(req.query.offset) || 0, 0);
+        const { limit, offset } = pagination(req.query);
         let query = supabase
             .from('expenses')
             .select('id,batch_id,expense_type,amount,expense_date,description,created_at')
@@ -70,19 +70,20 @@ export const getAllExpenses = async (req, res) => {
             .gte('expense_date', req.query.from || '1900-01-01')
             .lte('expense_date', req.query.to || '2999-12-31')
             .order('expense_date', { ascending: false });
-        if (limit !== null) query = query.range(offset, offset + limit - 1);
+        query = query.order('id', { ascending: false }).range(offset, offset + limit - 1);
         const { data, error } = await query;
 
         if (error) throw error;
 
         res.status(200).json({
             success: true,
+            pagination: { limit, offset },
             count: data.length,
             data
         });
 
     } catch (error) {
-        res.status(500).json({
+        res.status(error.status || 500).json({
             success: false,
             message: error.message
         });

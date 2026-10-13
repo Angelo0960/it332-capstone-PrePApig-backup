@@ -48,10 +48,7 @@ export const sendDailyFeedReminders = async () => {
         .eq('feeding_date', today)
         .eq('reminder_sent', false);
 
-    if (error) {
-        console.error('❌ Error fetching feed records:', error);
-        return;
-    }
+    if (error) throw error;
 
     if (!records || records.length === 0) {
         console.log('✅ No pending feedings for today.');
@@ -146,15 +143,12 @@ export const sendVaccinationReminders = async () => {
         .eq('next_due_date', today)
         .eq('status', 'Scheduled');
 
-    if (dueError) {
-        console.error('❌ Error fetching due vaccinations:', dueError);
-        return;
-    }
+    if (dueError) throw dueError;
 
     // 2. Fetch overdue vaccinations (next_due_date < today)
     // Also send reminders for records already marked 'Overdue' (e.g., once a week)
     const sevenDaysAgo = getDateInTimezone(new Date(), -7);
-    const { data: alreadyOverdue } = await supabase
+    const { data: alreadyOverdue, error: overdueError } = await supabase
         .from('vaccination_records')
         .select(`
         id,
@@ -165,6 +159,7 @@ export const sendVaccinationReminders = async () => {
         .eq('status', 'Overdue')
         .gte('next_due_date', sevenDaysAgo)
         .lt('next_due_date', today);
+    if (overdueError) throw overdueError;
     const overdueVaccinations = alreadyOverdue || [];
     // Update overdue records status to 'Overdue'
     if (overdueVaccinations.length > 0) {

@@ -33,5 +33,4 @@ notificationRouter.delete('/:id', notificationController.deleteNotification);
 // NEW: save device token (requires authentication)
 notificationRouter.post('/register-token', validateBody({ required: ['token'] }), notificationController.saveDeviceToken);
 
-
 export default notificationRouter;

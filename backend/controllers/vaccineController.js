@@ -1,3 +1,4 @@
+import { pagination } from '../services/pagination.js';
 import supabase from '../config/supabase.js';
 import admin from '../config/firebase.js';
 
@@ -164,8 +165,7 @@ export const createVaccination = async (req, res) => {
 // VIEW ALL
 export const getAllVaccinations = async (req, res) => {
     try {
-        const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit) || 100, 1), 500) : null;
-        const offset = Math.max(Number(req.query.offset) || 0, 0);
+        const { limit, offset } = pagination(req.query);
         let query = supabase
             .from('vaccination_records')
             .select('id,batch_id,vaccine_name,vaccination_date,next_due_date,administered_by,dosage,notes,status,created_at')
@@ -173,19 +173,20 @@ export const getAllVaccinations = async (req, res) => {
             .gte('vaccination_date', req.query.from || '1900-01-01')
             .lte('vaccination_date', req.query.to || '2999-12-31')
             .order('vaccination_date', { ascending: false });
-        if (limit !== null) query = query.range(offset, offset + limit - 1);
+        query = query.order('id', { ascending: false }).range(offset, offset + limit - 1);
         const { data, error } = await query;
 
         if (error) throw error;
 
         res.status(200).json({
             success: true,
+            pagination: { limit, offset },
             count: data.length,
             data
         });
 
     } catch (error) {
-        res.status(500).json({
+        res.status(error.status || 500).json({
             success: false,
             message: error.message
         });
@@ -223,8 +224,7 @@ export const getVaccinationById = async (req, res) => {
 export const getVaccinationsByBatch = async (req, res) => {
     try {
         const { batchId } = req.params;
-        const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit) || 100, 1), 500) : null;
-        const offset = Math.max(Number(req.query.offset) || 0, 0);
+        const { limit, offset } = pagination(req.query);
 
         let query = supabase
             .from('vaccination_records')
@@ -232,19 +232,20 @@ export const getVaccinationsByBatch = async (req, res) => {
             .eq('batch_id', batchId)
             .eq('owner_id', req.user.id)
             .order('vaccination_date', { ascending: false });
-        if (limit !== null) query = query.range(offset, offset + limit - 1);
+        query = query.order('id', { ascending: false }).range(offset, offset + limit - 1);
         const { data, error } = await query;
 
         if (error) throw error;
 
         res.status(200).json({
             success: true,
+            pagination: { limit, offset },
             count: data.length,
             data
         });
 
     } catch (error) {
-        res.status(500).json({
+        res.status(error.status || 500).json({
             success: false,
             message: error.message
         });

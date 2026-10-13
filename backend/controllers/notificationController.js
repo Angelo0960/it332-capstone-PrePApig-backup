@@ -1,3 +1,4 @@
+import { pagination } from '../services/pagination.js';
 import supabase from '../config/supabase.js';
 import admin from '../config/firebase.js';
 import { triggerFeedReminders as triggerFeedRemindersService } from '../services/notificationServices.js';
@@ -57,24 +58,24 @@ export const createNotification = async (req, res) => {
 // ---------- View All Notifications ----------
 export const getAllNotifications = async (req, res) => {
     try {
-        const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit) || 50, 1), 200) : null;
-        const offset = Math.max(Number(req.query.offset) || 0, 0);
+        const { limit, offset } = pagination(req.query);
         let query = supabase
             .from('notifications')
             .select('id,user_id,title,message,type,is_read,created_at')
             .eq('user_id', req.user.id)
             .order('created_at', { ascending: false });
-        if (limit !== null) query = query.range(offset, offset + limit - 1);
+        query = query.order('id', { ascending: false }).range(offset, offset + limit - 1);
         const { data, error } = await query;
 
         if (error) throw error;
 
         res.json({
             success: true,
+            pagination: { limit, offset },
             data
         });
     } catch (error) {
-        res.status(500).json({
+        res.status(error.status || 500).json({
             success: false,
             message: error.message
         });

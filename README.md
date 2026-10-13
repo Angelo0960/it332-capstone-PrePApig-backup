@@ -354,3 +354,16 @@ backend/
 ├── package.json                    # Dependencies
 ├── README.md                       # Backend documentation
 └── server.js                       # Entry point
+
+
+## Phase 4 operations
+
+Apply `backend/config/migrations/20261013_phase4_operations.sql` after the existing migrations before deploying. The service-only analytics RPC aggregates every matching record in PostgreSQL. `/reports/analytics/summary` and `/reports/analytics/timeseries` accept ISO `from`, `to` and optional `batch_id`; the caller is always scoped to their authenticated owner ID. Monthly series contain recorded manual expenses only: no dated sales exist, so monthly revenue/profit is unavailable. Current inventory prices are estimates rather than historical cost accounting.
+
+List endpoints with pagination accept integer `limit` (1?500, default 100) and `offset` (0?1000000), with ID tie-breakers and pagination metadata. Consumers must continue fetching pages rather than assume the first page is complete. Legacy analytics and CSV exports walk database pages to avoid Supabase's row cap. `/reports/export?type=growth|feeds|vaccinations|expenses` exports all matching records with CSV escaping and spreadsheet formula protection. Large legacy analytics/exports still use memory; concurrent writes during offset paging are not a transactional snapshot.
+
+Audit triggers atomically record important business inserts, updates and deletes, including cascades. Logs store owner, entity, operation and changed field names without copying notes or sensitive row contents. Owner identifies the data scope, not a verified acting user for direct database/service-role changes. Audit access is service-role only; define retention according to deployment needs.
+
+Set `OPERATIONS_ADMIN_IDS` to a comma-separated allowlist of authenticated user UUIDs; empty denies all operations access. `/operations/worker` reports actual process-local worker timestamps/outcome, and POST `/operations/reminders/run` runs the shared reminder worker. Existing manual reminder routes require the same authorization. Requests are structured-logged with actor/request ID. Set `REMINDER_WORKER_ENABLED=false` on web replicas and enable scheduling on exactly one designated process. Worker status and overlap protection are process-local, not distributed locks or durable job history. No public role assignment or admin actions are provided.
+
+Worker `scan_completed` means the reminder functions returned; it does not attest to every push delivery. Existing delivery code handles token failures internally.
