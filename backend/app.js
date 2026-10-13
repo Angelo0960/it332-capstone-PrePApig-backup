@@ -13,7 +13,9 @@ import reportRouter from "./routes/reportRoutes.js";
 import notificationRouter from "./routes/notificationRoutes.js";
 import marketPriceRouter from "./routes/marketPriceRoutes.js";
 
-import "./scheduler.js";
+import { workerStatus, runReminders } from './scheduler.js';
+import { authMiddleware } from './middlewares/authMiddleware.js';
+import { operationsAuth } from './middlewares/operationsAuth.js';
 
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
   throw new Error('JWT_SECRET must be configured with at least 32 characters');
@@ -86,6 +88,17 @@ app.use("/expenses", expensesRouter);
 app.use("/reports", reportRouter);
 app.use("/notifications", notificationRouter);
 app.use("/market-prices", marketPriceRouter);
+
+app.get('/operations/worker', authMiddleware, operationsAuth, (req, res) => {
+  res.json({ success: true, worker: workerStatus, scope: 'this process', timezone: process.env.APP_TIMEZONE || 'Asia/Manila' });
+});
+app.post('/operations/reminders/run', authMiddleware, operationsAuth, async (req, res, next) => {
+  try {
+    console.log(JSON.stringify({ event: 'operations_reminders_requested', actorId: req.user.id, requestId: req.requestId }));
+    await runReminders();
+    res.json({ success: true, worker: workerStatus });
+  } catch (error) { next(error); }
+});
 
 // Root Route
 app.get("/", (req, res) => {

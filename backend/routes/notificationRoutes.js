@@ -1,5 +1,6 @@
+import { operationsAuth } from '../middlewares/operationsAuth.js';
 import * as notificationController from '../controllers/notificationController.js';
-import { sendVaccinationReminders } from '../services/notificationServices.js';
+import { runReminders } from '../scheduler.js';
 import express from 'express';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 import { validateBody } from '../middlewares/validate.js';
@@ -17,16 +18,15 @@ notificationRouter.delete('/:id', notificationController.deleteNotification);
 // NEW: save device token (requires authentication)
 notificationRouter.post('/register-token', validateBody({ required: ['token'] }), notificationController.saveDeviceToken);
 
-// NEW: manual trigger for testing (optionally protected)
-notificationRouter.post('/trigger-feed-reminders', notificationController.triggerFeedReminders);
-
-notificationRouter.post('/trigger-vaccination-reminders', async (req, res) => {
+// Compatibility routes use the same authorized, non-overlapping worker.
+const triggerReminders = async (req, res, next) => {
   try {
-    await sendVaccinationReminders();
-    res.json({ success: true, message: 'Vaccination reminders triggered.' });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
+    console.log(JSON.stringify({ event: 'operations_reminders_requested', actorId: req.user.id, requestId: req.requestId }));
+    await runReminders();
+    res.json({ success: true, message: 'Reminders completed' });
+  } catch (error) { next(error); }
+};
+notificationRouter.post('/trigger-feed-reminders', operationsAuth, triggerReminders);
+notificationRouter.post('/trigger-vaccination-reminders', operationsAuth, triggerReminders);
 
 export default notificationRouter;

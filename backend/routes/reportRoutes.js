@@ -13,4 +13,8 @@ reportRouter.get('/expenses', reportController.getExpenseReport);
 reportRouter.get('/analytics', reportController.getAnalyticsData);
 reportRouter.get('/analytics.proto', reportController.getAnalyticsDataProto);
 
+reportRouter.get('/analytics/summary', reportController.getAnalyticsSummary);
+reportRouter.get('/analytics/timeseries', reportController.getAnalyticsSummary);
+reportRouter.get('/export', reportController.exportReport);
+
 export default reportRouter;

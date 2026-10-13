@@ -1,3 +1,4 @@
+import { pagination } from '../services/pagination.js';
 import supabase from '../config/supabase.js';
 import admin from '../config/firebase.js'; // for push notifications
 
@@ -106,8 +107,7 @@ export const createFeedRecord = async (req, res) => {
 // VIEW ALL
 export const getAllFeedRecords = async (req, res) => {
     try {
-        const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit) || 100, 1), 500) : null;
-        const offset = Math.max(Number(req.query.offset) || 0, 0);
+        const { limit, offset } = pagination(req.query);
         let query = supabase
             .from('feed_records')
             .select('id,batch_id,feed_type,quantity_kg,feeding_date,feeding_time,notes,created_at')
@@ -115,19 +115,20 @@ export const getAllFeedRecords = async (req, res) => {
             .gte('feeding_date', req.query.from || '1900-01-01')
             .lte('feeding_date', req.query.to || '2999-12-31')
             .order('feeding_date', { ascending: false });
-        if (limit !== null) query = query.range(offset, offset + limit - 1);
+        query = query.order('id', { ascending: false }).range(offset, offset + limit - 1);
         const { data, error } = await query;
 
         if (error) throw error;
 
         res.status(200).json({
             success: true,
+            pagination: { limit, offset },
             count: data.length,
             data
         });
 
     } catch (error) {
-        res.status(500).json({
+        res.status(error.status || 500).json({
             success: false,
             message: error.message
         });
@@ -165,8 +166,7 @@ export const getFeedRecordById = async (req, res) => {
 export const getFeedByBatch = async (req, res) => {
     try {
         const { batchId } = req.params;
-        const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit) || 100, 1), 500) : null;
-        const offset = Math.max(Number(req.query.offset) || 0, 0);
+        const { limit, offset } = pagination(req.query);
 
         let query = supabase
             .from('feed_records')
@@ -174,19 +174,20 @@ export const getFeedByBatch = async (req, res) => {
             .eq('batch_id', batchId)
             .eq('owner_id', req.user.id)
             .order('feeding_date', { ascending: false });
-        if (limit !== null) query = query.range(offset, offset + limit - 1);
+        query = query.order('id', { ascending: false }).range(offset, offset + limit - 1);
         const { data, error } = await query;
 
         if (error) throw error;
 
         res.status(200).json({
             success: true,
+            pagination: { limit, offset },
             count: data.length,
             data
         });
 
     } catch (error) {
-        res.status(500).json({
+        res.status(error.status || 500).json({
             success: false,
             message: error.message
         });

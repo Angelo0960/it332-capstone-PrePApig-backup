@@ -51,6 +51,7 @@ export default function AnalyticsReportsScreen() {
   const [error, setError] = useState(null);
 
   // Data state
+  const [serverAnalytics, setServerAnalytics] = useState(null);
   const [batches, setBatches] = useState([]);
   const [feedRecords, setFeedRecords] = useState([]);
   const [vaccinationRecords, setVaccinationRecords] = useState([]);
@@ -92,6 +93,12 @@ export default function AnalyticsReportsScreen() {
     setLoading(true);
     setError(null);
     try {
+      const batchId = batches.find(batch => batch.batch_code === selectedBatch)?.id;
+      const query = `${getDateQuery()}${batchId ? `&batch_id=${encodeURIComponent(batchId)}` : ''}`;
+      const summaryResponse = await fetch(`${API_BASE}/reports/analytics/summary?${query}`, { headers: getAuthHeaders(), signal });
+      if (!summaryResponse.ok) throw new Error(`HTTP ${summaryResponse.status}`);
+      const summaryJson = await summaryResponse.json();
+      setServerAnalytics(summaryJson.data);
       const response = await fetch(`${API_BASE}/reports/analytics?${getDateQuery()}`, {
         headers: getAuthHeaders(),
         signal,
@@ -175,7 +182,7 @@ export default function AnalyticsReportsScreen() {
     fetchAllData(controller.signal);
     fetchPigPriceBasis(controller.signal);
     return () => controller.abort();
-  }, [dateRange]);
+  }, [dateRange, selectedBatch]);
 
   useEffect(() => {
     if (pricePoints.length > 0 && !pricePoints.some((point) => point.location === selectedPriceLocation)) {
@@ -293,43 +300,7 @@ export default function AnalyticsReportsScreen() {
   };
 
   // 3. Profit trend (uses combined expenses)
-  const getProfitTrend = () => {
-    const targetBatches =
-      selectedBatch === 'All Batches'
-        ? batches
-        : batches.filter((b) => b.batch_code === selectedBatch);
-    const pricedBatches = targetBatches.filter(
-      (batch) => selectedPrice > 0 || Number(batch.sale_price_per_kg) > 0 || referencePrice > 0
-    );
-    if (pricedBatches.length === 0) return [];
-    const totalRevenue = pricedBatches.reduce(
-      (sum, b) => {
-        const price = selectedPrice > 0
-          ? selectedPrice
-          : Number(b.sale_price_per_kg) > 0
-            ? Number(b.sale_price_per_kg)
-            : referencePrice;
-        return sum + (Number(b.current_weight) || 0) * price;
-      },
-      0
-    );
-    const months = {};
-    filteredExpenses.forEach((e) => {
-      const date = new Date(e.expense_date);
-      const month = date.toLocaleString('en-US', { month: 'short' });
-      if (!months[month]) months[month] = 0;
-      months[month] += Number(e.amount);
-    });
-    const monthNames = Object.keys(months).sort(
-      (a, b) => new Date(`1 ${a} 2026`) - new Date(`1 ${b} 2026`)
-    );
-    const combinedPerMonth = combinedExpenses / (monthNames.length || 1);
-    const revenuePerMonth = totalRevenue / (monthNames.length || 1);
-    return monthNames.map((month) => ({
-      month,
-      profit: Math.round((revenuePerMonth - combinedPerMonth) * 10) / 10,
-    }));
-  };
+  const getProfitTrend = () => serverAnalytics?.timeseries?.monthlyExpenses || [];
 
   // 4. Expense breakdown (still uses the expenses table)
   const getExpenseBreakdown = () => {
@@ -349,14 +320,14 @@ export default function AnalyticsReportsScreen() {
 
   // 5. Vaccination summary
   const getVaccinationSummary = () => {
-    const totalDoses = vaccinationRecords.reduce(
+    const totalDoses = filteredVaccinationRecords.reduce(
       (sum, r) => sum + (Number(r.dosage) || 0),
       0
     );
-    const completed = vaccinationRecords.filter(
+    const completed = filteredVaccinationRecords.filter(
       (r) => r.status?.toLowerCase() === 'completed'
     ).length;
-    const scheduled = vaccinationRecords.filter(
+    const scheduled = filteredVaccinationRecords.filter(
       (r) => r.status?.toLowerCase() === 'scheduled'
     ).length;
     return { totalDoses, completed, scheduled };
@@ -367,36 +338,32 @@ export default function AnalyticsReportsScreen() {
     () => feedStock.reduce((sum, s) => sum + (s.stock_quantity || 0), 0),
     [feedStock]
   );
-  const feedConsumptionData = useMemo(() => getFeedConsumptionData(), [filteredFeedRecords]);
+  const feedConsumptionData = serverAnalytics?.timeseries?.feed || [];
   const profitTrend = useMemo(
     () => getProfitTrend(),
-    [batches, selectedBatch, filteredExpenses, combinedExpenses, selectedPrice, referencePrice]
+    [serverAnalytics]
   );
   const expenseBreakdown = useMemo(() => getExpenseBreakdown(), [filteredExpenses]);
-  const vaccinationSummary = useMemo(() => getVaccinationSummary(), [vaccinationRecords]);
+  const vaccinationSummary = useMemo(() => getVaccinationSummary(), [filteredVaccinationRecords]);
 
-  const handleDownloadReport = (reportName) => {
-    const content = [
-      `Report: ${reportName}`,
-      `Generated: ${new Date().toLocaleString()}`,
-      `Date range: ${dateRange}`,
-      `Batch: ${selectedBatch}`,
-      '',
-      'This export contains the currently loaded analytics context. Detailed records remain available in the source tables.',
-    ].join('\n');
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `${reportName.replace(/\s/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
+  const handleDownloadReport = async (reportName) => {
+    const types = { 'Growth Performance Report': 'growth', 'Feed Consumption Report': 'feeds', 'Vaccination Report': 'vaccinations', 'Expense Statement': 'expenses' };
+    const batchId = batches.find(batch => batch.batch_code === selectedBatch)?.id;
+    try {
+      const response = await fetch(`${API_BASE}/reports/export?type=${types[reportName] || 'expenses'}&${getDateQuery()}${batchId ? `&batch_id=${encodeURIComponent(batchId)}` : ''}`, { headers: getAuthHeaders() });
+      if (!response.ok) throw new Error('Export failed');
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${types[reportName] || 'expenses'}-report.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch { setError('Unable to download report. Please try again.'); }
   };
 
-  const handleHeaderDownload = () => {
-    window.print();
-  };
+  const handleHeaderDownload = () => handleDownloadReport('Expense Statement');
 
   return (
     <div className="mobile-screen-shell w-full relative overflow-hidden flex flex-col">
@@ -671,10 +638,10 @@ export default function AnalyticsReportsScreen() {
 
           {/* Profit Analysis */}
           <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg mb-4">
-            <h3 className="font-semibold text-gray-900 mb-3">Profit Summary (This Period)</h3>
+            <h3 className="font-semibold text-gray-900 mb-3">Estimated Value & Period Costs</h3>
             <div className="space-y-2 mb-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-700">Revenue from Sales</span>
+                <span className="text-gray-700">Estimated Current Value</span>
                 <span className="font-bold text-green-600">
                   {salesRevenue > 0 ? formatCurrency(salesRevenue) : 'Unavailable'}
                 </span>
@@ -715,7 +682,7 @@ export default function AnalyticsReportsScreen() {
                 </div>
               </div>
               <div className="flex items-center justify-between bg-green-100/60 rounded-lg p-3 mt-3">
-                <span className="font-bold text-gray-900">Net Profit</span>
+                <span className="font-bold text-gray-900">Estimated Value Less Costs</span>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-green-600">
                     {salesRevenue > 0 ? formatCurrency(salesRevenue - combinedExpenses) : 'Unavailable'}
@@ -773,14 +740,14 @@ export default function AnalyticsReportsScreen() {
 
             {/* Profit Trend */}
             <div className="bg-white/40 rounded-xl p-3">
-              <div className="text-sm font-semibold text-gray-900 mb-2">Monthly Profit Trend</div>
+              <div className="text-sm font-semibold text-gray-900 mb-2">Monthly Recorded Expenses</div>
               <ResponsiveContainer width="100%" height={120}>
                 <BarChart data={profitTrend}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                   <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="#6B7280" />
                   <YAxis tick={{ fontSize: 10 }} stroke="#6B7280" />
                   <Tooltip />
-                  <Bar dataKey="profit" fill="#10B981" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="expenses" fill="#10B981" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -795,19 +762,19 @@ export default function AnalyticsReportsScreen() {
               {[
                 {
                   name: 'Growth Performance Report',
-                  desc: 'Weight progression, ADG, trends',
+                  desc: 'Current batch weights and acquisition dates',
                 },
                 {
                   name: 'Feed Consumption Report',
-                  desc: 'Daily intake, forecast, usage',
+                  desc: 'Dated feed consumption records',
                 },
                 {
                   name: 'Vaccination Report',
-                  desc: 'Vaccines by batch, dates, costs',
+                  desc: 'Vaccines by batch, dates and dosage',
                 },
                 {
-                  name: 'Profit & Loss Statement',
-                  desc: 'Income vs expenses, margins',
+                  name: 'Expense Statement',
+                  desc: 'Dated manual expense records',
                 },
               ].map((report) => (
                 <div key={report.name} className="p-4 flex items-center justify-between">
