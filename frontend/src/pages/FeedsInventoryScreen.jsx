@@ -336,7 +336,7 @@ export default function FeedsInventoryScreen() {
       alert('Please enter a valid quantity');
       return;
     }
-    const unitCost = parseFloat(purchaseForm.unitCost) || 0;
+    const unitCost = purchaseForm.unitCost.trim() === '' ? null : Number(purchaseForm.unitCost);
     try {
       const res = await fetch(`${API_BASE}/feeds/stock/update`, {
         method: 'POST',
@@ -344,7 +344,7 @@ export default function FeedsInventoryScreen() {
         body: JSON.stringify({
           feed_type: feedType,
           stock_quantity: quantity,
-          unit_price: unitCost,
+          ...(unitCost === null ? {} : { unit_price: unitCost }),
           last_updated: purchaseForm.date,
         }),
       });
@@ -412,11 +412,13 @@ export default function FeedsInventoryScreen() {
   const calculateBatchFeedExpense = (batchId) => {
     const filtered =
       batchId === 'all' ? feedRecords : feedRecords.filter((r) => r.batch_id === batchId);
-    return filtered.reduce((total, rec) => {
-      const amount = Number(rec.quantity_kg) || 0;
-      const price = feedStocks.find((s) => s.feed_type === rec.feed_type)?.unit_price || 0;
-      return total + amount * price;
-    }, 0);
+    let total = 0;
+    for (const rec of filtered) {
+      const rawPrice = feedStocks.find((stock) => stock.feed_type === rec.feed_type)?.unit_price;
+      if (rawPrice == null || rawPrice === '' || !Number.isFinite(Number(rawPrice)) || rec.quantity_kg == null || !Number.isFinite(Number(rec.quantity_kg))) return null;
+      total += Number(rec.quantity_kg) * Number(rawPrice);
+    }
+    return total;
   };
 
   const selectedBatchData = batches.find((b) => String(b.id) === String(selectedBatch));
@@ -434,7 +436,7 @@ export default function FeedsInventoryScreen() {
     }, {});
     return {
       totalStock: feedStocks.reduce((sum, s) => sum + (Number(s.stock_quantity) || 0), 0),
-      totalStockValue: feedStocks.reduce((sum, s) => sum + ((Number(s.stock_quantity) || 0) * (Number(s.unit_price) || 0)), 0),
+      totalStockValue: feedStocks.some((stock) => stock.unit_price == null) ? null : feedStocks.reduce((sum, s) => sum + ((Number(s.stock_quantity) || 0) * (Number(s.unit_price) || 0)), 0),
       selectedBatchFeedRecords: selectedRecords,
       totalFeedConsumed: selectedRecords.reduce((sum, r) => sum + (Number(r.quantity_kg) || 0), 0),
       consumptionByFeedType: byType,
@@ -551,7 +553,7 @@ export default function FeedsInventoryScreen() {
               </div>
               <div className="text-xs text-gray-600 mb-3">
                 {selectedBatch === 'all'
-                  ? `${feedStocks.length} feed types · ₱${totalStockValue.toFixed(2)} value`
+                  ? `${feedStocks.length} feed types · ${totalStockValue == null ? 'Unavailable' : `₱${totalStockValue.toFixed(2)}`} value`
                   : `From ${selectedBatchFeedRecords.length} feeding records`}
               </div>
               <div className="h-2 bg-white/30 rounded-full overflow-hidden mb-2">
@@ -577,7 +579,7 @@ export default function FeedsInventoryScreen() {
                 </span>
               </div>
               <div className="text-2xl font-bold text-gray-900 mb-1">
-                ₱{batchExpense.toLocaleString('en-PH', { maximumFractionDigits: 0 })}
+                {batchExpense == null ? 'Unavailable' : `₱${batchExpense.toLocaleString('en-PH', { maximumFractionDigits: 0 })}`}
               </div>
               <div className="text-xs text-gray-600">
                 {selectedBatch === 'all' ? 'Total feed expenses' : 'Feed expenses for this batch'}
@@ -609,7 +611,7 @@ export default function FeedsInventoryScreen() {
                         {feed.stock_quantity} kg
                       </div>
                       <div className="text-xs text-gray-600">
-                        ₱{feed.unit_price?.toFixed(2) || '0.00'}/kg
+                        {feed.unit_price == null ? 'Unavailable' : `₱${Number(feed.unit_price).toFixed(2)}/kg`}
                       </div>
                       <div className="mt-2 h-1.5 bg-white/30 rounded-full overflow-hidden">
                         <div
@@ -691,7 +693,7 @@ export default function FeedsInventoryScreen() {
                             <div className="font-medium text-gray-900">{feed.feed_type}</div>
                             <div className="flex items-center gap-2 mt-1">
                               <span className="text-xs text-gray-600">
-                                ₱{feed.unit_price?.toFixed(2) || '0.00'}/kg ·{' '}
+                                {feed.unit_price == null ? 'Unavailable' : `₱${Number(feed.unit_price).toFixed(2)}/kg`} ·{' '}
                                 {feed.last_updated || 'N/A'}
                               </span>
                               <button

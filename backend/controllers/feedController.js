@@ -348,7 +348,7 @@ export const updateFeedStock = async (req, res) => {
                 owner_id: req.user.id,
                 feed_type,
                 stock_quantity: Number(existing?.stock_quantity || 0) + addedQuantity,
-                unit_price: unit_price === undefined ? existing?.unit_price : unit_price,
+                unit_price: unit_price === undefined ? (existing?.unit_price ?? null) : unit_price,
                 last_updated: last_updated || existing?.last_updated || new Date().toISOString().split('T')[0],
                 notes: notes === undefined ? existing?.notes : notes,
                 updated_at: new Date()

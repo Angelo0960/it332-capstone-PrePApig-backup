@@ -1,7 +1,7 @@
 import * as expenseController from '../controllers/expensesController.js';
 import express from 'express';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
-import { validateBody } from '../middlewares/validate.js';
+import { validateBody, validateBatchOwnership } from '../middlewares/validate.js';
 
 const expensesRouter = express.Router();
 expensesRouter.use(authMiddleware);
@@ -14,7 +14,7 @@ expensesRouter.get('/summary', expenseController.getExpenseSummary);
 
 expensesRouter.get('/:id', expenseController.getExpenseById);
 
-expensesRouter.put('/:id', expenseController.updateExpense);
+expensesRouter.put('/:id', validateBody({ update: true, nonNegative: ['amount'] }), validateBatchOwnership, expenseController.updateExpense);
 
 expensesRouter.delete('/:id', expenseController.deleteExpense);
 

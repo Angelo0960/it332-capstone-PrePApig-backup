@@ -135,8 +135,8 @@ const toProtoPayload = (data) => ({
         amount: toNumber(row.amount), expenseDate: String(row.expense_date || ''), description: String(row.description || ''),
         createdAt: String(row.created_at || ''),
     })),
-    feedStock: data.feedStock.map((row) => ({ feedType: String(row.feed_type || ''), unitPrice: toNumber(row.unit_price), stockQuantity: toNumber(row.stock_quantity) })),
-    vaccineStock: data.vaccineStock.map((row) => ({ vaccineName: String(row.vaccine_name || ''), pricePerDose: toNumber(row.price_per_dose), stockQuantity: toNumber(row.stock_quantity) })),
+    feedStock: data.feedStock.map((row) => ({ feedType: String(row.feed_type || ''), unitPrice: row.unit_price == null ? undefined : toNumber(row.unit_price), stockQuantity: toNumber(row.stock_quantity) })),
+    vaccineStock: data.vaccineStock.map((row) => ({ vaccineName: String(row.vaccine_name || ''), pricePerDose: row.price_per_dose == null ? undefined : toNumber(row.price_per_dose), stockQuantity: toNumber(row.stock_quantity) })),
 });
 
 export const getAnalyticsData = async (req, res) => {

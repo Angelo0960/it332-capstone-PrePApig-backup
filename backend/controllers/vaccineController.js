@@ -345,7 +345,7 @@ export const updateVaccineStock = async (req, res) => {
                 vaccine_name,
                 stock_quantity: Number(existing?.stock_quantity || 0) + addedQuantity,
                 expiry_date: expiry_date === undefined ? existing?.expiry_date : expiry_date,
-                price_per_dose: price_per_dose === undefined ? existing?.price_per_dose : price_per_dose,
+                price_per_dose: price_per_dose === undefined ? (existing?.price_per_dose ?? null) : price_per_dose,
                 notes: notes === undefined ? existing?.notes : notes,
                 updated_at: new Date()
             }, { onConflict: 'owner_id,vaccine_name' })

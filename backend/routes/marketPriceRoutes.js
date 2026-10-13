@@ -3,9 +3,11 @@ import { fetchBatangasPigPrice } from '../services/pigPriceScraper.js';
 import { generatePigPriceAnalysis } from '../services/geminiPigPriceService.js';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 
+import { rateLimit } from '../middlewares/rateLimit.js';
+
 const marketPriceRouter = express.Router();
 
-marketPriceRouter.get('/pigs', async (_req, res) => {
+marketPriceRouter.get('/pigs', rateLimit({ limit: 60, windowMs: 60000 }), async (_req, res) => {
   try {
     const result = await fetchBatangasPigPrice();
     res.status(200).json(result);
@@ -18,8 +20,11 @@ marketPriceRouter.get('/pigs', async (_req, res) => {
   }
 });
 
-marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, async (req, res) => {
+marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5, windowMs: 600000, key: (req) => req.user.id }), async (req, res) => {
   try {
+    if (req.body?.locations !== undefined && (!Array.isArray(req.body.locations) || req.body.locations.length > 20 || req.body.locations.some((location) => typeof location !== 'string' || !location.trim() || location.length > 100))) {
+      return res.status(400).json({ success: false, message: 'locations must contain at most 20 non-empty strings of up to 100 characters' });
+    }
     const priceData = await fetchBatangasPigPrice();
     const locations = Array.isArray(req.body?.locations) && req.body.locations.length > 0
       ? req.body.locations

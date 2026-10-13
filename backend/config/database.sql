@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS feed_stocks (
     owner_id UUID,
     feed_type VARCHAR(100) NOT NULL,
     stock_quantity DECIMAL(10,2) NOT NULL DEFAULT 0,
-    unit_price DECIMAL(10,2) DEFAULT 0,
+    unit_price DECIMAL(10,2),
     last_updated DATE,
     notes TEXT,
     updated_at TIMESTAMP DEFAULT NOW()
@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS vaccine_stocks (
     vaccine_name VARCHAR(100) NOT NULL,
     stock_quantity DECIMAL(10,2) NOT NULL DEFAULT 0,
     expiry_date DATE,
-    price_per_dose DECIMAL(10,2) DEFAULT 0,
+    price_per_dose DECIMAL(10,2),
     notes TEXT,
     updated_at TIMESTAMP DEFAULT NOW()
 );

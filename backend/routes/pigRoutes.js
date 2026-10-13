@@ -7,7 +7,7 @@ const pigBatchRouter = express.Router();
 pigBatchRouter.use(authMiddleware);
 
 // Batch CRUD
-pigBatchRouter.post('/create', validateBody({ required: ['batch_code', 'pig_count'], nonNegative: ['pig_count', 'start_weight', 'current_weight'] }), pigBatchController.createBatch);
+pigBatchRouter.post('/create', validateBody({ required: ['batch_code', 'pig_count'], nonNegative: ['start_weight', 'current_weight', 'sale_price_per_kg'], integers: ['pig_count', 'age_on_acquisition'], nullable: ['sale_price_per_kg'] }), pigBatchController.createBatch);
 pigBatchRouter.get('/all', pigBatchController.getAllBatches);
 pigBatchRouter.get('/financial-summary', pigBatchController.getBatchFinancialSummary);
 pigBatchRouter.get('/active', pigBatchController.getActiveBatches);
@@ -15,14 +15,14 @@ pigBatchRouter.get('/summary', pigBatchController.getBatchSummary);
 
 // Individual pig management – MUST COME BEFORE the generic :id
 pigBatchRouter.get('/batch/:batchId/pigs', pigBatchController.getPigsByBatch);
-pigBatchRouter.post('/pig', pigBatchController.createPig);
-pigBatchRouter.put('/pig/:id', pigBatchController.updatePig);
+pigBatchRouter.post('/pig', validateBody({ required: ['batch_id', 'weight'], nonNegative: ['weight'] }), pigBatchController.createPig);
+pigBatchRouter.put('/pig/:id', validateBody({ update: true, forbidden: ['batch_id'], nonNegative: ['weight'] }), pigBatchController.updatePig);
 pigBatchRouter.delete('/pig/:id', pigBatchController.deletePig);
 
 // Batch by ID – MUST COME LAST
 pigBatchRouter.get('/:id', pigBatchController.getBatchById);
-pigBatchRouter.put('/:id', pigBatchController.updateBatch);
+pigBatchRouter.put('/:id', validateBody({ update: true, forbidden: ['batch_id'], nonNegative: ['start_weight', 'current_weight', 'sale_price_per_kg'], integers: ['pig_count', 'age_on_acquisition'], nullable: ['sale_price_per_kg'] }), pigBatchController.updateBatch);
 pigBatchRouter.delete('/:id', pigBatchController.deleteBatch);
-pigBatchRouter.patch('/:id/weight', pigBatchController.updateWeight);
+pigBatchRouter.patch('/:id/weight', validateBody({ required: ['current_weight'], nonNegative: ['current_weight'] }), pigBatchController.updateWeight);
 
 export default pigBatchRouter;

@@ -36,8 +36,8 @@ const getDateAcquiredFromAge = (ageDays) => {
 
 // Calculate profit in pesos
 const calculateProfit = (weight, pricePerKg, expenses) => {
+  if (expenses === undefined || expenses === null) return null;
   if (!weight || !pricePerKg || weight === 0 || pricePerKg === 0) return 0;
-  if (expenses === undefined || expenses === null) return 0;
   const revenue = weight * pricePerKg;
   const profit = revenue - expenses;
   return Math.round(profit);
@@ -218,7 +218,7 @@ export default function DashboardScreen() {
             : savedPrice > 0
               ? savedPrice
               : DEFAULT_ESTIMATED_PRICE_PER_KG,
-          expenses: batch.expenses === null || batch.expenses === undefined ? 0 : batch.expenses,
+          expenses: batch.expenses ?? null,
         }));
         setCurrentBatchIndex(0);
         setBatches(cachedWithEstimate);
@@ -273,7 +273,7 @@ export default function DashboardScreen() {
             weight: batch.current_weight || batch.start_weight || 0,
             recordedPricePerKg: recordedPrice > 0 ? recordedPrice : null,
             pricePerKg: estimatedPrice,
-            expenses: Number(financial?.total_expenses) || 0,
+            expenses: financial?.total_expenses ?? null,
           };
         });
         if (batchRenderFrame.current) cancelAnimationFrame(batchRenderFrame.current);

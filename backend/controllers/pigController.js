@@ -18,56 +18,18 @@ export const createBatch = async (req, res) => {
 
         const owner_id = req.user.id;
 
-        // 1. Insert the batch
-        const { data: batchData, error: batchError } = await supabase
-            .from('pig_batches')
-            .insert([{
-                batch_code,
-                pig_count,
-                breed,
-                start_weight,
-                current_weight,
-                sale_price_per_kg: sale_price_per_kg || null,
-                age_on_acquisition: Math.max(0, parseInt(age_on_acquisition, 10) || 0),
-                date_acquired,
-                status,
-                owner_id
-            }])
-            .select();
-
-        if (batchError) {
-            console.error('Batch insert error:', batchError);
-            throw batchError;
-        }
-
-        const newBatch = batchData[0];
-
-        // 2. Auto‑generate individual pigs
-        const totalPigs = pig_count || 0;
-        const totalWeight = current_weight || 0;
-        const avgWeight = totalPigs > 0 ? totalWeight / totalPigs : 0;
-
-        if (totalPigs > 0) {
-            const pigs = [];
-            for (let i = 0; i < totalPigs; i++) {
-                pigs.push({
-                    batch_id: newBatch.id,
-                    owner_id,
-                    weight: avgWeight,
-                    health_status: 'Healthy',
-                    notes: `Auto‑generated on batch creation (breed: ${breed || 'Unknown'})`,
-                });
-            }
-
-            const { error: pigError } = await supabase
-                .from('pigs')
-                .insert(pigs);
-
-            if (pigError) {
-                console.warn('Failed to auto‑generate pigs:', pigError);
-                // Don't fail the request – the batch already exists
-            }
-        }
+        // The RPC inserts the batch and its pigs in one database transaction.
+        // A missing migration fails closed; never fall back to separate writes.
+        const { data: newBatch, error: batchError } = await supabase.rpc('create_batch_with_pigs', {
+            p_owner_id: owner_id,
+            p_batch: {
+                batch_code, pig_count, breed, start_weight, current_weight,
+                sale_price_per_kg: sale_price_per_kg ?? null,
+                age_on_acquisition: age_on_acquisition ?? 0,
+                date_acquired, status,
+            },
+        });
+        if (batchError) throw batchError;
 
         res.status(201).json({
             success: true,
@@ -133,12 +95,25 @@ export const getBatchFinancialSummary = async (req, res) => {
             .find((result) => result.error);
         if (failed) throw failed.error;
 
-        const feedPrices = new Map((feedStockResult.data || []).map((stock) => [stock.feed_type, Number(stock.unit_price) || 0]));
-        const vaccinePrices = new Map((vaccineStockResult.data || []).map((stock) => [stock.vaccine_name, Number(stock.price_per_dose) || 0]));
+        const price = (value) => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : null;
+        const feedPrices = new Map((feedStockResult.data || []).map((stock) => [stock.feed_type, price(stock.unit_price)]));
+        const vaccinePrices = new Map((vaccineStockResult.data || []).map((stock) => [stock.vaccine_name, price(stock.price_per_dose)]));
         const totals = new Map(batchIds.map((id) => [id, 0]));
-        for (const expense of expensesResult.data || []) totals.set(expense.batch_id, (totals.get(expense.batch_id) || 0) + (Number(expense.amount) || 0));
-        for (const record of feedsResult.data || []) totals.set(record.batch_id, (totals.get(record.batch_id) || 0) + ((Number(record.quantity_kg) || 0) * (feedPrices.get(record.feed_type) || 0)));
-        for (const record of vaccinationsResult.data || []) totals.set(record.batch_id, (totals.get(record.batch_id) || 0) + ((Number(record.dosage) || 0) * (vaccinePrices.get(record.vaccine_name) || 0)));
+        const unavailable = new Map(batchIds.map((id) => [id, new Set()]));
+        for (const expense of expensesResult.data || []) totals.set(expense.batch_id, totals.get(expense.batch_id) + Number(expense.amount));
+        const addCosts = (records, prices, nameField, quantityField, category) => {
+            for (const record of records || []) {
+                const unitPrice = prices.get(record[nameField]);
+                const quantity = price(record[quantityField]);
+                if (unitPrice == null || quantity == null) {
+                    unavailable.get(record.batch_id).add(category);
+                } else {
+                    totals.set(record.batch_id, totals.get(record.batch_id) + quantity * unitPrice);
+                }
+            }
+        };
+        addCosts(feedsResult.data, feedPrices, 'feed_type', 'quantity_kg', 'feed');
+        addCosts(vaccinationsResult.data, vaccinePrices, 'vaccine_name', 'dosage', 'vaccine');
 
         res.json({
             success: true,
@@ -146,7 +121,9 @@ export const getBatchFinancialSummary = async (req, res) => {
                 batch_id: batch.id,
                 current_weight: Number(batch.current_weight) || 0,
                 sale_price_per_kg: Number(batch.sale_price_per_kg) || null,
-                total_expenses: Math.round((totals.get(batch.id) || 0) * 100) / 100,
+                total_expenses: unavailable.get(batch.id).size ? null : Math.round(totals.get(batch.id) * 100) / 100,
+                costs_available: unavailable.get(batch.id).size === 0,
+                unavailable_costs: [...unavailable.get(batch.id)],
             })),
         });
     } catch (error) {
@@ -204,8 +181,8 @@ export const updateBatch = async (req, res) => {
                 breed,
                 start_weight,
                 current_weight,
-                sale_price_per_kg: sale_price_per_kg || null,
-                age_on_acquisition: Math.max(0, parseInt(age_on_acquisition, 10) || 0),
+                sale_price_per_kg: sale_price_per_kg,
+                age_on_acquisition,
                 date_acquired,
                 status
             })
@@ -348,15 +325,15 @@ export const getPigsByBatch = async (req, res) => {
     try {
         const { batchId } = req.params;
 
-        // 1. Get batch info (to auto‑generate if missing)
+        // Verify ownership before reading pigs.
         const { data: batch, error: batchError } = await supabase
             .from('pig_batches')
-            .select('pig_count, current_weight')
+            .select('id')
             .eq('id', batchId)
             .eq('owner_id', req.user.id)
             .single();
 
-        if (batchError) {
+        if (batchError || !batch) {
             console.error('Batch fetch error:', batchError);
             return res.status(404).json({
                 success: false,
@@ -365,7 +342,7 @@ export const getPigsByBatch = async (req, res) => {
         }
 
         // 2. Get existing pigs
-        let { data: pigs, error: pigsError } = await supabase
+        const { data: pigs, error: pigsError } = await supabase
             .from('pigs')
             .select('*')
             .eq('batch_id', batchId)
@@ -373,13 +350,6 @@ export const getPigsByBatch = async (req, res) => {
             .order('created_at', { ascending: true });
 
         if (pigsError) {
-            // If table doesn't exist, return empty array
-            if (pigsError.code === '42P01') {
-                return res.status(200).json({
-                    success: true,
-                    data: [],
-                });
-            }
             if (pigsError.message?.includes("'owner_id' column")) {
                 return res.status(500).json({
                     success: false,
@@ -389,46 +359,12 @@ export const getPigsByBatch = async (req, res) => {
             throw pigsError;
         }
 
-        // 3. If no pigs exist, auto‑generate them (fallback)
-        if (!pigs || pigs.length === 0) {
-            const pigCount = batch.pig_count || 0;
-            const totalWeight = batch.current_weight || 0;
-            const avgWeight = pigCount > 0 ? totalWeight / pigCount : 0;
-
-            const newPigs = [];
-            for (let i = 0; i < pigCount; i++) {
-                newPigs.push({
-                    batch_id: batchId,
-                    owner_id: req.user.id,
-                    weight: avgWeight,
-                    health_status: 'Healthy',
-                    notes: 'Auto‑generated (fallback)',
-                });
-            }
-
-            if (newPigs.length > 0) {
-                const { data: inserted, error: insertError } = await supabase
-                    .from('pigs')
-                    .insert(newPigs)
-                    .select();
-
-                if (insertError) {
-                    console.error('Pig insert error:', insertError);
-                    throw insertError;
-                }
-
-                pigs = inserted;
-            } else {
-                pigs = [];
-            }
-        }
-
         res.status(200).json({
             success: true,
             data: pigs,
         });
     } catch (error) {
-        console.error('Error fetching/generating pigs:', error);
+        console.error('Error fetching pigs:', error);
         res.status(500).json({
             success: false,
             message: error.message,
