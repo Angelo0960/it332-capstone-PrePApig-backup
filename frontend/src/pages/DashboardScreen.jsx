@@ -957,6 +957,7 @@ export default function DashboardScreen() {
                 </div>
 
                 <div className="border-t border-white/30 pt-4">
+                  <button onClick={() => navigate('/settings')} className="w-full bg-white/40 rounded-xl py-3 mb-3 font-semibold text-purple-700">Profile, farm settings & backup</button>
                   <button
                     onClick={handleLogout}
                     className="w-full flex items-center justify-center gap-2 bg-red-500 text-white font-bold py-3 rounded-xl shadow-lg active:scale-95 transition-transform"

@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { Home, Package, Syringe, TrendingUp } from 'lucide-react';
+import { Home, Package, Syringe, TrendingUp, Settings } from 'lucide-react';
 
 const navItems = [
+  { path: '/settings', label: 'Farm', icon: Settings, activeColor: 'purple' },
   { path: '/dashboard', label: 'Home', icon: Home, activeColor: 'purple' },
   { path: '/feeds', label: 'Feeds', icon: Package, activeColor: 'blue' },
   { path: '/vaccination', label: 'Vaccination', icon: Syringe, activeColor: 'pink' },

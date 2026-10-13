@@ -1,4 +1,5 @@
 import supabase from '../config/supabase.js';
+const validExpenseDate = (value) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
 
 // CREATE
 export const createExpense = async (req, res) => {
@@ -11,10 +12,10 @@ export const createExpense = async (req, res) => {
             description
         } = req.body;
 
-        if (!expense_type || amount === undefined || !expense_date) {
+        if (typeof expense_type !== 'string' || !expense_type.trim() || amount === undefined || !validExpenseDate(expense_date)) {
             return res.status(400).json({ success: false, message: 'Expense type, amount, and date are required' });
         }
-        if (!Number.isFinite(Number(amount)) || Number(amount) < 0) {
+        if (amount === null || amount === '' || !Number.isFinite(Number(amount)) || Number(amount) < 0) {
             return res.status(400).json({ success: false, message: 'Amount must be a non-negative number' });
         }
 
@@ -120,6 +121,21 @@ export const updateExpense = async (req, res) => {
     try {
         const { id } = req.params;
 
+        const { batch_id, amount, expense_date, expense_type } = req.body;
+        if (amount !== undefined && (amount === null || amount === '' || !Number.isFinite(Number(amount)) || Number(amount) < 0)) {
+            return res.status(400).json({ success: false, message: 'Amount must be a non-negative number' });
+        }
+        if (expense_type !== undefined && (typeof expense_type !== 'string' || !expense_type.trim())) {
+            return res.status(400).json({ success: false, message: 'Expense type is required' });
+        }
+        if (expense_date !== undefined && !validExpenseDate(expense_date)) {
+            return res.status(400).json({ success: false, message: 'A valid expense date is required' });
+        }
+        if (batch_id) {
+            const { data: batch, error } = await supabase.from('pig_batches').select('id').eq('id', batch_id).eq('owner_id', req.user.id).maybeSingle();
+            if (error || !batch) return res.status(404).json({ success: false, message: 'Batch not found' });
+        }
+
         const { data, error } = await supabase
             .from('expenses')
             .update({
@@ -135,6 +151,7 @@ export const updateExpense = async (req, res) => {
 
         if (error) throw error;
 
+        if (!data.length) return res.status(404).json({ success: false, message: 'Expense not found' });
         res.status(200).json({
             success: true,
             message: 'Expense updated successfully',
@@ -154,13 +171,15 @@ export const deleteExpense = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from('expenses')
             .delete()
             .eq('id', id)
-            .eq('owner_id', req.user.id);
+            .eq('owner_id', req.user.id)
+            .select('id');
 
         if (error) throw error;
+        if (!data.length) return res.status(404).json({ success: false, message: 'Expense not found' });
 
         res.status(200).json({
             success: true,

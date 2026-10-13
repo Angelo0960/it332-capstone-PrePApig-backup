@@ -13,6 +13,7 @@ import salesRouter from "./routes/salesRoutes.js";
 import reportRouter from "./routes/reportRoutes.js";
 import notificationRouter from "./routes/notificationRoutes.js";
 import marketPriceRouter from "./routes/marketPriceRoutes.js";
+import managementRouter from './routes/managementRoutes.js';
 
 import "./scheduler.js";
 
@@ -88,6 +89,7 @@ app.use("/reports", reportRouter);
 app.use("/sales", salesRouter);
 app.use("/notifications", notificationRouter);
 app.use("/market-prices", marketPriceRouter);
+app.use('/management', managementRouter);
 
 // Root Route
 app.get("/", (req, res) => {
