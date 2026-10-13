@@ -15,11 +15,11 @@ feedRouter.get('/summary', feedController.getFeedSummary);
 
 // Feed stock routes (must come BEFORE the generic :id)
 feedRouter.get('/stock', feedController.getFeedStock);
-feedRouter.post('/stock/update', validateBody({ required: ['feed_type'], nonNegative: ['stock_quantity', 'unit_price'] }), feedController.updateFeedStock);
+feedRouter.post('/stock/update', validateBody({ required: ['feed_type'], nonNegative: ['stock_quantity', 'unit_price'], nullable: ['unit_price'] }), feedController.updateFeedStock);
 
 // Generic :id route – must come LAST
 feedRouter.get('/:id', feedController.getFeedRecordById);
-feedRouter.put('/:id', feedController.updateFeedRecord);
+feedRouter.put('/:id', validateBody({ update: true, forbidden: ['batch_id'], nonNegative: ['quantity_kg'] }), feedController.updateFeedRecord);
 feedRouter.delete('/:id', feedController.deleteFeedRecord);
 
 export default feedRouter;

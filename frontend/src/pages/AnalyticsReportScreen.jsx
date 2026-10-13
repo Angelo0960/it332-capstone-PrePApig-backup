@@ -223,35 +223,26 @@ export default function AnalyticsReportsScreen() {
 
 
   // ---------- Compute feed + vaccine combined expenses (safe) ----------
-  const getFeedCost = () => {
+  const knownPrice = (value) => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : null;
+  const recordCost = (records, prices, nameField, quantityField) => {
     let total = 0;
-    filteredFeedRecords.forEach((rec) => {
-      const qty = parseFloat(rec.quantity_kg) || 0;
-      const price = feedPriceMap.get(rec.feed_type) || 0;
-      total += qty * price;
-    });
+    for (const record of records) {
+      const price = prices.get(record[nameField]);
+      const quantity = knownPrice(record[quantityField]);
+      if (price == null || quantity == null) return null;
+      total += quantity * price;
+    }
     return Math.round(total * 100) / 100;
   };
-
-  const getVaccineCost = () => {
-    let total = 0;
-    filteredVaccinationRecords.forEach((rec) => {
-      const dosage = parseFloat(rec.dosage) || 0;
-      const price = vaccinePriceMap.get(rec.vaccine_name) || 0;
-      total += dosage * price;
-    });
-    return Math.round(total * 100) / 100;
-  };
-
-  const feedPriceMap = useMemo(() => new Map(feedStock.map((stock) => [stock.feed_type, Number(stock.unit_price) || 0])), [feedStock]);
-  const vaccinePriceMap = useMemo(() => new Map(vaccineStock.map((stock) => [stock.vaccine_name, Number(stock.price_per_dose) || 0])), [vaccineStock]);
-  const totalFeedCost = useMemo(() => getFeedCost(), [filteredFeedRecords, feedStock]);
-  const totalVaccineCost = useMemo(() => getVaccineCost(), [filteredVaccinationRecords, vaccineStock]);
+  const feedPriceMap = useMemo(() => new Map(feedStock.map((stock) => [stock.feed_type, knownPrice(stock.unit_price)])), [feedStock]);
+  const vaccinePriceMap = useMemo(() => new Map(vaccineStock.map((stock) => [stock.vaccine_name, knownPrice(stock.price_per_dose)])), [vaccineStock]);
+  const totalFeedCost = useMemo(() => recordCost(filteredFeedRecords, feedPriceMap, 'feed_type', 'quantity_kg'), [filteredFeedRecords, feedPriceMap]);
+  const totalVaccineCost = useMemo(() => recordCost(filteredVaccinationRecords, vaccinePriceMap, 'vaccine_name', 'dosage'), [filteredVaccinationRecords, vaccinePriceMap]);
   const manualExpenses = useMemo(
     () => filteredExpenses.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0),
     [filteredExpenses]
   );
-  const combinedExpenses = totalFeedCost + totalVaccineCost + manualExpenses;
+  const combinedExpenses = totalFeedCost == null || totalVaccineCost == null ? null : totalFeedCost + totalVaccineCost + manualExpenses;
   const selectedBatches = selectedBatch === 'All Batches'
     ? batches
     : batches.filter((b) => b.batch_code === selectedBatch);
@@ -294,6 +285,7 @@ export default function AnalyticsReportsScreen() {
 
   // 3. Profit trend (uses combined expenses)
   const getProfitTrend = () => {
+    if (combinedExpenses == null) return [];
     const targetBatches =
       selectedBatch === 'All Batches'
         ? batches
@@ -718,7 +710,7 @@ export default function AnalyticsReportsScreen() {
                 <span className="font-bold text-gray-900">Net Profit</span>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-green-600">
-                    {salesRevenue > 0 ? formatCurrency(salesRevenue - combinedExpenses) : 'Unavailable'}
+                    {salesRevenue > 0 && combinedExpenses != null ? formatCurrency(salesRevenue - combinedExpenses) : 'Unavailable'}
                   </div>
                   <span className="px-2 py-0.5 bg-green-500 text-white rounded-full text-xs font-semibold">
                     {salesRevenue > 0 && combinedExpenses > 0

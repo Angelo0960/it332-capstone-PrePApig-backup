@@ -344,7 +344,7 @@ export default function VaccinationScreen() {
       alert('Please enter a valid number of doses');
       return;
     }
-    const price = parseFloat(restockForm.cost) || 0;
+    const price = restockForm.cost.trim() === '' ? null : Number(restockForm.cost);
     try {
       const res = await fetch(`${API_BASE}/vaccinations/stock/update`, {
         method: 'POST',
@@ -353,7 +353,7 @@ export default function VaccinationScreen() {
           vaccine_name: vaccineName,
           stock_quantity: doses,
           expiry_date: restockForm.expiryDate || null,
-          price_per_dose: price,
+          ...(price === null ? {} : { price_per_dose: price }),
         }),
       });
       if (!res.ok) throw new Error('Failed to restock');
@@ -390,11 +390,12 @@ export default function VaccinationScreen() {
   };
 
   const getVaccinePrice = (name) => {
-    if (!name) return 0;
+    if (!name) return null;
     const trimmed = name.trim();
     const stock = vaccineStock.find((s) => s.vaccine_name?.trim() === trimmed);
-    const price = Number(stock?.price_per_dose);
-    return Number.isFinite(price) && price >= 0 ? price : 0;
+    if (stock?.price_per_dose == null || stock.price_per_dose === '') return null;
+    const price = Number(stock.price_per_dose);
+    return Number.isFinite(price) && price >= 0 ? price : null;
   };
 
   const calculateBatchVaccinationExpense = (batchId) => {
@@ -402,12 +403,14 @@ export default function VaccinationScreen() {
       batchId === 'all'
         ? vaccinationRecords
         : vaccinationRecords.filter((r) => r.batch_id === batchId);
-    return filtered.reduce((total, rec) => {
+    let total = 0;
+    for (const rec of filtered) {
       const dosage = Number(rec.dosage);
       const price = getVaccinePrice(rec.vaccine_name);
-      const validDosage = isNaN(dosage) ? 0 : dosage;
-      return total + validDosage * price;
-    }, 0);
+      if (price == null || rec.dosage == null || rec.dosage === '' || !Number.isFinite(dosage)) return null;
+      total += dosage * price;
+    }
+    return total;
   };
 
   const selectedBatchData = batches.find((b) => String(b.id) === String(selectedBatch));
@@ -555,10 +558,7 @@ export default function VaccinationScreen() {
                     </div>
                   </div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">
-                    ₱
-                    {isNaN(batchExpense)
-                      ? 0
-                      : batchExpense.toLocaleString('en-PH', { maximumFractionDigits: 0 })}
+                    {batchExpense == null ? 'Unavailable' : `₱${batchExpense.toLocaleString('en-PH', { maximumFractionDigits: 0 })}`}
                   </div>
                   <div className="text-xs text-gray-600">
                     {selectedBatch === 'all'
@@ -612,7 +612,7 @@ export default function VaccinationScreen() {
                                   year: 'numeric',
                                 })
                               : 'N/A'}
-                            {item.price_per_dose && ` · ₱${item.price_per_dose.toFixed(2)}/dose`}
+                            {item.price_per_dose == null ? ' · Cost unavailable' : ` · ₱${Number(item.price_per_dose).toFixed(2)}/dose`}
                           </div>
                         </div>
                       );
