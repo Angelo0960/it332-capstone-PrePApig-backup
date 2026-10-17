@@ -174,6 +174,9 @@ export default function AnalyticsReportsScreen() {
       });
       const json = await response.json();
       if (!response.ok || !json.success) {
+        if (response.status === 429) {
+          throw new Error('Gemini quota is unavailable for this project. Local reference prices remain available; check Google AI Studio billing/quota or try again later.');
+        }
         throw new Error(json.message || 'Gemini analysis unavailable');
       }
       setAiAnalysis(json);

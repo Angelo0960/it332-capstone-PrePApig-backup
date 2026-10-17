@@ -43,10 +43,18 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
     res.status(200).json(result);
   } catch (error) {
     console.error('Error generating Gemini pig-price analysis:', error);
-    const status = error.message.startsWith('Gemini API key is not configured') ? 503 : 502;
+    const rawMessage = String(error.message || '');
+    const isQuotaError = /quota|rate.?limit|resource.?exhausted|billing/i.test(rawMessage);
+    const isMissingKey = rawMessage.startsWith('Gemini API key is not configured');
+    const status = isMissingKey ? 503 : isQuotaError ? 429 : 502;
+    const message = isMissingKey
+      ? rawMessage
+      : isQuotaError
+        ? 'Gemini quota is unavailable for this project. The local reference prices remain available; check Google AI Studio billing/quota or try again later.'
+        : 'Gemini price analysis is temporarily unavailable. The local reference prices remain available.';
     res.status(status).json({
       success: false,
-      message: error.message,
+      message,
     });
   }
 });
