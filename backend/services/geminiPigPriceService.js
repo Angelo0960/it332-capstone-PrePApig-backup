@@ -1,6 +1,13 @@
 import 'dotenv/config';
 
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MODEL = 'gemini-3.8-flash';
+
+const normalizeModel = (value) => {
+  const configured = String(value || '').trim();
+  // Gemini 2.5 Flash is access-limited for newer projects; use the current
+  // stable Flash model when an old Render value is still configured.
+  return configured === 'gemini-2.5-flash' ? DEFAULT_MODEL : configured || DEFAULT_MODEL;
+};
 
 const getConfiguredApiKey = () =>
   process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY || '';
@@ -39,7 +46,7 @@ export const generatePigPriceAnalysis = async ({
   provincialReference,
   fetchImpl = fetch,
   apiKey = getConfiguredApiKey(),
-  model = process.env.GEMINI_MODEL || DEFAULT_MODEL,
+  model = normalizeModel(process.env.GEMINI_MODEL),
 }) => {
   const configuredApiKey = String(apiKey || '').trim();
   if (!configuredApiKey) {
