@@ -198,6 +198,16 @@ export default function VaccinationScreen() {
 
   const fetchVaccinationOverview = async () => {
     const userKey = getUserCacheKey();
+    const cachedBatches = readCache(`batches:${userKey}`);
+    const cachedRecords = readCache(`vaccination-records:${userKey}:all`);
+    const cachedStock = readCache(`vaccine-stock:${userKey}`);
+    const hasCachedOverview = Array.isArray(cachedBatches) || Array.isArray(cachedRecords) || Array.isArray(cachedStock);
+
+    if (Array.isArray(cachedBatches)) setBatches(cachedBatches);
+    if (Array.isArray(cachedRecords)) setVaccinationRecords(cachedRecords);
+    if (Array.isArray(cachedStock)) setVaccineStock(cachedStock);
+    if (hasCachedOverview) setLoading(false);
+
     try {
       const res = await fetch(`${API_BASE}/vaccinations/overview`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

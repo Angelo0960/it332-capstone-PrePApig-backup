@@ -197,6 +197,16 @@ export default function FeedsInventoryScreen() {
 
   const fetchFeedOverview = async () => {
     const userKey = getUserCacheKey();
+    const cachedBatches = readCache(`batches:${userKey}`);
+    const cachedRecords = readCache(`feed-records:${userKey}:all`);
+    const cachedStock = readCache(`feed-stock:${userKey}`);
+    const hasCachedOverview = Array.isArray(cachedBatches) || Array.isArray(cachedRecords) || Array.isArray(cachedStock);
+
+    if (Array.isArray(cachedBatches)) setBatches(cachedBatches);
+    if (Array.isArray(cachedRecords)) setFeedRecords(cachedRecords);
+    if (Array.isArray(cachedStock)) setFeedStocks(cachedStock);
+    if (hasCachedOverview) setLoading(false);
+
     try {
       const res = await fetch(`${API_BASE}/feeds/overview`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
