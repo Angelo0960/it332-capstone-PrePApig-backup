@@ -36,7 +36,7 @@ import HarvestSales from '../components/HarvestSales.jsx';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
 import { API_BASE, getAuthHeaders } from '../api.js';
 import { formatCurrency, formatPricePerKg } from '../utils/formatters.js';
-import { getUserCacheKey } from '../utils/cache.js';
+import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 // ────────────────────────────────────────────────────────────────
 
 const DEFAULT_PRICE_POINTS = [
