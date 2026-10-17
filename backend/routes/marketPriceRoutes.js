@@ -1,6 +1,6 @@
 import express from 'express';
 import { fetchBatangasPigPrice } from '../services/pigPriceScraper.js';
-import { generatePigPriceAnalysis } from '../services/geminiPigPriceService.js';
+import { generatePigPriceAnalysis } from '../services/openaiPigPriceService.js';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 
 import { rateLimit } from '../middlewares/rateLimit.js';
@@ -42,16 +42,16 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
 
     res.status(200).json(result);
   } catch (error) {
-    console.error('Error generating Gemini pig-price analysis:', error);
+    console.error('Error generating OpenAI pig-price analysis:', error);
     const rawMessage = String(error.message || '');
     const isQuotaError = /quota|rate.?limit|resource.?exhausted|billing/i.test(rawMessage);
-    const isMissingKey = rawMessage.startsWith('Gemini API key is not configured');
-    const status = isMissingKey ? 503 : isQuotaError ? 429 : 502;
+    const isMissingKey = rawMessage.startsWith('OpenAI API key is not configured');
+    const status = isMissingKey ? 503 : isQuotaError ? 429 : error.providerStatus >= 400 && error.providerStatus < 500 ? error.providerStatus : 502;
     const message = isMissingKey
       ? rawMessage
       : isQuotaError
-        ? 'Gemini quota is unavailable for this project. The local reference prices remain available; check Google AI Studio billing/quota or try again later.'
-        : 'Gemini price analysis is temporarily unavailable. The local reference prices remain available.';
+        ? 'OpenAI quota is unavailable for this project. The local reference prices remain available; check OpenAI API billing/quota or try again later.'
+        : 'OpenAI price analysis is temporarily unavailable. The local reference prices remain available.';
     res.status(status).json({
       success: false,
       message,

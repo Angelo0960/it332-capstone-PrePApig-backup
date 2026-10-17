@@ -175,17 +175,17 @@ export default function AnalyticsReportsScreen() {
       const json = await response.json();
       if (!response.ok || !json.success) {
         if (response.status === 429) {
-          throw new Error('Gemini quota is unavailable for this project. Local reference prices remain available; check Google AI Studio billing/quota or try again later.');
+          throw new Error('OpenAI quota is unavailable for this project. Local reference prices remain available; check OpenAI API billing/quota or try again later.');
         }
-        throw new Error(json.message || 'Gemini analysis unavailable');
+        throw new Error(json.message || 'OpenAI analysis unavailable');
       }
       setAiAnalysis(json);
     } catch (err) {
       if (err.name === 'AbortError') return;
       setAiAnalysis(null);
       setAiAnalysisError(
-        err.message.includes('Gemini API key is not configured')
-          ? 'Gemini is not configured on the backend. Add GEMINI_API_KEY to the Render backend environment variables, then redeploy.'
+        err.message.includes('OpenAI API key is not configured')
+          ? 'OpenAI is not configured on the backend. Add OPENAI_API_KEY to the Render backend environment variables, then redeploy.'
           : err.message
       );
     } finally {
@@ -533,19 +533,19 @@ export default function AnalyticsReportsScreen() {
             </div>
           </div>
 
-          {/* Local Pig Price Sources and Gemini Analysis */}
+          {/* Local Pig Price Sources and OpenAI Analysis */}
           <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg mb-4">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="font-semibold text-gray-900">Local Pig Price Sources</h3>
-                <p className="text-xs text-gray-600">Use 3+ nearby locations for Gemini price analysis</p>
+                <p className="text-xs text-gray-600">Use 3+ nearby locations for OpenAI price analysis</p>
               </div>
               <button
                 onClick={requestAiPriceAnalysis}
                 disabled={aiAnalysisLoading || pigPriceLocations.length < 3}
                 className="px-3 py-2 bg-purple-600 text-white rounded-xl text-xs font-semibold shadow-lg disabled:opacity-50"
               >
-                {aiAnalysisLoading ? 'Analyzing...' : 'Ask Gemini AI'}
+                {aiAnalysisLoading ? 'Analyzing...' : 'Ask OpenAI'}
               </button>
             </div>
             <div className="flex flex-wrap gap-2 mb-3">
@@ -602,7 +602,7 @@ export default function AnalyticsReportsScreen() {
             {aiAnalysisError && <div className="text-xs text-red-600 mt-2">{aiAnalysisError}</div>}
             {aiAnalysis && (
               <div className="bg-purple-100/50 border border-purple-300/50 rounded-xl p-3 mt-3">
-                <div className="text-xs font-semibold text-purple-900 mb-2">Gemini price suggestion</div>
+                <div className="text-xs font-semibold text-purple-900 mb-2">OpenAI price suggestion</div>
                 {aiAnalysis.pricePoints?.length > 0 && (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
                     {aiAnalysis.pricePoints.map((point, index) => (
@@ -629,7 +629,7 @@ export default function AnalyticsReportsScreen() {
               </div>
             )}
             <div className="text-[10px] text-gray-500 mt-2">
-              Gemini must find at least 3 geographically distinct public price points. It must mark unavailable locations instead of inventing prices.
+              OpenAI must use at least 3 geographically distinct public price points. It must mark unavailable locations instead of inventing prices.
             </div>
           </div>
 
