@@ -229,18 +229,13 @@ export default function DashboardScreen() {
       localStorage.removeItem(cacheKey);
     }
     try {
-      const [res, financialRes] = await Promise.all([
-        fetch(`${API_BASE}/pigs/all?limit=20`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE}/pigs/financial-summary`, { headers: getAuthHeaders() }),
-      ]);
+      // Render the core batch data as soon as it arrives. Financial details are
+      // supplementary and must not block the dashboard shell.
+      const res = await fetch(`${API_BASE}/pigs/all?limit=20`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed to fetch batches');
-      const [json, financialJson] = await Promise.all([
-        res.json(),
-        financialRes.ok ? financialRes.json() : Promise.resolve({ data: [] }),
-      ]);
+      const json = await res.json();
       if (json.success) {
-        const financialByBatch = new Map((financialJson.data || []).map((item) => [item.batch_id, item]));
-        const mapped = json.data.map((batch) => {
+        const mapBatches = (financialByBatch = new Map()) => json.data.map((batch) => {
           const acquired = new Date(batch.date_acquired);
           const now = new Date();
           const ageAtAcquisition = Number(batch.age_on_acquisition) || 0;
@@ -261,24 +256,28 @@ export default function DashboardScreen() {
 
           return {
             id: batch.id,
-            name: name,
+            name,
             batch_code: batch.batch_code,
             pigCount: batch.pig_count || 0,
             ageOnAcquisition: ageAtAcquisition,
-            day: day,
-            growth: growth,
-            vaccination: vaccination,
-            health: health,
-            feed: feed,
+            day,
+            growth,
+            vaccination,
+            health,
+            feed,
             weight: batch.current_weight || batch.start_weight || 0,
             recordedPricePerKg: recordedPrice > 0 ? recordedPrice : null,
             pricePerKg: estimatedPrice,
             expenses: financial?.total_expenses ?? null,
           };
         });
+
+        const mapped = mapBatches();
         if (batchRenderFrame.current) cancelAnimationFrame(batchRenderFrame.current);
         setCurrentBatchIndex(0);
         setBatches(mapped.slice(0, 1));
+        setLoading(false);
+        renderedCache = true;
         localStorage.setItem(cacheKey, JSON.stringify(mapped));
         let nextBatchIndex = 1;
         const renderNextBatch = () => {
@@ -289,6 +288,19 @@ export default function DashboardScreen() {
           batchRenderFrame.current = requestAnimationFrame(renderNextBatch);
         };
         batchRenderFrame.current = requestAnimationFrame(renderNextBatch);
+
+        // Load financial summaries after the dashboard is already usable.
+        fetch(`${API_BASE}/pigs/financial-summary`, { headers: getAuthHeaders() })
+          .then((financialRes) => (financialRes.ok ? financialRes.json() : { data: [] }))
+          .then((financialJson) => {
+            const financialByBatch = new Map((financialJson.data || []).map((item) => [item.batch_id, item]));
+            const enriched = mapBatches(financialByBatch);
+            localStorage.setItem(cacheKey, JSON.stringify(enriched));
+            setBatches(enriched);
+          })
+          .catch(() => {
+            // Financial details are optional; keep the already-rendered batches.
+          });
       } else {
         throw new Error(json.message || 'Unknown error');
       }
