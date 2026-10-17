@@ -92,7 +92,18 @@ export default function AnalyticsReportsScreen() {
 
   // ---------- Fetch all data in one response ----------
   const fetchAllData = async (signal) => {
-    setLoading(true);
+    const cacheKey = `analytics:${getUserCacheKey()}:${dateRange}`;
+    const cached = readCache(cacheKey);
+    if (cached && typeof cached === 'object') {
+      setBatches(cached.batches || []);
+      setFeedRecords(cached.feedRecords || []);
+      setVaccinationRecords(cached.vaccinationRecords || []);
+      setExpenses(cached.expenses || []);
+      setFeedStock(cached.feedStock || []);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     setError(null);
     try {
       const response = await fetch(`${API_BASE}/reports/analytics?${getDateQuery()}`, {
@@ -108,6 +119,13 @@ export default function AnalyticsReportsScreen() {
       setVaccinationRecords(data.vaccinationRecords || []);
       setExpenses(data.expenses || []);
       setFeedStock(data.feedStock || []);
+      writeCache(cacheKey, {
+        batches: data.batches || [],
+        feedRecords: data.feedRecords || [],
+        vaccinationRecords: data.vaccinationRecords || [],
+        expenses: data.expenses || [],
+        feedStock: data.feedStock || [],
+      });
     } catch (err) {
       if (err.name === 'AbortError') return;
       setError('Failed to load some data. Please refresh.');
@@ -186,12 +204,16 @@ export default function AnalyticsReportsScreen() {
     const batch = batches.find((row) => row.batch_code === selectedBatch);
     if (selectedBatch !== 'All Batches' && !batch) return () => controller.abort();
     const batchQuery = batch ? `&batch_id=${encodeURIComponent(batch.id)}` : '';
+    const financialCacheKey = `analytics-financial:${getUserCacheKey()}:${dateRange}:${batch?.id || 'all'}`;
+    const cachedFinancial = readCache(financialCacheKey);
+    if (cachedFinancial) setFinancial(cachedFinancial);
     fetch(`${API_BASE}/reports/financial?${getDateQuery()}${batchQuery}`, {
       headers: getAuthHeaders(), signal: controller.signal,
     }).then(async (response) => {
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.message || 'Financial report unavailable');
       setFinancial(result.data);
+      writeCache(financialCacheKey, result.data);
     }).catch((err) => {
       if (err.name !== 'AbortError') setFinancialError('Recorded financial results unavailable. Please refresh.');
     });
