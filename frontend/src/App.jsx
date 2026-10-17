@@ -48,13 +48,34 @@ function App() {
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem('token');
-      if (token && token !== 'null' && token !== 'undefined') {
-        setIsLoggedIn(true);
-      } else {
+      if (!token || token === 'null' || token === 'undefined') {
         localStorage.removeItem('token');
         setIsLoggedIn(false);
+        setIsLoading(false);
+        return;
       }
-      setIsLoading(false);
+
+      try {
+        const response = await fetch(`${API_BASE}/management/settings`, {
+          headers: getAuthHeaders(),
+        });
+
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          setIsLoggedIn(false);
+          return;
+        }
+
+        // Keep the existing session for temporary backend errors so the user
+        // does not lose the app shell while the API recovers.
+        setIsLoggedIn(true);
+      } catch {
+        // Network failures should not turn a previously authenticated session
+        // into a logout; individual screens will show their error state.
+        setIsLoggedIn(true);
+      } finally {
+        setIsLoading(false);
+      }
     };
     initAuth();
   }, []);
