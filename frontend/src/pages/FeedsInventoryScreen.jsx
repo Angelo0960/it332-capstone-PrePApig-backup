@@ -79,6 +79,7 @@ export default function FeedsInventoryScreen() {
   const [feedRecords, setFeedRecords] = useState([]);
   const [batches, setBatches] = useState([]);
   const [feedStocks, setFeedStocks] = useState([]);
+  const [feedExpenses, setFeedExpenses] = useState([]);
   const [pendingDone, setPendingDone] = useState({});
 
   const [usageForm, setUsageForm] = useState({
@@ -200,11 +201,13 @@ export default function FeedsInventoryScreen() {
     const cachedBatches = readCache(`batches:${userKey}`);
     const cachedRecords = readCache(`feed-records:${userKey}:all`);
     const cachedStock = readCache(`feed-stock:${userKey}`);
-    const hasCachedOverview = Array.isArray(cachedBatches) || Array.isArray(cachedRecords) || Array.isArray(cachedStock);
+    const cachedExpenses = readCache(`feed-expenses:${userKey}`);
+    const hasCachedOverview = Array.isArray(cachedBatches) || Array.isArray(cachedRecords) || Array.isArray(cachedStock) || Array.isArray(cachedExpenses);
 
     if (Array.isArray(cachedBatches)) setBatches(cachedBatches);
     if (Array.isArray(cachedRecords)) setFeedRecords(cachedRecords);
     if (Array.isArray(cachedStock)) setFeedStocks(cachedStock);
+    if (Array.isArray(cachedExpenses)) setFeedExpenses(cachedExpenses);
     if (hasCachedOverview) setLoading(false);
 
     try {
@@ -223,9 +226,11 @@ export default function FeedsInventoryScreen() {
       setBatches(mappedBatches);
       setFeedRecords(overview.records || []);
       setFeedStocks(overview.stock || []);
+      setFeedExpenses(overview.expenses || []);
       writeCache(`batches:${userKey}`, mappedBatches);
       writeCache(`feed-records:${userKey}:all`, overview.records || []);
       writeCache(`feed-stock:${userKey}`, overview.stock || []);
+      writeCache(`feed-expenses:${userKey}`, overview.expenses || []);
       setLoading(false);
     } catch (err) {
       console.warn('Could not fetch feed overview:', err.message);
@@ -433,6 +438,18 @@ export default function FeedsInventoryScreen() {
 
   const selectedBatchData = batches.find((b) => String(b.id) === String(selectedBatch));
   const batchExpense = useMemo(() => calculateBatchFeedExpense(selectedBatch), [selectedBatch, feedRecords, feedStocks]);
+  const recordedFeedExpense = useMemo(() => {
+    const relevant = feedExpenses.filter((expense) => {
+      const type = String(expense.expense_type || '').toLowerCase();
+      const matchesFeed = type.includes('feed');
+      const matchesBatch = selectedBatch === 'all' || String(expense.batch_id) === String(selectedBatch);
+      return matchesFeed && matchesBatch;
+    });
+    return relevant.length > 0
+      ? relevant.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0)
+      : null;
+  }, [feedExpenses, selectedBatch]);
+  const displayedFeedExpense = recordedFeedExpense ?? batchExpense;
   const filteredRecords = feedRecords;
 
   const { totalStock, totalStockValue, selectedBatchFeedRecords, totalFeedConsumed, consumptionByFeedType } = useMemo(() => {
@@ -589,7 +606,7 @@ export default function FeedsInventoryScreen() {
                 </span>
               </div>
               <div className="text-2xl font-bold text-gray-900 mb-1">
-                {batchExpense == null ? 'Unavailable' : `₱${batchExpense.toLocaleString('en-PH', { maximumFractionDigits: 0 })}`}
+                {displayedFeedExpense == null ? 'Unavailable' : `₱${displayedFeedExpense.toLocaleString('en-PH', { maximumFractionDigits: 0 })}`}
               </div>
               <div className="text-xs text-gray-600">
                 {selectedBatch === 'all' ? 'Total feed expenses' : 'Feed expenses for this batch'}

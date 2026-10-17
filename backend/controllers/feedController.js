@@ -373,14 +373,15 @@ export const updateFeedStock = async (req, res) => {
 
 export const getFeedOverview = async (req, res) => {
     try {
-        const [batches, records, stock] = await Promise.all([
+        const [batches, records, stock, expenses] = await Promise.all([
             supabase.from('pig_batches').select('id,batch_code,pig_count,breed,age_on_acquisition,date_acquired,created_at').eq('owner_id', req.user.id).order('created_at', { ascending: false }).range(0, 24),
             supabase.from('feed_records').select('id,batch_id,feed_type,quantity_kg,feeding_date,feeding_time,notes,created_at').eq('owner_id', req.user.id).order('feeding_date', { ascending: false }).range(0, 24),
             supabase.from('feed_stocks').select('id,feed_type,stock_quantity,unit_price,last_updated,notes,updated_at').eq('owner_id', req.user.id).order('feed_type'),
+            supabase.from('expenses').select('id,batch_id,expense_type,amount,expense_date,description,created_at').eq('owner_id', req.user.id).order('expense_date', { ascending: false }).range(0, 99),
         ]);
-        const failed = [batches, records, stock].find((result) => result.error);
+        const failed = [batches, records, stock, expenses].find((result) => result.error);
         if (failed) throw failed.error;
-        res.json({ success: true, data: { batches: batches.data || [], records: records.data || [], stock: stock.data || [] } });
+        res.json({ success: true, data: { batches: batches.data || [], records: records.data || [], stock: stock.data || [], expenses: expenses.data || [] } });
     } catch (error) {
         console.error('Error fetching feed overview:', error);
         res.status(500).json({ success: false, message: error.message });
