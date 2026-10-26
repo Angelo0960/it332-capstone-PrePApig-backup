@@ -80,6 +80,7 @@ export default function AnalyticsReportsScreen() {
 
   // --- Report modal state ---
   const aiAbortController = useRef(null);
+  const autoAiAnalysisRequested = useRef(false);
 
   const getDateQuery = () => {
     const end = new Date();
@@ -156,7 +157,18 @@ export default function AnalyticsReportsScreen() {
     }
   };
 
-  const requestAiPriceAnalysis = async () => {
+  const requestAiPriceAnalysis = async (locations = pigPriceLocations) => {
+    if (!Array.isArray(locations) || locations.length < 3) return;
+
+    const cacheKey = `price-ai-analysis:${getUserCacheKey()}:${locations.join('|')}`;
+    const cachedAnalysis = readCache(cacheKey);
+    if (cachedAnalysis) {
+      setAiAnalysis(cachedAnalysis);
+      setAiAnalysisError(null);
+      setAiAnalysisLoading(false);
+      return;
+    }
+
     aiAbortController.current?.abort();
     const controller = new AbortController();
     aiAbortController.current = controller;
@@ -169,7 +181,7 @@ export default function AnalyticsReportsScreen() {
           ...getAuthHeaders(),
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ locations: pigPriceLocations }),
+        body: JSON.stringify({ locations }),
         signal: controller.signal,
       });
       const json = await response.json();
@@ -180,6 +192,7 @@ export default function AnalyticsReportsScreen() {
         throw new Error(json.message || 'OpenAI analysis unavailable');
       }
       setAiAnalysis(json);
+      writeCache(cacheKey, json);
     } catch (err) {
       if (err.name === 'AbortError') return;
       setAiAnalysis(null);
@@ -199,6 +212,12 @@ export default function AnalyticsReportsScreen() {
     fetchPigPriceBasis(controller.signal);
     return () => controller.abort();
   }, [dateRange]);
+
+  useEffect(() => {
+    if (autoAiAnalysisRequested.current || !pigPriceReference || pigPriceLocations.length < 3) return;
+    autoAiAnalysisRequested.current = true;
+    void requestAiPriceAnalysis(pigPriceLocations);
+  }, [pigPriceReference, pigPriceLocations]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -538,15 +557,9 @@ export default function AnalyticsReportsScreen() {
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="font-semibold text-gray-900">Local Pig Price Sources</h3>
-                <p className="text-xs text-gray-600">Use 3+ nearby locations for OpenAI price analysis</p>
+                <p className="text-xs text-gray-600">OpenAI price analysis loads automatically from the available locations</p>
               </div>
-              <button
-                onClick={requestAiPriceAnalysis}
-                disabled={aiAnalysisLoading || pigPriceLocations.length < 3}
-                className="px-3 py-2 bg-purple-600 text-white rounded-xl text-xs font-semibold shadow-lg disabled:opacity-50"
-              >
-                {aiAnalysisLoading ? 'Analyzing...' : 'Ask OpenAI'}
-              </button>
+              {aiAnalysisLoading && <span className="text-xs text-purple-700 font-semibold">Analyzing...</span>}
             </div>
             <div className="flex flex-wrap gap-2 mb-3">
               {(pigPriceLocations.length > 0 ? pigPriceLocations : ['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Nasugbu']).map((location) => (
