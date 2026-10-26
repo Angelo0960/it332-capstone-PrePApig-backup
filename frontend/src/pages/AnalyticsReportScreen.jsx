@@ -186,10 +186,10 @@ export default function AnalyticsReportsScreen() {
       });
       const json = await response.json();
       if (!response.ok || !json.success) {
-        if (response.status === 429) {
-          throw new Error('OpenAI quota is unavailable for this project. Local reference prices remain available; check OpenAI API billing/quota or try again later.');
+        if (response.status === 402 || response.status === 429) {
+          throw new Error('AI provider credits or quota are unavailable. Local reference prices remain available; add credits to the configured OpenRouter account, use a funded key, or configure an OpenAI fallback.');
         }
-        throw new Error(json.message || 'OpenAI analysis unavailable');
+        throw new Error(json.message || 'AI price analysis unavailable');
       }
       setAiAnalysis(json);
       writeCache(cacheKey, json);

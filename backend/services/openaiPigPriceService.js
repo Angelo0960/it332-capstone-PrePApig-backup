@@ -52,17 +52,24 @@ export const generatePigPriceAnalysis = async ({
   localPricePoints = [],
 }) => {
   if (getConfiguredOpenRouterKey()) {
-    return generateOpenRouterPigPriceAnalysis({
-      locations,
-      provincialReference,
-      fetchImpl,
-      apiKey: getConfiguredOpenRouterKey(),
-      model: process.env.OPENROUTER_MODEL || DEFAULT_OPENROUTER_MODEL,
-      localPricePoints,
-    });
+    try {
+      return await generateOpenRouterPigPriceAnalysis({
+        locations,
+        provincialReference,
+        fetchImpl,
+        apiKey: getConfiguredOpenRouterKey(),
+        model: process.env.OPENROUTER_MODEL || DEFAULT_OPENROUTER_MODEL,
+        localPricePoints,
+      });
+    } catch (error) {
+      const message = String(error?.message || '');
+      const canFallbackToOpenAi = getConfiguredApiKey() && /credit|quota|billing|rate.?limit|resource.?exhausted|unauthori[sz]|invalid.?api.?key/i.test(message);
+      if (!canFallbackToOpenAi) throw error;
+      console.warn('OpenRouter unavailable; falling back to OpenAI provider.');
+    }
   }
 
-  const configuredApiKey = String(apiKey || '').trim();
+  const configuredApiKey = String(apiKey || getConfiguredApiKey()).trim();
   if (!configuredApiKey) {
     throw new Error('No AI provider is configured. Set OPENROUTER_API_KEY or OPENAI_API_KEY in the backend environment.');
   }
