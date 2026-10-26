@@ -49,6 +49,7 @@ export const generatePigPriceAnalysis = async ({
   fetchImpl = fetch,
   apiKey = getConfiguredApiKey(),
   model = process.env.OPENAI_MODEL || DEFAULT_MODEL,
+  localPricePoints = [],
 }) => {
   if (getConfiguredOpenRouterKey()) {
     return generateOpenRouterPigPriceAnalysis({
@@ -57,6 +58,7 @@ export const generatePigPriceAnalysis = async ({
       fetchImpl,
       apiKey: getConfiguredOpenRouterKey(),
       model: process.env.OPENROUTER_MODEL || DEFAULT_OPENROUTER_MODEL,
+      localPricePoints,
     });
   }
 
@@ -73,9 +75,11 @@ export const generatePigPriceAnalysis = async ({
     'Separate liveweight/farmgate prices from retail, dressed-meat, or unrelated prices.',
     'Recommend which available location/source is the most useful price basis and explain why.',
     'Return JSON only with this shape:',
-    '{"pricePoints":[{"location":"Calaca","pricePhpPerKg":null,"unit":"PHP/kg liveweight","period":"YYYY-MM or unavailable","source":"source name or unavailable","sourceUrl":"public direct URL or unavailable","status":"found or unavailable"}],"analysis":"short analysis","suggestion":"recommended price basis or next action","limitations":["important limitation"]}',
+    '{"pricePoints":[{"location":"Calaca","pricePhpPerKg":null,"unit":"PHP/kg liveweight","period":"YYYY-MM or unavailable","source":"source name or unavailable","sourceUrl":"public direct URL or unavailable","status":"found or unavailable"}],"analysis":"detailed review covering the observed price range, location comparison, source quality, recommended price basis, and risks","suggestion":"recommended price basis or next action","limitations":["important limitation"]}',
+    'Write analysis as a detailed review of at least four sentences. Explain the observed prices, compare locations, identify the strongest price basis, distinguish verified public evidence from user-provided references, and state the confidence and limitations.',
     'Use null and unavailable when a location has no reliable public price. Do not estimate, average, or invent missing local prices.',
     `Provincial reference (not Calaca-only): ${JSON.stringify(provincialReference)}`,
+    `Local reference points (may be user-provided and not independently verified): ${JSON.stringify(localPricePoints)}`,
   ].join('\n');
 
   const controller = new AbortController();
@@ -156,6 +160,7 @@ const generateOpenRouterPigPriceAnalysis = async ({
   fetchImpl = fetch,
   apiKey,
   model = DEFAULT_OPENROUTER_MODEL,
+  localPricePoints = [],
 }) => {
   const configuredApiKey = String(apiKey || '').trim();
   if (!configuredApiKey) {
@@ -170,10 +175,12 @@ const generateOpenRouterPigPriceAnalysis = async ({
     'Separate liveweight/farmgate prices from retail, dressed-meat, or unrelated prices.',
     'Recommend which available location/source is the most useful price basis and explain why.',
     'Return JSON only with this shape:',
-    '{"pricePoints":[{"location":"Calaca","pricePhpPerKg":null,"unit":"PHP/kg liveweight","period":"YYYY-MM or unavailable","source":"source name or unavailable","sourceUrl":"public direct URL or unavailable","status":"found or unavailable"}],"analysis":"short analysis","suggestion":"recommended price basis or next action","limitations":["important limitation"]}',
+    '{"pricePoints":[{"location":"Calaca","pricePhpPerKg":null,"unit":"PHP/kg liveweight","period":"YYYY-MM or unavailable","source":"source name or unavailable","sourceUrl":"public direct URL or unavailable","status":"found or unavailable"}],"analysis":"detailed review covering the observed price range, location comparison, source quality, recommended price basis, and risks","suggestion":"recommended price basis or next action","limitations":["important limitation"]}',
+    'Write analysis as a detailed review of at least four sentences. Explain the observed prices, compare locations, identify the strongest price basis, distinguish verified public evidence from user-provided references, and state the confidence and limitations.',
     'Use null and unavailable when a location has no reliable public price. Do not estimate, average, or invent missing local prices.',
     `Provincial reference (not Calaca-only): ${JSON.stringify(provincialReference)}`,
-  ].join('\\n');
+    `Local reference points (may be user-provided and not independently verified): ${JSON.stringify(localPricePoints)}`,
+  ].join('\n');
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);

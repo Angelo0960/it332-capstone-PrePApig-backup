@@ -38,6 +38,7 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
         pricePhpPerKg: priceData.data.pricePhpPerKg,
         unit: priceData.data.unit,
       },
+      localPricePoints: priceData.pricePoints || [],
     });
 
     res.status(200).json(result);
