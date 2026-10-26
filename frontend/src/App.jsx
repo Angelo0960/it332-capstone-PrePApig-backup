@@ -7,7 +7,7 @@ const AnalyticsReportsScreen = lazy(() => import('./pages/AnalyticsReportScreen.
 const VaccinationScreen = lazy(() => import('./pages/VaccinationScreen.jsx'));
 const BatchPigsScreen = lazy(() => import('./pages/BatchPigsScreen.jsx'));
 const FarmManagementScreen = lazy(() => import('./pages/FarmManagementScreen.jsx'));
-import { registerFcmToken, API_BASE, getAuthHeaders } from './api.js';
+import { registerFcmToken, API_BASE, getAuthHeaders, preloadInitialData } from './api.js';
 import './App.css';
 
 const tabKeys = ['/dashboard', '/feeds', '/reports', '/vaccination'];
@@ -79,6 +79,19 @@ function App() {
     };
     initAuth();
   }, []);
+
+  useEffect(() => {
+    if (!isLoggedIn) return undefined;
+
+    let cancelled = false;
+    preloadInitialData().catch((error) => {
+      if (!cancelled) console.warn('Initial data preload did not complete:', error.message);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn]);
 
   useEffect(() => {
     const setup = async () => {
