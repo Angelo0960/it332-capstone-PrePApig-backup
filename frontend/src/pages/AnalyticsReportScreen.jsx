@@ -197,8 +197,8 @@ export default function AnalyticsReportsScreen() {
       if (err.name === 'AbortError') return;
       setAiAnalysis(null);
       setAiAnalysisError(
-        err.message.includes('OpenAI API key is not configured')
-          ? 'OpenAI is not configured on the backend. Add OPENAI_API_KEY to the Render backend environment variables, then redeploy.'
+        (err.message.includes('API key is not configured') || err.message.includes('No AI provider is configured'))
+          ? 'No AI provider is configured on the backend. Add OPENROUTER_API_KEY or OPENAI_API_KEY to the Render backend environment variables, then redeploy.'
           : err.message
       );
     } finally {
@@ -557,7 +557,7 @@ export default function AnalyticsReportsScreen() {
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="font-semibold text-gray-900">Local Pig Price Sources</h3>
-                <p className="text-xs text-gray-600">OpenAI price analysis loads automatically from the available locations</p>
+                <p className="text-xs text-gray-600">AI price analysis loads automatically from the available locations</p>
               </div>
               {aiAnalysisLoading && <span className="text-xs text-purple-700 font-semibold">Analyzing...</span>}
             </div>
@@ -615,7 +615,7 @@ export default function AnalyticsReportsScreen() {
             {aiAnalysisError && <div className="text-xs text-red-600 mt-2">{aiAnalysisError}</div>}
             {aiAnalysis && (
               <div className="bg-purple-100/50 border border-purple-300/50 rounded-xl p-3 mt-3">
-                <div className="text-xs font-semibold text-purple-900 mb-2">OpenAI price suggestion</div>
+                <div className="text-xs font-semibold text-purple-900 mb-2">AI price suggestion</div>
                 {aiAnalysis.pricePoints?.length > 0 && (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
                     {aiAnalysis.pricePoints.map((point, index) => (

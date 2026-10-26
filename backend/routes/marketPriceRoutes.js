@@ -42,16 +42,16 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
 
     res.status(200).json(result);
   } catch (error) {
-    console.error('Error generating OpenAI pig-price analysis:', error);
+    console.error('Error generating AI pig-price analysis:', error);
     const rawMessage = String(error.message || '');
     const isQuotaError = /quota|rate.?limit|resource.?exhausted|billing/i.test(rawMessage);
-    const isMissingKey = rawMessage.startsWith('OpenAI API key is not configured');
+    const isMissingKey = rawMessage.includes('API key is not configured') || rawMessage.includes('No AI provider is configured');
     const status = isMissingKey ? 503 : isQuotaError ? 429 : error.providerStatus >= 400 && error.providerStatus < 500 ? error.providerStatus : 502;
     const message = isMissingKey
       ? rawMessage
       : isQuotaError
-        ? 'OpenAI quota is unavailable for this project. The local reference prices remain available; check OpenAI API billing/quota or try again later.'
-        : 'OpenAI price analysis is temporarily unavailable. The local reference prices remain available.';
+        ? 'AI provider quota is unavailable. The local reference prices remain available; check the configured provider billing or quota.'
+        : 'AI price analysis is temporarily unavailable. The local reference prices remain available.';
     res.status(status).json({
       success: false,
       message,

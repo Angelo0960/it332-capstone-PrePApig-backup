@@ -1,8 +1,10 @@
 import 'dotenv/config';
 
 const DEFAULT_MODEL = 'gpt-4.1-mini';
+const DEFAULT_OPENROUTER_MODEL = 'openai/gpt-4o-mini';
 
 const getConfiguredApiKey = () => process.env.OPENAI_API_KEY || '';
+const getConfiguredOpenRouterKey = () => process.env.OPENROUTER_API_KEY || '';
 
 const extractText = (payload) => {
   if (typeof payload?.output_text === 'string' && payload.output_text.trim()) {
@@ -48,9 +50,19 @@ export const generatePigPriceAnalysis = async ({
   apiKey = getConfiguredApiKey(),
   model = process.env.OPENAI_MODEL || DEFAULT_MODEL,
 }) => {
+  if (getConfiguredOpenRouterKey()) {
+    return generateOpenRouterPigPriceAnalysis({
+      locations,
+      provincialReference,
+      fetchImpl,
+      apiKey: getConfiguredOpenRouterKey(),
+      model: process.env.OPENROUTER_MODEL || DEFAULT_OPENROUTER_MODEL,
+    });
+  }
+
   const configuredApiKey = String(apiKey || '').trim();
   if (!configuredApiKey) {
-    throw new Error('OpenAI API key is not configured. Set OPENAI_API_KEY in the backend environment.');
+    throw new Error('No AI provider is configured. Set OPENROUTER_API_KEY or OPENAI_API_KEY in the backend environment.');
   }
 
   const uniqueLocations = [...new Set(locations)].slice(0, 10);
@@ -114,6 +126,105 @@ export const generatePigPriceAnalysis = async ({
     suggestion: structured.suggestion || '',
     limitations: Array.isArray(structured.limitations) ? structured.limitations : [],
     sources: extractGrounding(payload),
+    generatedAt: new Date().toISOString(),
+  };
+};
+
+const extractOpenRouterText = (payload) => {
+  const content = payload?.choices?.[0]?.message?.content;
+  if (typeof content === 'string') return content.trim();
+  if (Array.isArray(content)) {
+    return content.map((part) => part?.text || part?.content || '').join('').trim();
+  }
+  return '';
+};
+
+const extractOpenRouterSources = (payload) => {
+  const message = payload?.choices?.[0]?.message || {};
+  const citations = message.annotations || message.citations || [];
+  return citations
+    .map((citation) => ({
+      title: citation.title || citation.url || citation.source || 'OpenRouter web source',
+      url: citation.url || citation.sourceUrl || citation.source,
+    }))
+    .filter((source) => source.url);
+};
+
+const generateOpenRouterPigPriceAnalysis = async ({
+  locations,
+  provincialReference,
+  fetchImpl = fetch,
+  apiKey,
+  model = DEFAULT_OPENROUTER_MODEL,
+}) => {
+  const configuredApiKey = String(apiKey || '').trim();
+  if (!configuredApiKey) {
+    throw new Error('OpenRouter API key is not configured. Set OPENROUTER_API_KEY in the backend environment.');
+  }
+
+  const uniqueLocations = [...new Set(locations)].slice(0, 10);
+  const prompt = [
+    'You are analyzing pig selling-price options for a farmer near Calaca, Batangas, Philippines.',
+    `Find current public pig liveweight or farmgate price points from at least 3 different nearby locations among: ${uniqueLocations.join(', ')}.`,
+    'Use web search and prioritize public Facebook posts, pages, and groups for local price evidence when available. Do not use private or login-only content. Do not invent prices. If a location has no reliable public price, label it unavailable.',
+    'Separate liveweight/farmgate prices from retail, dressed-meat, or unrelated prices.',
+    'Recommend which available location/source is the most useful price basis and explain why.',
+    'Return JSON only with this shape:',
+    '{"pricePoints":[{"location":"Calaca","pricePhpPerKg":null,"unit":"PHP/kg liveweight","period":"YYYY-MM or unavailable","source":"source name or unavailable","sourceUrl":"public direct URL or unavailable","status":"found or unavailable"}],"analysis":"short analysis","suggestion":"recommended price basis or next action","limitations":["important limitation"]}',
+    'Use null and unavailable when a location has no reliable public price. Do not estimate, average, or invent missing local prices.',
+    `Provincial reference (not Calaca-only): ${JSON.stringify(provincialReference)}`,
+  ].join('\\n');
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
+  let response;
+  try {
+    response = await fetchImpl('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${configuredApiKey}`,
+        'HTTP-Referer': 'https://prepapig.onrender.com',
+        'X-Title': 'PrepAPig Price Analysis',
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        tools: [{ type: 'openrouter:web_search' }],
+        temperature: 0.2,
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  const payload = await response.json();
+  if (!response.ok) {
+    const error = new Error(payload?.error?.message || `OpenRouter returned HTTP ${response.status}`);
+    error.providerStatus = response.status;
+    throw error;
+  }
+
+  const analysis = extractOpenRouterText(payload);
+  if (!analysis) throw new Error('OpenRouter returned an empty price analysis');
+  const structured = parseStructuredAnalysis(analysis) || {
+    pricePoints: [],
+    analysis,
+    suggestion: '',
+    limitations: ['OpenRouter did not return the requested structured format.'],
+  };
+
+  return {
+    success: true,
+    provider: 'openrouter',
+    model,
+    locations: uniqueLocations,
+    pricePoints: Array.isArray(structured.pricePoints) ? structured.pricePoints : [],
+    analysis: structured.analysis || analysis,
+    suggestion: structured.suggestion || '',
+    limitations: Array.isArray(structured.limitations) ? structured.limitations : [],
+    sources: extractOpenRouterSources(payload),
     generatedAt: new Date().toISOString(),
   };
 };
