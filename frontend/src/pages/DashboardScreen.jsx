@@ -3,14 +3,11 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Home,
-  Package,
   TrendingUp,
   Tag,
-  Syringe,
   Bell,
   X,
   Plus,
-  Scale,
   User,
   LogOut,
   Trash2,
@@ -627,92 +624,31 @@ export default function DashboardScreen() {
                 >
                   {/* Vaccination */}
                   <div className="bg-white/20 backdrop-blur-lg rounded-xl p-3 shadow-lg border border-white/30">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-gray-800">Vaccination</span>
-                      <span className="text-xs font-bold text-blue-600">
-                        {Math.round(currentBatch.vaccination / 25)}/4 shots
-                      </span>
+                    <div className="text-xs font-semibold text-gray-800">Vaccination</div>
+                    <div className="text-4xl font-black leading-none text-blue-600 mt-2">
+                      {Math.round(currentBatch.vaccination / 25)}/4
                     </div>
-                    <div className="flex items-center gap-2">
-                      {[1, 2, 3, 4].map((shot) => (
-                        <div
-                          key={`vac-${shot}`}
-
-
-
-                        >
-                          <Syringe
-                            className={`w-5 h-5 ${
-                              currentBatch.vaccination >= shot * 25
-                                ? 'text-blue-500 fill-blue-500'
-                                : 'text-gray-800/30'
-                            } transition-colors duration-300`}
-                          />
-                        </div>
-                      ))}
-                    </div>
+                    <div className="text-xs text-gray-700 mt-1">shots completed</div>
                   </div>
 
                   {/* Avg Weight */}
                   <div className="bg-white/20 backdrop-blur-lg rounded-xl p-3 shadow-lg border border-white/30">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-gray-800">Avg Weight</span>
-                      <span className="text-xs font-bold text-purple-600">
-                        {Math.round(currentBatch.weight / currentBatch.pigCount)} kg/pig
-                      </span>
+                    <div className="text-xs font-semibold text-gray-800">Avg Weight</div>
+                    <div className="text-4xl font-black leading-none text-purple-600 mt-2">
+                      {Math.round(currentBatch.weight / currentBatch.pigCount)}
                     </div>
-                    <div className="flex items-center gap-2">
-                      {[1, 2, 3, 4].map((level) => {
-                        const avgWeight = currentBatch.weight / currentBatch.pigCount;
-                        const targetWeight =
-                          currentBatch.day <= 21 ? 30 : currentBatch.day <= 49 ? 60 : 90;
-                        const weightProgress = Math.min(100, (avgWeight / targetWeight) * 100);
-                        return (
-                          <div
-                            key={`weight-${level}`}
-
-
-
-                          >
-                            <Scale
-                              className={`w-5 h-5 ${
-                                weightProgress >= level * 25
-                                  ? 'text-purple-500 fill-purple-500'
-                                  : 'text-gray-800/30'
-                              } transition-colors duration-300`}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <div className="text-xs text-gray-700 mt-1">kg per pig</div>
                   </div>
 
                   {/* Feed Level */}
                   <div className="bg-white/20 backdrop-blur-lg rounded-xl p-3 shadow-lg border border-white/30">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-gray-800">
-                        Feed: {getFeedTypeName(getFeedTypeForAge(currentBatch.day))}
-                      </span>
-                      <span className="text-xs font-bold text-orange-600">{currentBatch.feed}%</span>
+                    <div className="text-xs font-semibold text-gray-800">
+                      Feed: {getFeedTypeName(getFeedTypeForAge(currentBatch.day))}
                     </div>
-                    <div className="flex items-center gap-2">
-                      {[1, 2, 3, 4].map((bag) => (
-                        <div
-                          key={`feed-${bag}`}
-
-
-
-                        >
-                          <Package
-                            className={`w-5 h-5 ${
-                              currentBatch.feed >= bag * 25
-                                ? 'text-orange-500 fill-orange-500'
-                                : 'text-gray-800/30'
-                            } transition-colors duration-300`}
-                          />
-                        </div>
-                      ))}
+                    <div className="text-4xl font-black leading-none text-orange-600 mt-2">
+                      {currentBatch.feed}%
                     </div>
+                    <div className="text-xs text-gray-700 mt-1">level remaining</div>
                   </div>
                 </div>
               </>
