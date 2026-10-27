@@ -29,6 +29,16 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
     const locations = Array.isArray(req.body?.locations) && req.body.locations.length > 0
       ? req.body.locations
       : priceData.priceSourceLocations;
+    const configuredModel = process.env.OPENROUTER_MODEL || 'openrouter/free';
+    console.log(JSON.stringify({
+      event: 'pig_price_ai_started',
+      requestId: req.requestId,
+      userId: req.user?.id,
+      locations,
+      provider: process.env.OPENROUTER_API_KEY ? 'openrouter' : process.env.OPENAI_API_KEY ? 'openai' : 'none',
+      model: configuredModel,
+      webSearchRequested: !/(?:\/free|:free)$/.test(configuredModel),
+    }));
 
     const result = await generatePigPriceAnalysis({
       locations,
@@ -41,10 +51,27 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
       localPricePoints: priceData.pricePoints || [],
     });
 
+    console.log(JSON.stringify({
+      event: 'pig_price_ai_succeeded',
+      requestId: req.requestId,
+      provider: result.provider,
+      model: result.model,
+      pricePointCount: result.pricePoints?.length || 0,
+      sourceCount: result.sources?.length || 0,
+    }));
     res.status(200).json(result);
   } catch (error) {
     console.error('Error generating AI pig-price analysis:', error);
     const rawMessage = String(error.message || '');
+    const safeMessage = rawMessage.replace(/sk-(?:or-v1|proj|live)-[A-Za-z0-9_-]+/g, '[REDACTED]').slice(0, 300);
+    console.error(JSON.stringify({
+      event: 'pig_price_ai_failed',
+      requestId: req.requestId,
+      provider: error.provider || (process.env.OPENROUTER_API_KEY ? 'openrouter' : process.env.OPENAI_API_KEY ? 'openai' : 'none'),
+      model: error.model || process.env.OPENROUTER_MODEL || 'openrouter/free',
+      providerStatus: error.providerStatus || null,
+      message: safeMessage,
+    }));
     const isQuotaError = /quota|rate.?limit|resource.?exhausted|billing|insufficient\s+credits?|credit balance|payment required/i.test(rawMessage);
     const isMissingKey = rawMessage.includes('API key is not configured') || rawMessage.includes('No AI provider is configured');
     const status = isMissingKey ? 503 : isQuotaError ? 429 : error.providerStatus >= 400 && error.providerStatus < 500 ? error.providerStatus : 502;
@@ -56,6 +83,7 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
     res.status(status).json({
       success: false,
       message,
+      requestId: req.requestId,
     });
   }
 });

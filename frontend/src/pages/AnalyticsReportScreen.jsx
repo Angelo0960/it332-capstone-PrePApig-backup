@@ -184,6 +184,8 @@ export default function AnalyticsReportsScreen() {
       });
       const json = await response.json();
       if (!response.ok || !json.success) {
+        const requestId = response.headers.get('x-request-id') || json.requestId || 'unavailable';
+        console.error('Pig-price AI request failed', { status: response.status, requestId, message: json.message });
         if (response.status === 402 || response.status === 429) {
           throw new Error('AI provider credits or quota are unavailable. Local reference prices remain available; add credits to the configured OpenRouter account, use a funded key, or configure an OpenAI fallback.');
         }
