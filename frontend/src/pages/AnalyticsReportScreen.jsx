@@ -32,7 +32,6 @@ import {
 } from 'recharts';
 import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.webp';
 import BottomNav from '../components/BottomNav';
-import HarvestSales from '../components/HarvestSales.jsx';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
 import { API_BASE, getAuthHeaders } from '../api.js';
 import { formatCurrency, formatPricePerKg } from '../utils/formatters.js';
@@ -58,7 +57,6 @@ export default function AnalyticsReportsScreen() {
   const [expenses, setExpenses] = useState([]);
   const [financial, setFinancial] = useState(null);
   const [financialError, setFinancialError] = useState(null);
-  const [financialRevision, setFinancialRevision] = useState(0);
   const [feedStock, setFeedStock] = useState([]);
   const [pigPriceLocations, setPigPriceLocations] = useState(['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Nasugbu']);
   const [pigPriceReference, setPigPriceReference] = useState(null);
@@ -240,7 +238,7 @@ export default function AnalyticsReportsScreen() {
       if (err.name !== 'AbortError') setFinancialError('Recorded financial results unavailable. Please refresh.');
     });
     return () => controller.abort();
-  }, [dateRange, selectedBatch, batches, financialRevision]);
+  }, [dateRange, selectedBatch, batches]);
 
   useEffect(() => {
     if (pricePoints.length > 0 && !pricePoints.some((point) => point.location === selectedPriceLocation)) {
@@ -381,6 +379,10 @@ export default function AnalyticsReportsScreen() {
   const profitTrend = financial?.monthly || [];
   const expenseBreakdown = useMemo(() => getExpenseBreakdown(), [filteredExpenses]);
   const vaccinationSummary = useMemo(() => getVaccinationSummary(), [filteredVaccinationRecords]);
+  const pricingActionSuggestion = aiAnalysis?.suggestion
+    || (pricePoints.length > 0
+      ? 'Before selling, compare the buyer\'s liveweight offer with these local reference prices, confirm the price date and unit, and negotiate using the closest verified location rather than a retail price.'
+      : 'Wait for a current local price source before setting a selling price; confirm the buyer\'s unit, location, and price date.');
 
   const handleDownloadReport = (reportName) => {
     const content = [
@@ -641,9 +643,11 @@ export default function AnalyticsReportsScreen() {
                 )}
               </div>
             )}
-            <div className="text-[10px] text-gray-500 mt-2">
-              AI analysis covers pricing only: observed prices, price range, location comparison, price direction, source quality, and limitations. It does not calculate profit or other financial results.
+            <div className="bg-amber-100/60 border border-amber-300/50 rounded-xl p-3 mt-3">
+              <div className="text-xs font-semibold text-amber-900 mb-1">What to do with these prices</div>
+              <div className="text-sm text-amber-950">{pricingActionSuggestion}</div>
             </div>
+            <div className="text-[10px] text-gray-500 mt-2">AI analysis covers pricing only: observed prices, price range, location comparison, price direction, source quality, and limitations. It does not calculate profit or other financial results.</div>
           </div>
 
           {/* Feed Consumption */}
@@ -685,7 +689,6 @@ export default function AnalyticsReportsScreen() {
               <p className="text-xs text-gray-600">Sales minus recorded expenses by transaction date. Unrecorded costs are excluded. Zero sales means no sales recorded for this period.</p>
               {financialError && <p className="text-xs text-red-700">{financialError}</p>}
             </div>
-            <HarvestSales batches={batches} onChanged={() => setFinancialRevision((value) => value + 1)} />
             <p className="text-xs text-gray-600 mb-3">Estimates below use current standing weight of active batches and current prices, not historical revenue. Feed valuation is shown for reference and excluded from recorded profit. Vaccine cost is unavailable without recorded dose costs. Costs entered in expenses may be incomplete.</p>
             <div className="space-y-2 mb-3">
               <div className="flex items-center justify-between text-sm">
