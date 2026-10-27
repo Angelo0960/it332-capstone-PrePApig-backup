@@ -126,7 +126,7 @@ export const fetchBatangasPigPrice = async ({ fetchImpl = fetch, now = Date.now(
       unit: latest.unit,
       prices: priceRows.map(({ period, pricePhpPerKg }) => ({ period, pricePhpPerKg })),
       instruction:
-        'Use these provincial price points with the farm cost data to assess a reasonable selling-price range. Do not present the result as a Calaca-only quote. Facebook public posts/pages/groups may be checked separately, but every Facebook price must include a direct public URL, posting date, location, and unit; mark it unavailable when it cannot be verified.',
+        'Use these provincial price points to analyze a reasonable pig selling-price range and price movement. Do not calculate farm profit, revenue, expenses, ROI, break-even, or any other financial analysis. Do not present the result as a Calaca-only quote. Facebook public posts/pages/groups may be checked separately, but every Facebook price must include a direct public URL, posting date, location, and unit; mark it unavailable when it cannot be verified.',
     },
     fetchedAt: new Date(now).toISOString(),
     cacheExpiresAt: new Date(now + CACHE_TTL_MS).toISOString(),

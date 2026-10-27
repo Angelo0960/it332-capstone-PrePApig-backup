@@ -615,7 +615,7 @@ export default function AnalyticsReportsScreen() {
             {aiAnalysisError && <div className="text-xs text-red-600 mt-2">{aiAnalysisError}</div>}
             {aiAnalysis && (
               <div className="bg-purple-100/50 border border-purple-300/50 rounded-xl p-3 mt-3">
-                <div className="text-xs font-semibold text-purple-900 mb-2">Detailed AI price review</div>
+                <div className="text-xs font-semibold text-purple-900 mb-2">Detailed AI pricing review</div>
                 {aiAnalysis.pricePoints?.length > 0 && (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
                     {aiAnalysis.pricePoints.map((point, index) => (
@@ -642,7 +642,7 @@ export default function AnalyticsReportsScreen() {
               </div>
             )}
             <div className="text-[10px] text-gray-500 mt-2">
-              AI analysis requires at least 3 geographically distinct price points. It must mark unavailable locations instead of inventing prices, and it reviews local reference points when public prices are unavailable.
+              AI analysis covers pricing only: observed prices, price range, location comparison, price direction, source quality, and limitations. It does not calculate profit or other financial results.
             </div>
           </div>
 
