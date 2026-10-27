@@ -24,11 +24,16 @@ self.addEventListener("activate", (event) => {
 // Background notifications
 messaging.onBackgroundMessage((payload) => {
   console.log("Background Message:", payload);
+  const title = payload.notification?.title || payload.data?.title || "Notification";
+  const body = payload.notification?.body || payload.data?.body || "You have a new update.";
+  const notificationId = payload.messageId || payload.data?.notificationId || `${title}:${body}`;
   self.registration.showNotification(
-    payload.notification?.title || "Notification",
+    title,
     {
-      body: payload.notification?.body,
-      icon: payload.notification?.icon || "/vite.svg",
+      body,
+      icon: payload.notification?.icon || payload.data?.icon || "/vite.svg",
+      tag: `prepapig-${notificationId}`,
+      renotify: false,
     }
   );
 });
@@ -38,9 +43,12 @@ self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SHOW_NOTIFICATION") {
     const { title, body, icon } = event.data;
     console.log("📬 Service worker received message:", title);
+    const notificationId = event.data.notificationId || `${title}:${body}`;
     self.registration.showNotification(title, {
       body,
       icon: icon || "/vite.svg",
+      tag: `prepapig-${notificationId}`,
+      renotify: false,
     });
   }
 });

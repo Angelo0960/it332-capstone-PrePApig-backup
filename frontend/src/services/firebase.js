@@ -45,8 +45,8 @@ export const onMessageListener = () => {
     onMessage(messaging, (payload) => {
       console.log("📨 Foreground message payload:", payload);
 
-      const title = payload.notification?.title || "PrepAPig Notification";
-      const body = payload.notification?.body || "You have a new update.";
+      const title = payload.notification?.title || payload.data?.title || "PrepAPig Notification";
+      const body = payload.notification?.body || payload.data?.body || "You have a new update.";
       const icon = `${window.location.origin}/vite.svg`;
 
       if (Notification.permission !== "granted") {
@@ -63,6 +63,7 @@ export const onMessageListener = () => {
           title,
           body,
           icon,
+          notificationId: payload.messageId || payload.data?.notificationId || `${title}:${body}`,
         });
       } else {
         console.warn("⚠️ No service worker controller, registering...");
@@ -74,7 +75,8 @@ export const onMessageListener = () => {
               title,
               body,
               icon,
-            });
+              notificationId: payload.messageId || payload.data?.notificationId || `${title}:${body}`,
+              });
           } else {
             console.warn("⚠️ No active service worker, using direct notification");
             try {

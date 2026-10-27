@@ -83,7 +83,7 @@ export const sendDailyFeedReminders = async () => {
             continue;
         }
 
-        const tokens = preferences.push_enabled ? (devices || []).map(d => d.fcm_token) : [];
+        const tokens = preferences.push_enabled ? [...new Set((devices || []).map(d => d.fcm_token).filter(Boolean))] : [];
 
         const batchCodes = [...new Set(userRecords.map(r => r.pig_batches?.batch_code || 'Unknown'))];
         const totalKg = userRecords.reduce((sum, r) => sum + Number(r.quantity_kg), 0);
@@ -101,8 +101,7 @@ export const sendDailyFeedReminders = async () => {
         const sendPromises = tokens.map(token =>
             admin.messaging().send({
                 token,
-                notification: { title, body },
-                data: { type: 'feed_reminder' },
+                data: { type: 'feed_reminder', title, body },
             }).catch(async err => {
                 if (err.code === 'messaging/invalid-registration-token') {
                     await supabase.from('user_devices').delete().eq('fcm_token', token);
@@ -198,7 +197,7 @@ export const sendVaccinationReminders = async () => {
             .select('fcm_token')
             .eq('user_id', ownerId);
 
-        const tokens = preferences.push_enabled ? (devices || []).map(d => d.fcm_token) : [];
+        const tokens = preferences.push_enabled ? [...new Set((devices || []).map(d => d.fcm_token).filter(Boolean))] : [];
 
 
         // Due notifications
@@ -217,8 +216,7 @@ export const sendVaccinationReminders = async () => {
             const sendPromises = tokens.map(token =>
                 admin.messaging().send({
                     token,
-                    notification: { title, body },
-                    data: { type: 'vaccination_reminder' },
+                    data: { type: 'vaccination_reminder', title, body },
                 }).catch(err => {
                     if (err.code === 'messaging/invalid-registration-token') {
                         supabase.from('user_devices').delete().eq('fcm_token', token);
@@ -251,8 +249,7 @@ export const sendVaccinationReminders = async () => {
             const sendPromises = tokens.map(token =>
                 admin.messaging().send({
                     token,
-                    notification: { title, body },
-                    data: { type: 'vaccination_overdue' },
+                    data: { type: 'vaccination_overdue', title, body },
                 }).catch(err => {
                     if (err.code === 'messaging/invalid-registration-token') {
                         supabase.from('user_devices').delete().eq('fcm_token', token);

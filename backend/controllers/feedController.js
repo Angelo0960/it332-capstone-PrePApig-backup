@@ -74,12 +74,11 @@ export const createFeedRecord = async (req, res) => {
 
                 const title = '🐖 Feeding Recorded';
                 const body = `${feed_type} (${quantity_kg} kg) for ${batchCode} has been recorded.`;
-                const tokens = devices.map((device) => device.fcm_token).filter(Boolean);
+                const tokens = [...new Set(devices.map((device) => device.fcm_token).filter(Boolean))];
                 if (tokens.length > 0) {
                     await Promise.allSettled(tokens.map((token) => admin.messaging().send({
-                        notification: { title, body },
                         token,
-                        data: { type: 'feed', batchId: batch_id },
+                        data: { type: 'feed', batchId: batch_id, title, body },
                     })));
                 }
 

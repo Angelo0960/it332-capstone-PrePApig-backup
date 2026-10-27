@@ -127,12 +127,11 @@ export const createVaccination = async (req, res) => {
 
                 const title = '💉 Vaccination Recorded';
                 const body = `${vaccine_name} for ${batchCode} has been administered.`;
-                const tokens = devices.map((device) => device.fcm_token).filter(Boolean);
+                const tokens = [...new Set(devices.map((device) => device.fcm_token).filter(Boolean))];
                 if (tokens.length > 0) {
                     await Promise.allSettled(tokens.map((token) => admin.messaging().send({
-                        notification: { title, body },
                         token,
-                        data: { type: 'vaccination', batchId: batch_id },
+                        data: { type: 'vaccination', batchId: batch_id, title, body },
                     })));
                 }
 

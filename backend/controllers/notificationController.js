@@ -19,13 +19,12 @@ export const sendNotificationToUser = async (userId, title, message, type, reque
         return { status: 'no_registered_device', deviceCount: 0, sentCount: 0 };
     }
 
-    const tokens = devices.map(d => d.fcm_token);
+    const tokens = [...new Set(devices.map(d => d.fcm_token).filter(Boolean))];
     const results = await Promise.all(tokens.map(async (token) => {
         try {
             const result = await admin.messaging().send({
                 token,
-                notification: { title, body: message },
-                data: { type },
+                data: { type, title, body: message },
             });
             if (result?.skipped) return { sent: false, code: 'firebase_not_configured' };
             return { sent: true };
