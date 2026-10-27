@@ -1,7 +1,7 @@
 import 'dotenv/config';
 
 const DEFAULT_MODEL = 'gpt-4.1-mini';
-const DEFAULT_OPENROUTER_MODEL = 'openai/gpt-4o-mini';
+const DEFAULT_OPENROUTER_MODEL = 'openrouter/free';
 
 const getConfiguredApiKey = () => process.env.OPENAI_API_KEY || '';
 const getConfiguredOpenRouterKey = () => process.env.OPENROUTER_API_KEY || '';
