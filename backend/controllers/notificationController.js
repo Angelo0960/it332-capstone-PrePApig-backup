@@ -4,29 +4,44 @@ import admin from '../config/firebase.js';
 import { triggerFeedReminders as triggerFeedRemindersService } from '../services/notificationServices.js';
 
 // ---------- Helper function ----------
-export const sendNotificationToUser = async (userId, title, message, type) => {
+export const sendNotificationToUser = async (userId, title, message, type, requestId) => {
     const { data: devices, error } = await supabase
         .from('user_devices')
         .select('fcm_token')
         .eq('user_id', userId);
 
-    if (error || !devices || devices.length === 0) return;
+    if (error) {
+        console.error(JSON.stringify({ event: 'push_delivery_lookup_failed', requestId, userId, message: error.message }));
+        return { status: 'lookup_failed', deviceCount: 0, sentCount: 0 };
+    }
+    if (!devices || devices.length === 0) {
+        console.warn(JSON.stringify({ event: 'push_delivery_no_devices', requestId, userId, deviceCount: 0 }));
+        return { status: 'no_registered_device', deviceCount: 0, sentCount: 0 };
+    }
 
     const tokens = devices.map(d => d.fcm_token);
-    const sendPromises = tokens.map(token =>
-        admin.messaging().send({
-            token,
-            notification: { title, body: message },
-            data: { type },
-        }).catch(async err => {
-            if (err.code === 'messaging/invalid-registration-token') {
+    const results = await Promise.all(tokens.map(async (token) => {
+        try {
+            const result = await admin.messaging().send({
+                token,
+                notification: { title, body: message },
+                data: { type },
+            });
+            if (result?.skipped) return { sent: false, code: 'firebase_not_configured' };
+            return { sent: true };
+        } catch (err) {
+            console.error(JSON.stringify({ event: 'push_delivery_failed', requestId, userId, code: err.code || 'unknown' }));
+            if (err.code === 'messaging/invalid-registration-token' || err.code === 'messaging/registration-token-not-registered') {
                 await supabase.from('user_devices').delete().eq('fcm_token', token);
             }
-            return null;
-        })
-    );
+            return { sent: false, code: err.code || 'unknown' };
+        }
+    }));
 
-    await Promise.allSettled(sendPromises);
+    const sentCount = results.filter((result) => result.sent).length;
+    const status = sentCount > 0 ? 'sent' : results.some((result) => result.code === 'firebase_not_configured') ? 'firebase_not_configured' : 'delivery_failed';
+    console.log(JSON.stringify({ event: 'push_delivery_completed', requestId, userId, deviceCount: devices.length, sentCount, status }));
+    return { status, deviceCount: devices.length, sentCount };
 };
 
 // ---------- Create and Send Notification ----------
@@ -38,7 +53,7 @@ export const createNotification = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Title, message, and type are required' });
         }
 
-        await sendNotificationToUser(userId, title, message, type);
+        const delivery = await sendNotificationToUser(userId, title, message, type, req.requestId);
         const { data, error } = await supabase
             .from('notifications')
             .insert([{ title, message, type, user_id: userId }])
@@ -47,7 +62,8 @@ export const createNotification = async (req, res) => {
 
         return res.status(201).json({
             success: true,
-            message: 'Notification sent to user',
+            message: delivery.status === 'sent' ? 'Notification sent to user' : 'Notification saved, but push delivery was not completed',
+            delivery,
             data,
         });
     } catch (error) {
