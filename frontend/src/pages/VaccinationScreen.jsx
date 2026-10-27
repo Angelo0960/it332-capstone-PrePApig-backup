@@ -4,8 +4,6 @@ import {
   ArrowLeft,
   Cloud,
   CloudOff,
-  Syringe,
-  PhilippinePeso,
   TrendingUp,
   Home,
   Package,
@@ -533,13 +531,8 @@ export default function VaccinationScreen() {
               {/* Summary Cards */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
                 <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-8 h-8 bg-blue-100/80 rounded-lg flex items-center justify-center">
-                      <Syringe className="w-4 h-4 text-blue-600" />
-                    </div>
-                    <div className="text-xs text-gray-700 font-semibold">
-                      Total Vaccines Administered
-                    </div>
+                  <div className="text-xs text-gray-700 font-semibold mb-2">
+                    Total Vaccines Administered
                   </div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">
                     {isNaN(totalDoses) ? 0 : totalDoses} doses
@@ -559,13 +552,8 @@ export default function VaccinationScreen() {
                 </div>
 
                 <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-8 h-8 bg-purple-100/80 rounded-lg flex items-center justify-center">
-                      <PhilippinePeso className="w-4 h-4 text-purple-600" />
-                    </div>
-                    <div className="text-xs text-gray-700 font-semibold">
-                      {selectedBatch === 'all' ? 'All Batches' : selectedBatchData?.name || 'Unknown'}
-                    </div>
+                  <div className="text-xs text-gray-700 font-semibold mb-2">
+                    {selectedBatch === 'all' ? 'All Batches' : selectedBatchData?.name || 'Unknown'}
                   </div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">
                     {batchExpense == null ? 'Unavailable' : `₱${batchExpense.toLocaleString('en-PH', { maximumFractionDigits: 0 })}`}

@@ -7,11 +7,7 @@ import {
   Download,
   Share,
   Home,
-  Package,
-  Syringe,
-  PhilippinePeso,
   FileText,
-  TrendingUp,
 
   ChevronDown,
 
@@ -510,18 +506,12 @@ export default function AnalyticsReportsScreen() {
           {/* Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <Package className="w-4 h-4 text-emerald-600" />
-                <span className="text-xs text-gray-700 font-semibold">Feed Stock</span>
-              </div>
+              <div className="text-xs text-gray-700 font-semibold mb-2">Feed Stock</div>
               <div className="text-2xl font-bold text-gray-900">{totalFeedStock} kg</div>
               <div className="text-xs text-gray-600">Total remaining</div>
             </div>
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <Syringe className="w-4 h-4 text-blue-600" />
-                <span className="text-xs text-gray-700 font-semibold">Vaccinations</span>
-              </div>
+              <div className="text-xs text-gray-700 font-semibold mb-2">Vaccinations</div>
               <div className="text-2xl font-bold text-gray-900">
                 {vaccinationSummary.totalDoses} doses
               </div>
@@ -531,10 +521,7 @@ export default function AnalyticsReportsScreen() {
               </div>
             </div>
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <PhilippinePeso className="w-4 h-4 text-purple-600" />
-                <span className="text-xs text-gray-700 font-semibold">Recorded expenses (period)</span>
-              </div>
+              <div className="text-xs text-gray-700 font-semibold mb-2">Recorded expenses (period)</div>
               <div className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight break-words">
                 {financial ? formatCurrency(financial.recordedExpenses) : 'Unavailable'}
               </div>
@@ -543,10 +530,7 @@ export default function AnalyticsReportsScreen() {
               </div>
             </div>
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="w-4 h-4 text-green-600" />
-                <span className="text-xs text-gray-700 font-semibold">Batches</span>
-              </div>
+              <div className="text-xs text-gray-700 font-semibold mb-2">Batches</div>
               <div className="text-2xl font-bold text-gray-900">
                 {selectedBatch === 'All Batches' ? batches.length : 1}
               </div>

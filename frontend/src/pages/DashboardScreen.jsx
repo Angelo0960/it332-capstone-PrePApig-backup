@@ -3,11 +3,14 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Home,
+  Package,
   TrendingUp,
   Tag,
+  Syringe,
   Bell,
   X,
   Plus,
+  Scale,
   User,
   LogOut,
   Trash2,
@@ -629,6 +632,14 @@ export default function DashboardScreen() {
                       {Math.round(currentBatch.vaccination / 25)}/4
                     </div>
                     <div className="text-xs text-gray-700 mt-1">shots completed</div>
+                    <div className="flex items-center gap-2 mt-2">
+                      {[1, 2, 3, 4].map((shot) => (
+                        <Syringe
+                          key={`vac-${shot}`}
+                          className={`w-5 h-5 ${currentBatch.vaccination >= shot * 25 ? 'text-blue-500 fill-blue-500' : 'text-gray-800/30'}`}
+                        />
+                      ))}
+                    </div>
                   </div>
 
                   {/* Avg Weight */}
@@ -638,6 +649,19 @@ export default function DashboardScreen() {
                       {Math.round(currentBatch.weight / currentBatch.pigCount)}
                     </div>
                     <div className="text-xs text-gray-700 mt-1">kg per pig</div>
+                    <div className="flex items-center gap-2 mt-2">
+                      {[1, 2, 3, 4].map((level) => {
+                        const avgWeight = currentBatch.weight / currentBatch.pigCount;
+                        const targetWeight = currentBatch.day <= 21 ? 30 : currentBatch.day <= 49 ? 60 : 90;
+                        const weightProgress = Math.min(100, (avgWeight / targetWeight) * 100);
+                        return (
+                          <Scale
+                            key={`weight-${level}`}
+                            className={`w-5 h-5 ${weightProgress >= level * 25 ? 'text-purple-500 fill-purple-500' : 'text-gray-800/30'}`}
+                          />
+                        );
+                      })}
+                    </div>
                   </div>
 
                   {/* Feed Level */}
@@ -649,6 +673,14 @@ export default function DashboardScreen() {
                       {currentBatch.feed}%
                     </div>
                     <div className="text-xs text-gray-700 mt-1">level remaining</div>
+                    <div className="flex items-center gap-2 mt-2">
+                      {[1, 2, 3, 4].map((bag) => (
+                        <Package
+                          key={`feed-${bag}`}
+                          className={`w-5 h-5 ${currentBatch.feed >= bag * 25 ? 'text-orange-500 fill-orange-500' : 'text-gray-800/30'}`}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
               </>

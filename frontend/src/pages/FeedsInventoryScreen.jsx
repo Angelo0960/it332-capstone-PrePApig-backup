@@ -5,7 +5,6 @@ import {
   Cloud,
   CloudOff,
   Check,
-  Package,
   Syringe,
   TrendingUp,
   Plus,
@@ -568,9 +567,6 @@ export default function FeedsInventoryScreen() {
           <div className="flex flex-nowrap overflow-x-auto gap-3 pb-2">
             <div className="flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 bg-emerald-100/80 rounded-xl flex items-center justify-center">
-                  <Package className="w-5 h-5 text-emerald-600" />
-                </div>
                 <span className="text-xs text-gray-700 font-semibold">
                   {selectedBatch === 'all' ? 'Current Stock' : 'Feed Consumed'}
                 </span>
@@ -623,15 +619,6 @@ export default function FeedsInventoryScreen() {
                       className="flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg"
                     >
                       <div className="flex items-center gap-2 mb-2">
-                        <div
-                          className={`w-8 h-8 rounded-xl flex items-center justify-center ${
-                            isLow ? 'bg-red-100/80' : 'bg-blue-100/80'
-                          }`}
-                        >
-                          <Package
-                            className={`w-4 h-4 ${isLow ? 'text-red-600' : 'text-blue-600'}`}
-                          />
-                        </div>
                         <span className="text-xs font-semibold text-gray-700">{feed.feed_type}</span>
                       </div>
                       <div className="text-2xl font-bold text-gray-900 mb-1">
@@ -661,9 +648,6 @@ export default function FeedsInventoryScreen() {
                       className="flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg"
                     >
                       <div className="flex items-center gap-2 mb-2">
-                        <div className="w-8 h-8 rounded-xl bg-orange-100/80 flex items-center justify-center">
-                          <Package className="w-4 h-4 text-orange-600" />
-                        </div>
                         <span className="text-xs font-semibold text-gray-700">{feedType}</span>
                       </div>
                       <div className="text-2xl font-bold text-gray-900 mb-1">{totalKg} kg</div>
