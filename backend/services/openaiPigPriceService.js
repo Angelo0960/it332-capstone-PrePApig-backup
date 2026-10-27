@@ -75,10 +75,13 @@ export const generatePigPriceAnalysis = async ({
   }
 
   const uniqueLocations = [...new Set(locations)].slice(0, 10);
+  const webSearchInstruction = /(?:\/free|:free)$/.test(model)
+    ? 'Use only the supplied local and provincial reference points. Do not call web search because this free model must operate without paid search tools.'
+    : 'Use web search and prioritize public Facebook posts, pages, and groups for local price evidence when available.';
   const prompt = [
     'You are analyzing pig selling-price options for a farmer near Calaca, Batangas, Philippines.',
     `Find current public pig liveweight or farmgate price points from at least 3 different nearby locations among: ${uniqueLocations.join(', ')}.`,
-    'Use web search and prioritize public Facebook posts, pages, and groups for local price evidence when available. Do not use private or login-only content. Do not invent prices. If a location has no reliable public price, label it unavailable.',
+    `${webSearchInstruction} Do not use private or login-only content. Do not invent prices. If a location has no reliable public price, label it unavailable.`,
     'Separate liveweight/farmgate prices from retail, dressed-meat, or unrelated prices.',
     'Analyze pig prices only. Do not calculate farm profit, revenue, expenses, ROI, break-even, or any other financial analysis.',
     'Compare observed price levels, price range, location differences, price direction, source quality, and the most defensible selling-price basis.',
@@ -176,10 +179,13 @@ const generateOpenRouterPigPriceAnalysis = async ({
   }
 
   const uniqueLocations = [...new Set(locations)].slice(0, 10);
+  const webSearchInstruction = /(?:\/free|:free)$/.test(model)
+    ? 'Use only the supplied local and provincial reference points. Do not call web search because this free model must operate without paid search tools.'
+    : 'Use web search and prioritize public Facebook posts, pages, and groups for local price evidence when available.';
   const prompt = [
     'You are analyzing pig selling-price options for a farmer near Calaca, Batangas, Philippines.',
     `Find current public pig liveweight or farmgate price points from at least 3 different nearby locations among: ${uniqueLocations.join(', ')}.`,
-    'Use web search and prioritize public Facebook posts, pages, and groups for local price evidence when available. Do not use private or login-only content. Do not invent prices. If a location has no reliable public price, label it unavailable.',
+    `${webSearchInstruction} Do not use private or login-only content. Do not invent prices. If a location has no reliable public price, label it unavailable.`,
     'Separate liveweight/farmgate prices from retail, dressed-meat, or unrelated prices.',
     'Analyze pig prices only. Do not calculate farm profit, revenue, expenses, ROI, break-even, or any other financial analysis.',
     'Compare observed price levels, price range, location differences, price direction, source quality, and the most defensible selling-price basis.',
@@ -206,7 +212,7 @@ const generateOpenRouterPigPriceAnalysis = async ({
       body: JSON.stringify({
         model,
         messages: [{ role: 'user', content: prompt }],
-        tools: [{ type: 'openrouter:web_search' }],
+        ...( /(?:\/free|:free)$/.test(model) ? {} : { tools: [{ type: 'openrouter:web_search' }] }),
         temperature: 0.2,
       }),
       signal: controller.signal,
