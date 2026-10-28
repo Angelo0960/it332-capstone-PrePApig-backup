@@ -169,6 +169,34 @@ textarea {
   }
 }
 
+.add-batch-modal {
+  background: rgba(255, 255, 255, 0.58) !important;
+  border: 1px solid rgba(255, 255, 255, 0.72) !important;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(24px) saturate(135%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(135%) !important;
+}
+
+.add-batch-modal-header {
+  border-bottom-color: rgba(255, 255, 255, 0.58) !important;
+}
+
+.add-batch-modal label {
+  color: rgb(17 24 39) !important;
+  font-weight: 600;
+}
+
+.add-batch-modal input,
+.add-batch-modal select {
+  color: rgb(17 24 39) !important;
+  background: rgba(255, 255, 255, 0.58) !important;
+  border-color: rgba(255, 255, 255, 0.78) !important;
+}
+
+.add-batch-modal input::placeholder {
+  color: rgb(75 85 99) !important;
+}
+
 .bottom-nav-safe {
   padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
 }

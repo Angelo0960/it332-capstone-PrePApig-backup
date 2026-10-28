@@ -106,7 +106,6 @@ export default function DashboardScreen() {
     breed: '',
     age_on_acquisition: '',
     start_weight: '',
-    sale_price_per_kg: '',
     date_acquired: '',
     status: 'Active',
   });
@@ -476,7 +475,6 @@ export default function DashboardScreen() {
           breed: newBatch.breed || 'Unknown',
           start_weight: parseFloat(newBatch.start_weight),
           current_weight: parseFloat(newBatch.start_weight),
-          sale_price_per_kg: newBatch.sale_price_per_kg ? parseFloat(newBatch.sale_price_per_kg) : null,
           age_on_acquisition: parseInt(newBatch.age_on_acquisition, 10) || 0,
           date_acquired: dateAcquired,
           status: 'Active',
@@ -487,7 +485,7 @@ export default function DashboardScreen() {
       if (json.success) {
         await fetchBatches();
         setShowAddBatch(false);
-        setNewBatch({ pig_count: '', breed: '', age_on_acquisition: '', start_weight: '', sale_price_per_kg: '', date_acquired: '', status: 'Active' });
+        setNewBatch({ pig_count: '', breed: '', age_on_acquisition: '', start_weight: '', date_acquired: '', status: 'Active' });
       } else {
         throw new Error(json.message || 'Unknown error');
       }
@@ -791,9 +789,12 @@ export default function DashboardScreen() {
         {/* Add Batch Modal */}
         {showAddBatch && (
           <div className="fixed inset-0 z-50 flex items-center justify-center responsive-modal-overlay bg-black/50 backdrop-blur-sm p-4">
-            <div className="responsive-modal bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-sm md:max-w-md lg:max-w-lg max-h-[80vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-5 border-b border-white/30">
-                <h2 className="text-lg font-bold text-gray-900">Add New Batch</h2>
+            <div className="add-batch-modal responsive-modal bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-sm md:max-w-md lg:max-w-lg max-h-[80vh] overflow-y-auto">
+              <div className="add-batch-modal-header flex items-center justify-between p-5 border-b border-white/30">
+                <div>
+                  <h2 className="add-batch-modal-title text-xl font-bold text-gray-950">Add New Batch</h2>
+                  <p className="text-sm text-gray-700 mt-1">Enter the starting details for your pigs.</p>
+                </div>
                 <button
                   onClick={() => {
                     setShowAddBatch(false);
@@ -802,7 +803,6 @@ export default function DashboardScreen() {
                       breed: '',
                       age_on_acquisition: '',
                       start_weight: '',
-                      sale_price_per_kg: '',
                       date_acquired: '',
                       status: 'Active',
                     });
@@ -858,7 +858,14 @@ export default function DashboardScreen() {
                     type="number"
                     min="0"
                     value={newBatch.age_on_acquisition}
-                    onChange={(e) => setNewBatch({ ...newBatch, age_on_acquisition: e.target.value })}
+                    onChange={(e) => {
+                      const age = e.target.value;
+                      setNewBatch((current) => ({
+                        ...current,
+                        age_on_acquisition: age,
+                        date_acquired: age === '' ? '' : getDateAcquiredFromAge(age),
+                      }));
+                    }}
                     placeholder="e.g. 30"
                     className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
                   />
@@ -880,29 +887,18 @@ export default function DashboardScreen() {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-2">
-                    Sale Price per kg (optional)
-                  </label>
-                  <input
-                    type="number"
-                    value={newBatch.sale_price_per_kg}
-                    onChange={(e) => setNewBatch({ ...newBatch, sale_price_per_kg: e.target.value })}
-                    placeholder="e.g. 180"
-                    min="0"
-                    step="0.01"
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">
                     Date Acquired
                   </label>
                   <input
                     type="date"
                     value={newBatch.date_acquired}
-                    onChange={(e) => setNewBatch({ ...newBatch, date_acquired: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
+                    readOnly
+                    aria-describedby="date-acquired-help"
+                    className="w-full px-4 py-3 rounded-xl bg-white/55 backdrop-blur-lg border border-white/70 text-gray-950 font-semibold focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
                   />
+                  <p id="date-acquired-help" className="text-xs text-gray-700 mt-2">
+                    Automatically calculated from pig age.
+                  </p>
                 </div>
 
                 <button
