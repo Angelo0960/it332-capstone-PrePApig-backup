@@ -70,6 +70,35 @@ textarea {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 }
+  @keyframes pig-head-tilt {
+    0%,
+    72%,
+    100% {
+      transform: rotate(0deg);
+    }
+    78% {
+      transform: rotate(-4deg);
+    }
+    86% {
+      transform: rotate(4deg);
+    }
+    93% {
+      transform: rotate(-2deg);
+    }
+  }
+
+  .pig-head-tilt {
+    transform-origin: 50% 72%;
+    animation: pig-head-tilt 5s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pig-head-tilt {
+      animation: none;
+    }
+  }
+
 .bottom-nav-safe {
   padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
 }

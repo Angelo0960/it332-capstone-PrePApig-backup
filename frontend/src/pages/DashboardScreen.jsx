@@ -738,7 +738,7 @@ export default function DashboardScreen() {
                     <img
                       src={pigImage}
                       alt="Pig Character"
-                      className="w-full h-full object-cover pointer-events-none"
+                      className="w-full h-full object-cover pointer-events-none pig-head-tilt"
 
 
                     />
