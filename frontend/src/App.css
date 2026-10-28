@@ -169,6 +169,29 @@ textarea {
   }
 }
 
+.dashboard-background-overlay {
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.dashboard-screen .dashboard-summary-grid > div,
+.dashboard-screen .dashboard-progress-stack > div {
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 6px 18px rgba(48, 62, 52, 0.12) !important;
+}
+
+.dashboard-batch-card {
+  padding-bottom: 3.25rem !important;
+}
+
+.dashboard-view-pigs {
+  border-radius: 12px !important;
+  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.2) !important;
+}
+
 .bottom-nav-safe {
   padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
 }

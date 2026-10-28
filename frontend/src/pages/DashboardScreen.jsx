@@ -537,6 +537,7 @@ export default function DashboardScreen() {
       <div className="absolute inset-0">
         <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover" />
       </div>
+      <div className="dashboard-background-overlay absolute inset-0" />
 
       <div className="mobile-screen-layer relative z-10 flex flex-col flex-1 min-h-0">
         {/* Header */}
@@ -584,7 +585,7 @@ export default function DashboardScreen() {
 
                   className="dashboard-summary-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4"
                 >
-                  <div className="bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3 relative">
+                  <div className="dashboard-batch-card bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3 relative">
                     <div className="text-xs text-gray-700 mb-1 font-medium">
                       {currentBatch.name}: {currentBatch.pigCount} Pigs
                       <button
@@ -598,7 +599,7 @@ export default function DashboardScreen() {
                     <div className="text-sm font-bold text-gray-900">Day {currentBatch.day}</div>
                     <button
                       onClick={() => navigate(`/batch/${currentBatch.id}/pigs`)}
-                      className="absolute bottom-2 left-2 px-2 py-1 bg-blue-500 text-white text-xs rounded-lg shadow-lg hover:bg-blue-600 transition-colors flex items-center gap-1"
+                      className="dashboard-view-pigs absolute bottom-2 left-2 px-2 py-1 bg-blue-500 text-white text-xs rounded-lg shadow-lg hover:bg-blue-600 transition-colors flex items-center gap-1"
                     >
                       <Users className="w-3 h-3" />
                       View Pigs
