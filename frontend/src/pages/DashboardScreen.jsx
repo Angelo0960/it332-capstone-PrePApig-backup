@@ -523,7 +523,7 @@ export default function DashboardScreen() {
 
       <div className="mobile-screen-layer relative z-10 flex flex-col flex-1 min-h-0">
         {/* Header */}
-        <div className="px-4 md:px-8 lg:px-12 pt-3 pb-3">
+        <div className="dashboard-header px-4 md:px-8 lg:px-12 pt-3 pb-3">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-900">
               Prep<span className="text-pink-500">A</span>Pig
@@ -623,7 +623,7 @@ export default function DashboardScreen() {
 
 
 
-                  className="space-y-2 mb-4"
+                  className="dashboard-progress-stack space-y-2 mb-4"
                 >
                   {/* Vaccination */}
                   <div className="bg-white/20 backdrop-blur-lg rounded-xl p-3 shadow-lg border border-white/30">
@@ -718,7 +718,7 @@ export default function DashboardScreen() {
               </>
 
               {/* Pig Character */}
-              <div className="flex items-center justify-center py-8 mb-4 relative min-h-[200px] md:min-h-[240px] lg:min-h-[288px]">
+              <div className="dashboard-pig-hero flex items-center justify-center py-8 mb-4 relative min-h-[200px] md:min-h-[240px] lg:min-h-[288px]">
                 <>
                   <div
                     key={currentBatch.id}
