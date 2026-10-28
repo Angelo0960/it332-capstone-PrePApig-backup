@@ -841,7 +841,7 @@ export default function DashboardScreen() {
                   <select
                     value={newBatch.breed}
                     onChange={(e) => setNewBatch({ ...newBatch, breed: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
+                    className="add-batch-breed-select w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
                   >
                     <option value="">Select breed...</option>
                     {PIG_BREEDS.map((breed) => (

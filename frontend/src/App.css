@@ -193,6 +193,29 @@ textarea {
   border-color: rgba(255, 255, 255, 0.78) !important;
 }
 
+.add-batch-breed-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2.75rem !important;
+  background-color: rgba(255, 255, 255, 0.58) !important;
+  background-image: linear-gradient(45deg, transparent 50%, rgb(55 65 81) 50%), linear-gradient(135deg, rgb(55 65 81) 50%, transparent 50%);
+  background-position: calc(100% - 1.2rem) 50%, calc(100% - 0.85rem) 50%;
+  background-size: 0.4rem 0.4rem, 0.4rem 0.4rem;
+  background-repeat: no-repeat;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.add-batch-breed-select:hover,
+.add-batch-breed-select:focus {
+  background-color: rgba(255, 255, 255, 0.72) !important;
+  border-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.add-batch-breed-select option {
+  background: rgb(248 250 252);
+  color: rgb(17 24 39);
+}
+
 .add-batch-modal input::placeholder {
   color: rgb(75 85 99) !important;
 }
