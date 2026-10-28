@@ -816,10 +816,10 @@ export default function DashboardScreen() {
                 </button>
               </div>
 
-              <div className="p-5 space-y-4">
-                <div className="text-xs text-gray-500 mb-2">
+              <div className="add-batch-modal-content p-5 space-y-4">
+                <div className="text-xs text-gray-700 mb-2">
                   Batch code will be auto-generated:{' '}
-                  <span className="font-mono font-semibold text-gray-700">
+                  <span className="font-mono font-semibold text-gray-800">
                     {generateBatchCode()}
                   </span>
                 </div>
