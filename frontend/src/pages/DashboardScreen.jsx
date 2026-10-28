@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Home,
-  Package,
   TrendingUp,
   Tag,
   Syringe,
@@ -28,6 +27,25 @@ import { PIG_BREEDS } from '../utils/breeds.js';
 // ────────────────────────────────────────────────────────────────
 
 const DEFAULT_ESTIMATED_PRICE_PER_KG = 170;
+
+const FeedSack = ({ className = '' }) => (
+  <svg
+    viewBox="0 0 24 24"
+    aria-hidden="true"
+    className={className}
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M8 4h8" />
+    <path d="M9 4.5c.2 1.1.8 1.8 1.8 2.2h2.4c1-.4 1.6-1.1 1.8-2.2" />
+    <path d="M7.5 7.2c-.7 1.7-1.2 4.2-1.2 7.2 0 3.1 1.6 5.2 5.7 5.2s5.7-2.1 5.7-5.2c0-3-.5-5.5-1.2-7.2" fill="currentColor" fillOpacity="0.18" />
+    <path d="M9 11h6M9.3 14h5.4M9.8 17h4.4" />
+  </svg>
+);
+
 const getDateAcquiredFromAge = (ageDays) => {
   const date = new Date();
   date.setDate(date.getDate() - Math.max(0, Number.parseInt(ageDays, 10) || 0));
@@ -253,7 +271,6 @@ export default function DashboardScreen() {
             : savedPrice > 0
               ? savedPrice
               : DEFAULT_ESTIMATED_PRICE_PER_KG;
-
           return {
             id: batch.id,
             name,
@@ -703,7 +720,7 @@ export default function DashboardScreen() {
 
 
                         >
-                          <Package
+                          <FeedSack
                             className={`w-5 h-5 ${
                               currentBatch.feed >= bag * 25
                                 ? 'text-orange-500 fill-orange-500'
