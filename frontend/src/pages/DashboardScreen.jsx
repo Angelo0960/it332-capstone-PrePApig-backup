@@ -88,6 +88,7 @@ export default function DashboardScreen() {
   const [error, setError] = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAddBatch, setShowAddBatch] = useState(false);
+  const [showBreedOptions, setShowBreedOptions] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
   const touchStartX = useRef(null);
@@ -485,6 +486,7 @@ export default function DashboardScreen() {
       if (json.success) {
         await fetchBatches();
         setShowAddBatch(false);
+        setShowBreedOptions(false);
         setNewBatch({ pig_count: '', breed: '', age_on_acquisition: '', start_weight: '', date_acquired: '', status: 'Active' });
       } else {
         throw new Error(json.message || 'Unknown error');
@@ -798,6 +800,7 @@ export default function DashboardScreen() {
                 <button
                   onClick={() => {
                     setShowAddBatch(false);
+                    setShowBreedOptions(false);
                     setNewBatch({
                       pig_count: '',
                       breed: '',
@@ -838,16 +841,48 @@ export default function DashboardScreen() {
                   <label className="block text-sm font-semibold text-gray-800 mb-2">
                     Breed
                   </label>
-                  <select
-                    value={newBatch.breed}
-                    onChange={(e) => setNewBatch({ ...newBatch, breed: e.target.value })}
-                    className="add-batch-breed-select w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  >
-                    <option value="">Select breed...</option>
-                    {PIG_BREEDS.map((breed) => (
-                      <option key={breed} value={breed}>{breed}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      aria-haspopup="listbox"
+                      aria-expanded={showBreedOptions}
+                      onClick={() => setShowBreedOptions((open) => !open)}
+                      className="add-batch-breed-select w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 text-left focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
+                    >
+                      {newBatch.breed || 'Select breed...'}
+                    </button>
+                    {showBreedOptions && (
+                      <div className="add-batch-breed-options absolute left-0 right-0 top-full mt-2 z-30 rounded-xl p-1">
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected={!newBatch.breed}
+                          onClick={() => {
+                            setNewBatch((current) => ({ ...current, breed: '' }));
+                            setShowBreedOptions(false);
+                          }}
+                          className="add-batch-breed-option w-full text-left px-3 py-2 rounded-lg text-sm"
+                        >
+                          Select breed...
+                        </button>
+                        {PIG_BREEDS.map((breed) => (
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={newBatch.breed === breed}
+                            key={breed}
+                            onClick={() => {
+                              setNewBatch((current) => ({ ...current, breed }));
+                              setShowBreedOptions(false);
+                            }}
+                            className="add-batch-breed-option w-full text-left px-3 py-2 rounded-lg text-sm"
+                          >
+                            {breed}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div>
