@@ -516,7 +516,7 @@ export default function DashboardScreen() {
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
-    <div className="mobile-screen-shell w-full relative overflow-hidden flex flex-col">
+    <div className="dashboard-screen mobile-screen-shell w-full relative overflow-hidden flex flex-col">
       <div className="absolute inset-0">
         <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover" />
       </div>
@@ -565,7 +565,7 @@ export default function DashboardScreen() {
 
 
 
-                  className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4"
+                  className="dashboard-summary-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4"
                 >
                   <div className="bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3 relative">
                     <div className="text-xs text-gray-700 mb-1 font-medium">
