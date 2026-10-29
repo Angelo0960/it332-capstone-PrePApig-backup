@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { generatePigPriceAnalysis as generateGeminiPigPriceAnalysis } from './geminiPigPriceService.js';
+import { generatePigPriceAnalysis as generateGeminiPigPriceAnalysis, LIVE_WEIGHT_SEARCH_QUERIES } from './geminiPigPriceService.js';
 
 const DEFAULT_MODEL = 'gpt-4.1-mini';
 const DEFAULT_OPENROUTER_MODEL = 'openrouter/free';
@@ -99,7 +99,8 @@ export const generatePigPriceAnalysis = async ({
     : 'Use web search and prioritize public Facebook posts, pages, and groups for local price evidence when available.';
   const prompt = [
     'You are analyzing pig selling-price options for a farmer near Calaca, Batangas, Philippines.',
-    `Find current public pig liveweight or farmgate price points from at least 3 different nearby locations among: ${uniqueLocations.join(', ')}.`,
+    `Search each of these exact Filipino queries separately: ${JSON.stringify(LIVE_WEIGHT_SEARCH_QUERIES)}.`,
+    `Find current public pig liveweight or farmgate price points for these locations: ${uniqueLocations.join(', ')}.`,
     `${webSearchInstruction} Do not use private or login-only content. Do not invent prices. If a location has no reliable public price, label it unavailable.`,
     'Separate liveweight/farmgate prices from retail, dressed-meat, or unrelated prices.',
     'Analyze pig prices only. Do not calculate farm profit, revenue, expenses, ROI, break-even, or any other financial analysis.',
@@ -155,6 +156,7 @@ export const generatePigPriceAnalysis = async ({
     provider: 'openai',
     model,
     locations: uniqueLocations,
+    searchQueries: LIVE_WEIGHT_SEARCH_QUERIES,
     pricePoints: Array.isArray(structured.pricePoints) ? structured.pricePoints : [],
     analysis: structured.analysis || analysis,
     suggestion: structured.suggestion || '',
@@ -203,7 +205,8 @@ const generateOpenRouterPigPriceAnalysis = async ({
     : 'Use web search and prioritize public Facebook posts, pages, and groups for local price evidence when available.';
   const prompt = [
     'You are analyzing pig selling-price options for a farmer near Calaca, Batangas, Philippines.',
-    `Find current public pig liveweight or farmgate price points from at least 3 different nearby locations among: ${uniqueLocations.join(', ')}.`,
+    `Search each of these exact Filipino queries separately: ${JSON.stringify(LIVE_WEIGHT_SEARCH_QUERIES)}.`,
+    `Find current public pig liveweight or farmgate price points for these locations: ${uniqueLocations.join(', ')}.`,
     `${webSearchInstruction} Do not use private or login-only content. Do not invent prices. If a location has no reliable public price, label it unavailable.`,
     'Separate liveweight/farmgate prices from retail, dressed-meat, or unrelated prices.',
     'Analyze pig prices only. Do not calculate farm profit, revenue, expenses, ROI, break-even, or any other financial analysis.',
@@ -261,6 +264,7 @@ const generateOpenRouterPigPriceAnalysis = async ({
     provider: 'openrouter',
     model,
     locations: uniqueLocations,
+    searchQueries: LIVE_WEIGHT_SEARCH_QUERIES,
     pricePoints: Array.isArray(structured.pricePoints) ? structured.pricePoints : [],
     analysis: structured.analysis || analysis,
     suggestion: structured.suggestion || '',

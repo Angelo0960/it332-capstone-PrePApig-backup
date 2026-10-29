@@ -1,7 +1,7 @@
 const PRICE_SOURCE_URL =
   'https://baboyph.com/data/hog-farmgate-household-regional.csv';
 const BATANGAS_PSGC = '0401000000';
-const PRICE_SOURCE_LOCATIONS = ['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Nasugbu'];
+const PRICE_SOURCE_LOCATIONS = ['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Taal'];
 const LOCAL_PRICE_POINTS = [
   { location: 'Calaca', pricePhpPerKg: 120, unit: 'PHP/kg', source: 'User-provided local reference', status: 'reference' },
   { location: 'Tuy', pricePhpPerKg: 190, unit: 'PHP/kg', source: 'User-provided local reference', status: 'reference' },

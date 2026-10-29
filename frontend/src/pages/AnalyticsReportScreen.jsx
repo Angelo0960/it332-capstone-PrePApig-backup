@@ -37,7 +37,7 @@ import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 const DEFAULT_PRICE_POINTS = [
   { location: 'Calaca', pricePhpPerKg: 120, unit: 'PHP/kg', source: 'User-provided local reference', status: 'reference' },
   { location: 'Tuy', pricePhpPerKg: 190, unit: 'PHP/kg', source: 'User-provided local reference', status: 'reference' },
-  { location: 'Nasugbu', pricePhpPerKg: 210, unit: 'PHP/kg', source: 'User-provided local reference', status: 'reference' },
+  { location: 'Taal', pricePhpPerKg: null, unit: 'PHP/kg', source: 'No verified local reference', status: 'unavailable' },
 ];
 
 export default function AnalyticsReportsScreen() {
@@ -54,7 +54,7 @@ export default function AnalyticsReportsScreen() {
   const [financial, setFinancial] = useState(null);
   const [financialError, setFinancialError] = useState(null);
   const [feedStock, setFeedStock] = useState([]);
-  const [pigPriceLocations, setPigPriceLocations] = useState(['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Nasugbu']);
+  const [pigPriceLocations, setPigPriceLocations] = useState(['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Taal']);
   const [pigPriceReference, setPigPriceReference] = useState(null);
   const [pricePoints, setPricePoints] = useState(DEFAULT_PRICE_POINTS);
   const [selectedPriceLocation, setSelectedPriceLocation] = useState(() => (
@@ -558,7 +558,7 @@ export default function AnalyticsReportsScreen() {
               {aiAnalysisLoading && <span className="text-xs text-purple-700 font-semibold">Analyzing...</span>}
             </div>
             <div className="flex flex-wrap gap-2 mb-3">
-              {(pigPriceLocations.length > 0 ? pigPriceLocations : ['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Nasugbu']).map((location) => (
+              {(pigPriceLocations.length > 0 ? pigPriceLocations : ['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Taal']).map((location) => (
                 <span key={location} className="px-2 py-1 bg-white/50 rounded-lg text-xs text-gray-800">
                   {location}
                 </span>

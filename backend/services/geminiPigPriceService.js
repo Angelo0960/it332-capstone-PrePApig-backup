@@ -1,6 +1,13 @@
 import 'dotenv/config';
 
 const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
+const LIVE_WEIGHT_SEARCH_QUERIES = [
+  'magkano ang presyo ng buhay na baboy sa calaca',
+  'magkano ang presyo ng buhay na baboy sa lemery',
+  'magakano ang presyo ng buhay na baboy sa balayan',
+  'magakano ang presyo ng buhay na baboy sa tuy',
+  'magkano ang presyo ng buhay na baboy sa taal',
+];
 
 const normalizeModel = (value) => {
   const configured = String(value || '').trim();
@@ -61,12 +68,13 @@ export const generatePigPriceAnalysis = async ({
   const uniqueLocations = [...new Set(locations)].slice(0, 10);
   const prompt = [
     'You are analyzing pig selling-price options for a farmer near Calaca, Batangas, Philippines.',
-    `Find current public pig liveweight or farmgate price points from at least 3 different nearby locations among: ${uniqueLocations.join(', ')}.`,
+    `Search each of these exact Filipino queries separately: ${JSON.stringify(LIVE_WEIGHT_SEARCH_QUERIES)}.`,
+    `Find current public pig liveweight or farmgate price points for these locations: ${uniqueLocations.join(', ')}.`,
     'Use web search grounding and prioritize public Facebook posts, pages, and groups for local price evidence when available. Do not use private or login-only content. Do not invent prices. If a location has no reliable public price, label it unavailable.',
     'Separate liveweight/farmgate prices from retail, dressed-meat, or unrelated prices.',
     'Recommend which available location/source is the most useful price basis and explain why.',
     'Return JSON only with this shape:',
-    '{"pricePoints":[{"location":"Calaca","pricePhpPerKg":null,"unit":"PHP/kg liveweight","period":"YYYY-MM or unavailable","source":"source name or unavailable","sourceUrl":"public direct URL or unavailable","status":"found or unavailable"}],"analysis":"short analysis","suggestion":"recommended price basis or next action","limitations":["important limitation"]}',
+    '{"pricePoints":[{"location":"Calaca","query":"exact search query used","pricePhpPerKg":null,"unit":"PHP/kg liveweight","period":"YYYY-MM-DD or unavailable","source":"source name or unavailable","sourceUrl":"public direct URL or unavailable","status":"found or unavailable"}],"analysis":"short analysis","suggestion":"recommended price basis or next action","limitations":["important limitation"]}',
     'Use null and unavailable when a location has no reliable public price. Do not estimate, average, or invent missing local prices.',
     `Provincial reference (not Calaca-only): ${JSON.stringify(provincialReference)}`,
     `Local reference points (may be user-provided and not independently verified): ${JSON.stringify(localPricePoints)}`,
@@ -113,6 +121,7 @@ export const generatePigPriceAnalysis = async ({
     provider: 'gemini',
     model,
     locations: uniqueLocations,
+    searchQueries: LIVE_WEIGHT_SEARCH_QUERIES,
     pricePoints: Array.isArray(structured.pricePoints) ? structured.pricePoints : [],
     analysis: structured.analysis || analysis,
     suggestion: structured.suggestion || '',
@@ -122,4 +131,4 @@ export const generatePigPriceAnalysis = async ({
   };
 };
 
-export { extractText, extractGrounding };
+export { extractText, extractGrounding, LIVE_WEIGHT_SEARCH_QUERIES };
