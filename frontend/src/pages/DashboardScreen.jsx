@@ -96,6 +96,7 @@ export default function DashboardScreen() {
   const [error, setError] = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAddBatch, setShowAddBatch] = useState(false);
+  const [isAddingBatch, setIsAddingBatch] = useState(false);
   const [showBreedOptions, setShowBreedOptions] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
@@ -474,6 +475,7 @@ export default function DashboardScreen() {
 
     const batchCode = generateBatchCode();
 
+    setIsAddingBatch(true);
     try {
       const res = await fetch(`${API_BASE}/pigs/create`, {
         method: 'POST',
@@ -489,18 +491,22 @@ export default function DashboardScreen() {
           status: 'Active',
         }),
       });
-      if (!res.ok) throw new Error('Failed to create batch');
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(json.message || json.details || `Failed to create batch (${res.status})`);
+      }
       if (json.success) {
-        await fetchBatches();
         setShowAddBatch(false);
         setShowBreedOptions(false);
         setNewBatch({ pig_count: '', breed: '', age_on_acquisition: '', start_weight: '', date_acquired: '', status: 'Active' });
+        void fetchBatches();
       } else {
         throw new Error(json.message || 'Unknown error');
       }
     } catch (err) {
       alert('Error adding batch: ' + err.message);
+    } finally {
+      setIsAddingBatch(false);
     }
   };
 
@@ -974,9 +980,10 @@ export default function DashboardScreen() {
 
                 <button
                   onClick={handleAddBatch}
-                  className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform"
+                  disabled={isAddingBatch}
+                  className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform disabled:cursor-wait disabled:opacity-70"
                 >
-                  Add Batch
+                  {isAddingBatch ? 'Saving batch…' : 'Add Batch'}
                 </button>
               </div>
             </div>
