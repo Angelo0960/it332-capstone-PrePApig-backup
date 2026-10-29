@@ -5,3 +5,8 @@ export const formatLocalDate = (date = new Date()) => {
   const day = String(value.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
+
+export const formatLocalTime = (date = new Date()) => {
+  const value = date instanceof Date ? date : new Date(date);
+  return `${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}`;
+};

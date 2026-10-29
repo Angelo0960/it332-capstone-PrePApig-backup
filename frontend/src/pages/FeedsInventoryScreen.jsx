@@ -20,7 +20,7 @@ import BottomNav from '../components/BottomNav';
 import { API_BASE, getAuthHeaders } from '../api.js';
 import { buildFeedDonePayload } from '../utils/markDonePayloads.js';
 import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
-import { formatLocalDate } from '../utils/dates.js';
+import { formatLocalDate, formatLocalTime } from '../utils/dates.js';
 // ────────────────────────────────────────────────────────────────
 
 // Helpers
@@ -95,6 +95,7 @@ export default function FeedsInventoryScreen() {
     feedType: '',
     amount: '',
     date: formatLocalDate(),
+    time: formatLocalTime(),
     notes: '',
   });
 
@@ -287,6 +288,7 @@ export default function FeedsInventoryScreen() {
           feedType: '',
           amount: '',
           date: formatLocalDate(),
+          time: formatLocalTime(),
           notes: '',
         });
         void fetchFeedStock();
@@ -333,6 +335,7 @@ export default function FeedsInventoryScreen() {
     if (!usageForm.feedType) errors.feedType = 'Feed type is required';
     if (!String(usageForm.amount).trim()) errors.amount = 'Amount is required';
     if (!usageForm.date) errors.date = 'Date is required';
+    if (!usageForm.time) errors.time = 'Time is required';
     setUsageErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
@@ -346,7 +349,7 @@ export default function FeedsInventoryScreen() {
       feed_type: feedTypeName,
       quantity_kg: parseFloat(usageForm.amount) || 0,
       feeding_date: usageForm.date,
-      feeding_time: new Date().toLocaleTimeString(),
+      feeding_time: usageForm.time,
       notes: usageForm.notes,
     };
     handleSaveFeedUsage(payload);
@@ -979,6 +982,7 @@ export default function FeedsInventoryScreen() {
                       feedType: '',
                       amount: '',
                       date: formatLocalDate(),
+                      time: formatLocalTime(),
                       notes: '',
                     });
                   }}
@@ -1078,6 +1082,26 @@ export default function FeedsInventoryScreen() {
                     {usageErrors.date && <AlertTriangle className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
                   </div>
                   <InlineFieldError id="usage-date-error" message={usageErrors.date} />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Time <span className="text-red-700" aria-hidden="true">*</span></label>
+                  <div className="relative">
+                    <input
+                      type="time"
+                      value={usageForm.time}
+                      onChange={(e) => {
+                        setUsageForm({ ...usageForm, time: e.target.value });
+                        setUsageErrors((current) => ({ ...current, time: '' }));
+                      }}
+                      aria-required="true"
+                      aria-invalid={Boolean(usageErrors.time)}
+                      aria-describedby={usageErrors.time ? 'usage-time-error' : undefined}
+                      className={`w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${usageErrors.time ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
+                    />
+                    {usageErrors.time && <AlertTriangle className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
+                  </div>
+                  <InlineFieldError id="usage-time-error" message={usageErrors.time} />
                 </div>
 
                 <div>

@@ -19,6 +19,6 @@ export const runReminders = async () => {
     console.log(JSON.stringify({ event: 'reminder_worker_finished', ...workerStatus }));
   }
 };
-if (workerStatus.enabled) cron.schedule('0 8 * * *', () => runReminders().catch(error => {
+if (workerStatus.enabled) cron.schedule('* * * * *', () => runReminders().catch(error => {
   console.error(JSON.stringify({ event: 'reminder_worker_failed', message: error.message }));
 }), { timezone });

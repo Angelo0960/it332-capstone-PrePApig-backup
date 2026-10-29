@@ -8,19 +8,41 @@ async function preferencesFor(userId) {
 }
 
 const APP_TIMEZONE = process.env.APP_TIMEZONE || 'Asia/Manila';
-const getDateInTimezone = (date = new Date(), dayOffset = 0) => {
+const getDateTimeInTimezone = (date = new Date()) => {
     const parts = new Intl.DateTimeFormat('en-CA', {
         timeZone: APP_TIMEZONE,
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
     }).formatToParts(date).reduce((result, part) => {
         if (part.type !== 'literal') result[part.type] = part.value;
         return result;
     }, {});
-    const localDate = new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day)));
-    localDate.setUTCDate(localDate.getUTCDate() + dayOffset);
-    return localDate.toISOString().slice(0, 10);
+    return {
+        date: `${parts.year}-${parts.month}-${parts.day}`,
+        minutes: (Number(parts.hour) % 24) * 60 + Number(parts.minute),
+    };
+};
+
+const parseFeedingTimeMinutes = (value) => {
+    if (!value) return null;
+    const match = String(value).trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
+    if (!match) return null;
+    let hour = Number(match[1]);
+    const minute = Number(match[2]);
+    const meridiem = match[3]?.toUpperCase();
+    if (minute > 59) return null;
+    if (meridiem) {
+        if (hour < 1 || hour > 12) return null;
+        if (meridiem === 'PM' && hour !== 12) hour += 12;
+        if (meridiem === 'AM' && hour === 12) hour = 0;
+    } else if (hour > 23) {
+        return null;
+    }
+    return hour * 60 + minute;
 };
 
 /**
@@ -28,11 +50,11 @@ const getDateInTimezone = (date = new Date(), dayOffset = 0) => {
  * Runs via cron job.
  */
 
-// ----- Feed reminders (unchanged) -----
+// ----- Feed reminders (time-aware) -----
 export const sendDailyFeedReminders = async () => {
-    const today = getDateInTimezone();
+    const { date: today, minutes: currentMinutes } = getDateTimeInTimezone();
 
-    console.log(`🔍 Checking feed records for ${today}...`);
+    console.log(`🔍 Checking feed records for ${today} at minute ${currentMinutes}...`);
 
     const { data: records, error } = await supabase
         .from('feed_records')
@@ -50,15 +72,20 @@ export const sendDailyFeedReminders = async () => {
 
     if (error) throw error;
 
-    if (!records || records.length === 0) {
-        console.log('✅ No pending feedings for today.');
+    const pendingRecords = (records || []).filter((record) => {
+        const scheduledMinutes = parseFeedingTimeMinutes(record.feeding_time);
+        return scheduledMinutes === null || scheduledMinutes <= currentMinutes;
+    });
+
+    if (pendingRecords.length === 0) {
+        console.log('✅ No feedings due at the current time.');
         return;
     }
 
-    console.log(`📋 Found ${records.length} pending feedings.`);
+    console.log(`📋 Found ${pendingRecords.length} feedings due now.`);
 
     const userMap = new Map();
-    for (const rec of records) {
+    for (const rec of pendingRecords) {
         const ownerId = rec.pig_batches?.owner_id;
         if (!ownerId) continue;
         if (!userMap.has(ownerId)) userMap.set(ownerId, []);
@@ -98,32 +125,34 @@ export const sendDailyFeedReminders = async () => {
             dedupe_key: `feed_reminder:${today}`,
         }], { onConflict: 'user_id,dedupe_key', ignoreDuplicates: true });
 
-        const sendPromises = tokens.map(token =>
+        const sendResults = await Promise.all(tokens.map(token =>
             admin.messaging().send({
                 token,
                 data: { type: 'feed_reminder', title, body },
-            }).catch(async err => {
-                if (err.code === 'messaging/invalid-registration-token') {
-                    await supabase.from('user_devices').delete().eq('fcm_token', token);
-                }
-                return null;
-            })
-        );
+            }).then((result) => ({ sent: !result?.skipped, token }))
+              .catch(async err => {
+                  if (err.code === 'messaging/invalid-registration-token' || err.code === 'messaging/registration-token-not-registered') {
+                      await supabase.from('user_devices').delete().eq('fcm_token', token);
+                  }
+                  console.error(JSON.stringify({ event: 'scheduled_feed_delivery_failed', ownerId, code: err.code || 'unknown' }));
+                  return { sent: false, token };
+              })
+        ));
 
-        await Promise.allSettled(sendPromises);
-        console.log(`✅ Sent feed reminders to user ${ownerId}`);
-    }
-
-    // Mark records as sent
-    const recordIds = records.map(r => r.id);
-    if (recordIds.length > 0) {
-        await supabase.from('feed_records').update({ reminder_sent: true }).in('id', recordIds);
+        const sentCount = sendResults.filter((result) => result.sent).length;
+        if (sentCount > 0) {
+            const recordIds = userRecords.map((record) => record.id);
+            await supabase.from('feed_records').update({ reminder_sent: true }).in('id', recordIds);
+            console.log(`✅ Sent ${sentCount} feed reminder(s) to user ${ownerId}`);
+        } else {
+            console.warn(`⚠️ No feed reminder delivered to user ${ownerId}; records remain pending.`);
+        }
     }
 };
 
 // ----- Vaccination reminders (due + overdue) -----
 export const sendVaccinationReminders = async () => {
-    const today = getDateInTimezone();
+    const { date: today } = getDateTimeInTimezone();
 
     console.log(`🔍 Checking vaccinations due or overdue for ${today}...`);
 
