@@ -24,25 +24,29 @@ export const createFeedRecord = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Batch not found' });
         }
 
-        // 1. Insert the feed record
-        const { data, error } = await supabase
-            .from('feed_records')
-            .insert([{
-                owner_id: req.user.id,
+        // Record feed usage and distribute the quantity equally across the
+        // batch's individual pigs atomically in PostgreSQL.
+        const { data: result, error } = await supabase.rpc('create_feed_record_with_weight_gain', {
+            p_owner_id: req.user.id,
+            p_feed: {
                 batch_id,
                 feed_type,
                 quantity_kg,
                 feeding_date,
                 feeding_time,
-                notes
-            }])
-            .select();
+                notes,
+            },
+        });
 
         if (error) throw error;
 
+        const savedRecord = result?.record || null;
         res.status(201).json({
             success: true,
-            data
+            data: savedRecord ? [savedRecord] : [],
+            batch: result?.batch || null,
+            weight_gain_per_pig: Number(result?.weight_gain_per_pig || 0),
+            pig_count: Number(result?.pig_count || 0),
         });
 
         // Notifications are intentionally processed after the response so marking done stays fast.
