@@ -1,6 +1,27 @@
 import { pagination } from '../services/pagination.js';
 import supabase from '../config/supabase.js';
 
+const syncBatchAverageWeight = async (batchId, ownerId) => {
+    const { data: pigs, error: pigsError } = await supabase
+        .from('pigs')
+        .select('weight')
+        .eq('batch_id', batchId)
+        .eq('owner_id', ownerId);
+    if (pigsError) throw pigsError;
+
+    const totalWeight = (pigs || []).reduce((sum, pig) => sum + Number(pig.weight || 0), 0);
+    const averageWeight = pigs?.length ? Math.round((totalWeight / pigs.length) * 100) / 100 : 0;
+    const { data, error } = await supabase
+        .from('pig_batches')
+        .update({ current_weight: averageWeight })
+        .eq('id', batchId)
+        .eq('owner_id', ownerId)
+        .select('id,current_weight')
+        .single();
+    if (error) throw error;
+    return data;
+};
+
 // ===== BATCH CRUD =====
 
 export const createBatch = async (req, res) => {
@@ -403,9 +424,12 @@ export const createPig = async (req, res) => {
             throw error;
         }
 
+        const updatedBatch = await syncBatchAverageWeight(batch_id, req.user.id);
+
         res.status(201).json({
             success: true,
             data: data[0],
+            batch: updatedBatch,
         });
     } catch (error) {
         console.error('Error creating pig:', error);
@@ -421,6 +445,14 @@ export const updatePig = async (req, res) => {
         const { id } = req.params;
         const { weight, health_status, notes } = req.body;
 
+        const { data: existingPig, error: existingPigError } = await supabase
+            .from('pigs')
+            .select('id,batch_id')
+            .eq('id', id)
+            .eq('owner_id', req.user.id)
+            .single();
+        if (existingPigError) throw existingPigError;
+
         const { data, error } = await supabase
             .from('pigs')
             .update({ weight, health_status, notes, updated_at: new Date() })
@@ -433,9 +465,12 @@ export const updatePig = async (req, res) => {
             throw error;
         }
 
+        const updatedBatch = await syncBatchAverageWeight(existingPig.batch_id, req.user.id);
+
         res.status(200).json({
             success: true,
             data: data[0],
+            batch: updatedBatch,
         });
     } catch (error) {
         console.error('Error updating pig:', error);
@@ -449,6 +484,14 @@ export const updatePig = async (req, res) => {
 export const deletePig = async (req, res) => {
     try {
         const { id } = req.params;
+        const { data: existingPig, error: existingPigError } = await supabase
+            .from('pigs')
+            .select('id,batch_id')
+            .eq('id', id)
+            .eq('owner_id', req.user.id)
+            .single();
+        if (existingPigError) throw existingPigError;
+
         const { error } = await supabase
             .from('pigs')
             .delete()
@@ -460,9 +503,12 @@ export const deletePig = async (req, res) => {
             throw error;
         }
 
+        const updatedBatch = await syncBatchAverageWeight(existingPig.batch_id, req.user.id);
+
         res.status(200).json({
             success: true,
             message: 'Pig deleted successfully',
+            batch: updatedBatch,
         });
     } catch (error) {
         console.error('Error deleting pig:', error);
