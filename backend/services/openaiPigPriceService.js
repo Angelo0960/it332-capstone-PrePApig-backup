@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { generatePigPriceAnalysis as generateGeminiPigPriceAnalysis } from './geminiPigPriceService.js';
 
 const DEFAULT_MODEL = 'gpt-4.1-mini';
 const DEFAULT_OPENROUTER_MODEL = 'openrouter/free';
@@ -51,6 +52,24 @@ export const generatePigPriceAnalysis = async ({
   model = process.env.OPENAI_MODEL || DEFAULT_MODEL,
   localPricePoints = [],
 }) => {
+  if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY) {
+    try {
+      return await generateGeminiPigPriceAnalysis({
+        locations,
+        provincialReference,
+        localPricePoints,
+        fetchImpl,
+      });
+    } catch (error) {
+      const message = String(error?.message || '');
+      const canFallback = getConfiguredOpenRouterKey() || getConfiguredApiKey();
+      if (!canFallback || !/quota|rate.?limit|resource.?exhausted|billing|unauthori[sz]|invalid.?api.?key|unavailable|not found/i.test(message)) {
+        throw error;
+      }
+      console.warn('Gemini unavailable; falling back to the configured secondary AI provider.');
+    }
+  }
+
   if (getConfiguredOpenRouterKey()) {
     try {
       return await generateOpenRouterPigPriceAnalysis({

@@ -29,13 +29,15 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
     const locations = Array.isArray(req.body?.locations) && req.body.locations.length > 0
       ? req.body.locations
       : priceData.priceSourceLocations;
-    const configuredModel = process.env.OPENROUTER_MODEL || 'openrouter/free';
+    const configuredModel = process.env.GEMINI_API_KEY
+      ? process.env.GEMINI_MODEL || 'gemini-3.8-flash'
+      : process.env.OPENROUTER_MODEL || process.env.OPENAI_MODEL || 'openrouter/free';
     console.log(JSON.stringify({
       event: 'pig_price_ai_started',
       requestId: req.requestId,
       userId: req.user?.id,
       locations,
-      provider: process.env.OPENROUTER_API_KEY ? 'openrouter' : process.env.OPENAI_API_KEY ? 'openai' : 'none',
+      provider: process.env.GEMINI_API_KEY ? 'gemini' : process.env.OPENROUTER_API_KEY ? 'openrouter' : process.env.OPENAI_API_KEY ? 'openai' : 'none',
       model: configuredModel,
       webSearchRequested: !/(?:\/free|:free)$/.test(configuredModel),
     }));
@@ -67,8 +69,8 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
     console.error(JSON.stringify({
       event: 'pig_price_ai_failed',
       requestId: req.requestId,
-      provider: error.provider || (process.env.OPENROUTER_API_KEY ? 'openrouter' : process.env.OPENAI_API_KEY ? 'openai' : 'none'),
-      model: error.model || process.env.OPENROUTER_MODEL || 'openrouter/free',
+      provider: error.provider || (process.env.GEMINI_API_KEY ? 'gemini' : process.env.OPENROUTER_API_KEY ? 'openrouter' : process.env.OPENAI_API_KEY ? 'openai' : 'none'),
+      model: error.model || process.env.GEMINI_MODEL || process.env.OPENROUTER_MODEL || process.env.OPENAI_MODEL || 'openrouter/free',
       providerStatus: error.providerStatus || null,
       message: safeMessage,
     }));
@@ -78,7 +80,7 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
     const message = isMissingKey
       ? rawMessage
       : isQuotaError
-        ? 'AI provider credits or quota are unavailable. Local reference prices remain available. Add credits to the configured OpenRouter account, use a funded key, or configure OPENAI_API_KEY as a fallback.'
+        ? 'AI provider credits or quota are unavailable. Local reference prices remain available. Configure a funded Gemini, OpenRouter, or OpenAI provider, then retry.'
         : 'AI price analysis is temporarily unavailable. The local reference prices remain available.';
     res.status(status).json({
       success: false,

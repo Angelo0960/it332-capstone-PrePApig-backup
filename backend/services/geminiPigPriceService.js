@@ -44,6 +44,7 @@ const extractGrounding = (payload) => {
 export const generatePigPriceAnalysis = async ({
   locations,
   provincialReference,
+  localPricePoints = [],
   fetchImpl = fetch,
   apiKey = getConfiguredApiKey(),
   model = normalizeModel(process.env.GEMINI_MODEL),
@@ -66,6 +67,7 @@ export const generatePigPriceAnalysis = async ({
     '{"pricePoints":[{"location":"Calaca","pricePhpPerKg":null,"unit":"PHP/kg liveweight","period":"YYYY-MM or unavailable","source":"source name or unavailable","sourceUrl":"public direct URL or unavailable","status":"found or unavailable"}],"analysis":"short analysis","suggestion":"recommended price basis or next action","limitations":["important limitation"]}',
     'Use null and unavailable when a location has no reliable public price. Do not estimate, average, or invent missing local prices.',
     `Provincial reference (not Calaca-only): ${JSON.stringify(provincialReference)}`,
+    `Local reference points (may be user-provided and not independently verified): ${JSON.stringify(localPricePoints)}`,
   ].join('\n');
 
   const controller = new AbortController();
@@ -82,7 +84,6 @@ export const generatePigPriceAnalysis = async ({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         tools: [{ google_search: {} }],
         generationConfig: {
-          temperature: 0.2,
           responseMimeType: 'application/json',
         },
       }),
@@ -107,6 +108,7 @@ export const generatePigPriceAnalysis = async ({
 
   return {
     success: true,
+    provider: 'gemini',
     model,
     locations: uniqueLocations,
     pricePoints: Array.isArray(structured.pricePoints) ? structured.pricePoints : [],
