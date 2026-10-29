@@ -110,6 +110,7 @@ export default function DashboardScreen() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
   const touchStartX = useRef(null);
+  const touchStartY = useRef(null);
   const batchRenderFrame = useRef(null);
 
 
@@ -133,19 +134,29 @@ export default function DashboardScreen() {
 
   const handleTouchStart = (event) => {
     touchStartX.current = event.touches[0]?.clientX ?? null;
+    touchStartY.current = event.touches[0]?.clientY ?? null;
   };
 
   const handleTouchEnd = (event) => {
-    if (touchStartX.current === null || batches.length < 2) return;
-    const endX = event.changedTouches[0]?.clientX;
+    if (touchStartX.current === null || touchStartY.current === null || batches.length < 2) return;
+    const touch = event.changedTouches[0];
+    const endX = touch?.clientX;
+    const endY = touch?.clientY;
     const deltaX = endX - touchStartX.current;
+    const deltaY = endY - touchStartY.current;
     touchStartX.current = null;
-    if (!Number.isFinite(deltaX) || Math.abs(deltaX) < 50) return;
+    touchStartY.current = null;
+    if (!Number.isFinite(deltaX) || !Number.isFinite(deltaY) || Math.abs(deltaX) < 50 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
     setCurrentBatchIndex((previous) =>
       deltaX < 0
         ? (previous + 1) % batches.length
         : (previous - 1 + batches.length) % batches.length
     );
+  };
+
+  const handleTouchCancel = () => {
+    touchStartX.current = null;
+    touchStartY.current = null;
   };
   const user = getUserFromToken();
 
@@ -631,7 +642,12 @@ export default function DashboardScreen() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24">
+        <div
+          className="flex-1 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchCancel}
+        >
           {batches.length > 0 && currentBatch && (
             <>
               <>
@@ -807,8 +823,6 @@ export default function DashboardScreen() {
 
 
 
-                    onTouchStart={handleTouchStart}
-                    onTouchEnd={handleTouchEnd}
                     className="relative w-64 h-48 md:w-80 md:h-60 lg:w-96 lg:h-72 cursor-grab active:cursor-grabbing"
                   >
                     <img
