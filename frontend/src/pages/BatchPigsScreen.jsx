@@ -5,6 +5,7 @@ import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5b
 import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
 import { API_BASE, getAuthHeaders } from '../api.js';
+import { getUserCacheKey } from '../utils/cache.js';
 // ────────────────────────────────────────────────────────────────
 
 export default function BatchPigsScreen() {
@@ -24,9 +25,21 @@ export default function BatchPigsScreen() {
   const [newPig, setNewPig] = useState({ weight: '', health_status: 'Healthy', notes: '' });
   const [editPig, setEditPig] = useState({ weight: '', health_status: '', notes: '' });
 
-  // Fetch pigs
+  // Fetch pigs and batch metadata together, hydrating cached pigs first.
   const fetchPigs = async () => {
-    setLoading(true);
+    const cacheKey = `prepapig:pigs:${getUserCacheKey()}:${batchId}`;
+    let renderedCache = false;
+    try {
+      const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+      if (Array.isArray(cached)) {
+        setPigs(cached);
+        setLoading(false);
+        renderedCache = true;
+      }
+    } catch {
+      localStorage.removeItem(cacheKey);
+    }
+
     setError(null);
     try {
       const res = await fetch(`${API_BASE}/pigs/batch/${batchId}/pigs`, {
@@ -34,36 +47,20 @@ export default function BatchPigsScreen() {
       });
       if (!res.ok) throw new Error('Failed to fetch pigs');
       const json = await res.json();
-      if (json.success) {
-        setPigs(json.data);
-      } else {
-        throw new Error(json.message);
-      }
+      if (!json.success) throw new Error(json.message);
+      const nextPigs = json.data || [];
+      setPigs(nextPigs);
+      setBatchName(json.batch?.batch_code || 'Batch');
+      localStorage.setItem(cacheKey, JSON.stringify(nextPigs));
     } catch (err) {
-      setError(err.message);
+      if (!renderedCache) setError(err.message);
     } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch batch name
-  const fetchBatchName = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/pigs/${batchId}`, {
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error('Failed to fetch batch');
-      const json = await res.json();
-      if (json.success) {
-        setBatchName(json.data.batch_code || 'Batch');
-      }
-    } catch (err) {
-      console.error(err);
+      if (!renderedCache) setLoading(false);
     }
   };
 
   useEffect(() => {
-    Promise.all([fetchBatchName(), fetchPigs()]);
+    fetchPigs();
   }, [batchId]);
 
   // Add pig

@@ -346,14 +346,23 @@ export const getBatchSummary = async (req, res) => {
 export const getPigsByBatch = async (req, res) => {
     try {
         const { batchId } = req.params;
+        const [batchResult, pigsResult] = await Promise.all([
+            supabase
+                .from('pig_batches')
+                .select('id,batch_code')
+                .eq('id', batchId)
+                .eq('owner_id', req.user.id)
+                .single(),
+            supabase
+                .from('pigs')
+                .select('id,batch_id,weight,health_status,notes,created_at,updated_at')
+                .eq('batch_id', batchId)
+                .eq('owner_id', req.user.id)
+                .order('created_at', { ascending: true }),
+        ]);
 
-        // Verify ownership before reading pigs.
-        const { data: batch, error: batchError } = await supabase
-            .from('pig_batches')
-            .select('id')
-            .eq('id', batchId)
-            .eq('owner_id', req.user.id)
-            .single();
+        const { data: batch, error: batchError } = batchResult;
+        const { data: pigs, error: pigsError } = pigsResult;
 
         if (batchError || !batch) {
             console.error('Batch fetch error:', batchError);
@@ -362,14 +371,6 @@ export const getPigsByBatch = async (req, res) => {
                 message: 'Batch not found',
             });
         }
-
-        // 2. Get existing pigs
-        const { data: pigs, error: pigsError } = await supabase
-            .from('pigs')
-            .select('*')
-            .eq('batch_id', batchId)
-            .eq('owner_id', req.user.id)
-            .order('created_at', { ascending: true });
 
         if (pigsError) {
             if (pigsError.message?.includes("'owner_id' column")) {
@@ -383,7 +384,8 @@ export const getPigsByBatch = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            data: pigs,
+            batch,
+            data: pigs || [],
         });
     } catch (error) {
         console.error('Error fetching pigs:', error);
