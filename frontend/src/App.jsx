@@ -46,6 +46,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     const initAuth = async () => {
       const token = localStorage.getItem('token');
       if (!token || token === 'null' || token === 'undefined') {
@@ -55,41 +56,51 @@ function App() {
         return;
       }
 
+      // Do not block the first screen on the settings request. Render the
+      // authenticated shell immediately, then invalidate the session only if
+      // the background validation explicitly returns 401.
+      setIsLoggedIn(true);
+      setIsLoading(false);
+
       try {
         const response = await fetch(`${API_BASE}/management/settings`, {
           headers: getAuthHeaders(),
         });
-
-        if (response.status === 401) {
+        if (!cancelled && response.status === 401) {
           localStorage.removeItem('token');
           setIsLoggedIn(false);
-          return;
         }
-
-        // Keep the existing session for temporary backend errors so the user
-        // does not lose the app shell while the API recovers.
-        setIsLoggedIn(true);
       } catch {
-        // Network failures should not turn a previously authenticated session
-        // into a logout; individual screens will show their error state.
-        setIsLoggedIn(true);
-      } finally {
-        setIsLoading(false);
+        // Keep the cached shell available during temporary network/cold-start failures.
       }
     };
     initAuth();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
     if (!isLoggedIn) return undefined;
 
     let cancelled = false;
-    preloadInitialData().catch((error) => {
-      if (!cancelled) console.warn('Initial data preload did not complete:', error.message);
-    });
+    const prefetch = () => {
+      if (cancelled) return;
+      preloadInitialData().catch((error) => {
+        if (!cancelled) console.warn('Initial data preload did not complete:', error.message);
+      });
+    };
+    const idleId = window.requestIdleCallback
+      ? window.requestIdleCallback(prefetch, { timeout: 2000 })
+      : window.setTimeout(prefetch, 1200);
 
     return () => {
       cancelled = true;
+      if (window.cancelIdleCallback && typeof idleId === 'number') {
+        window.cancelIdleCallback(idleId);
+      } else {
+        window.clearTimeout(idleId);
+      }
     };
   }, [isLoggedIn]);
 
