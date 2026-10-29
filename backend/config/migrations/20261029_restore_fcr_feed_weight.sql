@@ -128,8 +128,7 @@ BEGIN
         current_fcr = v_fcr,
         fcr_source = v_fcr_source,
         fcr_confidence = COALESCE(v_fcr_confidence, 'low'),
-        fcr_data_points = COALESCE(fcr_data_points, 0) + 1,
-        updated_at = now()
+        fcr_data_points = COALESCE(fcr_data_points, 0) + 1
     WHERE id = v_batch_id AND owner_id = p_owner_id
     RETURNING to_jsonb(pig_batches.*) INTO v_batch_row;
 
