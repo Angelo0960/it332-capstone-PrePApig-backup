@@ -508,12 +508,40 @@ export default function DashboardScreen() {
   // ---------- Loading state ----------
   if (loading) {
     return (
-      <div className="min-h-screen w-full relative overflow-hidden flex flex-col">
+      <div className="dashboard-screen mobile-screen-shell w-full relative overflow-hidden flex flex-col">
         <div className="absolute inset-0">
           <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover" />
         </div>
-        <div className="relative z-10 flex-1 flex items-center justify-center">
-          <div className="text-gray-700">Loading...</div>
+        <div className="dashboard-background-overlay absolute inset-0" />
+
+        <div className="mobile-screen-layer relative z-10 flex flex-col flex-1 min-h-0">
+          <div className="dashboard-header px-4 md:px-8 lg:px-12 pt-3 pb-3">
+            <div className="flex items-center justify-between animate-pulse">
+              <div className="h-7 w-32 rounded-lg bg-white/65" />
+              <div className="flex gap-2">
+                <div className="h-8 w-8 rounded-full bg-white/65" />
+                <div className="h-8 w-8 rounded-full bg-white/65" />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24">
+            <div className="dashboard-summary-grid grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 animate-pulse">
+              <div className="h-24 sm:col-span-2 rounded-2xl bg-white/65 border border-white/60" />
+              <div className="h-20 rounded-2xl bg-white/65 border border-white/60" />
+              <div className="h-20 rounded-2xl bg-white/65 border border-white/60" />
+            </div>
+
+            <div className="dashboard-progress-stack space-y-2 mb-4 animate-pulse">
+              <div className="h-20 rounded-xl bg-white/65 border border-white/60" />
+              <div className="h-20 rounded-xl bg-white/65 border border-white/60" />
+              <div className="h-20 rounded-xl bg-white/65 border border-white/60" />
+            </div>
+
+            <div className="dashboard-pig-hero flex items-center justify-center min-h-[8rem] mb-4 animate-pulse">
+              <div className="w-44 h-32 rounded-[40%] bg-white/55 border border-white/60" />
+            </div>
+          </div>
         </div>
         <BottomNav active="Home" />
       </div>
