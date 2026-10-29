@@ -339,6 +339,7 @@ textarea {
 
 
 .responsive-modal-overlay {
+  z-index: 60;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-top: max(1rem, env(safe-area-inset-top));
