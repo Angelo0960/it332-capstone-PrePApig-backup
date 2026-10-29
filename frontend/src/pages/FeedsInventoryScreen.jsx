@@ -60,6 +60,13 @@ const FEED_TYPE_MAP = {
   finisher: 'Finisher',
 };
 
+const InlineFieldError = ({ id, message }) => message ? (
+  <p id={id} className="mt-1 flex items-center gap-1 text-xs font-medium text-red-700" role="alert">
+    <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+    {message}
+  </p>
+) : null;
+
 export default function FeedsInventoryScreen() {
   const navigate = useNavigate();
 
@@ -80,6 +87,8 @@ export default function FeedsInventoryScreen() {
   const [feedStocks, setFeedStocks] = useState([]);
   const [feedExpenses, setFeedExpenses] = useState([]);
   const [pendingDone, setPendingDone] = useState({});
+  const [usageErrors, setUsageErrors] = useState({});
+  const [purchaseErrors, setPurchaseErrors] = useState({});
 
   const [usageForm, setUsageForm] = useState({
     batch: '',
@@ -272,6 +281,7 @@ export default function FeedsInventoryScreen() {
           });
         }
         setShowRecordUsage(false);
+        setUsageErrors({});
         setUsageForm({
           batch: '',
           feedType: '',
@@ -318,13 +328,17 @@ export default function FeedsInventoryScreen() {
 
   // ----- Modal submit -----
   const handleUsageSubmit = () => {
-    if (!usageForm.batch || !usageForm.feedType || !usageForm.amount) {
-      alert('Please fill in all required fields');
-      return;
-    }
+    const errors = {};
+    if (!usageForm.batch) errors.batch = 'Batch is required';
+    if (!usageForm.feedType) errors.feedType = 'Feed type is required';
+    if (!String(usageForm.amount).trim()) errors.amount = 'Amount is required';
+    if (!usageForm.date) errors.date = 'Date is required';
+    setUsageErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     const feedTypeName = FEED_TYPE_MAP[usageForm.feedType] || usageForm.feedType;
     if (!feedTypeName) {
-      alert('Invalid feed type selected');
+      setUsageErrors({ feedType: 'Select a valid feed type' });
       return;
     }
     const payload = {
@@ -340,14 +354,21 @@ export default function FeedsInventoryScreen() {
 
   // ----- Restock -----
   const handleAddPurchase = async () => {
+    const errors = {};
+    if (!purchaseForm.feedType) errors.feedType = 'Feed type is required';
+    if (!String(purchaseForm.quantity).trim()) errors.quantity = 'Quantity is required';
+    if (!purchaseForm.date) errors.date = 'Date is required';
+    setPurchaseErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     const feedType = FEED_TYPE_MAP[purchaseForm.feedType];
     if (!feedType) {
-      alert('Please select a feed type');
+      setPurchaseErrors({ feedType: 'Select a valid feed type' });
       return;
     }
     const quantity = parseFloat(purchaseForm.quantity);
-    if (isNaN(quantity) || quantity <= 0) {
-      alert('Please enter a valid quantity');
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      setPurchaseErrors({ quantity: 'Enter a quantity greater than 0' });
       return;
     }
     const unitCost = purchaseForm.unitCost.trim() === '' ? null : Number(purchaseForm.unitCost);
@@ -952,6 +973,7 @@ export default function FeedsInventoryScreen() {
                 <button
                   onClick={() => {
                     setShowRecordUsage(false);
+                    setUsageErrors({});
                     setUsageForm({
                       batch: '',
                       feedType: '',
@@ -968,12 +990,19 @@ export default function FeedsInventoryScreen() {
 
               <div className="p-5 space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">Batch</label>
-                  <select
-                    value={usageForm.batch}
-                    onChange={(e) => setUsageForm({ ...usageForm, batch: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  >
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Batch <span className="text-red-700" aria-hidden="true">*</span></label>
+                  <div className="relative">
+                    <select
+                      value={usageForm.batch}
+                      onChange={(e) => {
+                        setUsageForm({ ...usageForm, batch: e.target.value });
+                        setUsageErrors((current) => ({ ...current, batch: '' }));
+                      }}
+                      aria-required="true"
+                      aria-invalid={Boolean(usageErrors.batch)}
+                      aria-describedby={usageErrors.batch ? 'usage-batch-error' : undefined}
+                      className={`w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${usageErrors.batch ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
+                    >
                     <option value="">Select batch...</option>
                     {batches.map((b) => (
                       <option key={b.id} value={b.id}>
@@ -981,41 +1010,74 @@ export default function FeedsInventoryScreen() {
                       </option>
                     ))}
                   </select>
+                  {usageErrors.batch && <AlertTriangle className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
+                  </div>
+                  <InlineFieldError id="usage-batch-error" message={usageErrors.batch} />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">Feed Type</label>
-                  <select
-                    value={usageForm.feedType}
-                    onChange={(e) => setUsageForm({ ...usageForm, feedType: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  >
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Feed Type <span className="text-red-700" aria-hidden="true">*</span></label>
+                  <div className="relative">
+                    <select
+                      value={usageForm.feedType}
+                      onChange={(e) => {
+                        setUsageForm({ ...usageForm, feedType: e.target.value });
+                        setUsageErrors((current) => ({ ...current, feedType: '' }));
+                      }}
+                      aria-required="true"
+                      aria-invalid={Boolean(usageErrors.feedType)}
+                      aria-describedby={usageErrors.feedType ? 'usage-feed-type-error' : undefined}
+                      className={`w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${usageErrors.feedType ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
+                    >
                     <option value="">Select feed type...</option>
                     <option value="starter">Starter Mash</option>
                     <option value="grower">Grower Pellet</option>
                     <option value="finisher">Finisher</option>
                   </select>
+                  {usageErrors.feedType && <AlertTriangle className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
+                  </div>
+                  <InlineFieldError id="usage-feed-type-error" message={usageErrors.feedType} />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">Amount (kg)</label>
-                  <input
-                    type="number"
-                    value={usageForm.amount}
-                    onChange={(e) => setUsageForm({ ...usageForm, amount: e.target.value })}
-                    placeholder="48"
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  />
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Amount (kg) <span className="text-red-700" aria-hidden="true">*</span></label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={usageForm.amount}
+                      onChange={(e) => {
+                        setUsageForm({ ...usageForm, amount: e.target.value });
+                        setUsageErrors((current) => ({ ...current, amount: '' }));
+                      }}
+                      placeholder="48"
+                      aria-required="true"
+                      aria-invalid={Boolean(usageErrors.amount)}
+                      aria-describedby={usageErrors.amount ? 'usage-amount-error' : undefined}
+                      className={`w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${usageErrors.amount ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
+                    />
+                    {usageErrors.amount && <AlertTriangle className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
+                  </div>
+                  <InlineFieldError id="usage-amount-error" message={usageErrors.amount} />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">Date</label>
-                  <input
-                    type="date"
-                    value={usageForm.date}
-                    onChange={(e) => setUsageForm({ ...usageForm, date: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  />
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Date <span className="text-red-700" aria-hidden="true">*</span></label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={usageForm.date}
+                      onChange={(e) => {
+                        setUsageForm({ ...usageForm, date: e.target.value });
+                        setUsageErrors((current) => ({ ...current, date: '' }));
+                      }}
+                      aria-required="true"
+                      aria-invalid={Boolean(usageErrors.date)}
+                      aria-describedby={usageErrors.date ? 'usage-date-error' : undefined}
+                      className={`w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${usageErrors.date ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
+                    />
+                    {usageErrors.date && <AlertTriangle className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
+                  </div>
+                  <InlineFieldError id="usage-date-error" message={usageErrors.date} />
                 </div>
 
                 <div>
