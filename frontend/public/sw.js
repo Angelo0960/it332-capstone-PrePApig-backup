@@ -1,4 +1,4 @@
-const CACHE_NAME = 'prepapig-shell-v1';
+const CACHE_NAME = 'prepapig-shell-v2';
 const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/pwa-192.svg', '/pwa-512.svg', '/favicon.svg'];
 
 self.addEventListener('install', (event) => {
@@ -51,7 +51,10 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       });
-      return cached || network;
+      return cached || network.catch(() => new Response('', {
+        status: 503,
+        statusText: 'Offline',
+      }));
     })
   );
 });

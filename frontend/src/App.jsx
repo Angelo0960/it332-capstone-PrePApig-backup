@@ -98,14 +98,17 @@ function App() {
       const token = localStorage.getItem('token');
       if (!token || token === 'null' || token === 'undefined') return;
 
+      let pushEnabled = true;
       try {
         const response = await fetch(`${API_BASE}/management/settings`, { headers: getAuthHeaders() });
-        if (!response.ok) return;
-        const settings = await response.json();
-        if (!settings.preferences.push_enabled) return;
-      } catch {
-        return;
+        if (response.ok) {
+          const settings = await response.json();
+          pushEnabled = settings.preferences?.push_enabled !== false;
+        }
+      } catch (error) {
+        console.warn('Notification preferences unavailable; continuing token setup:', error.message);
       }
+      if (!pushEnabled) return;
       const { generateToken, onMessageListener } = await import('./services/firebase.js');
       const fcmToken = await generateToken();
       if (fcmToken) {
@@ -130,7 +133,7 @@ function App() {
         window.clearTimeout(idleId);
       }
     };
-  }, []);
+  }, [isLoggedIn]);
 
   const ProtectedRoute = ({ children }) => {
     return isLoggedIn ? children : <Navigate to="/" replace />;
