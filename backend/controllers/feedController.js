@@ -45,7 +45,11 @@ export const createFeedRecord = async (req, res) => {
             success: true,
             data: savedRecord ? [savedRecord] : [],
             batch: result?.batch || null,
+            weight_gain: Number(result?.weight_gain || 0),
             weight_gain_per_pig: Number(result?.weight_gain_per_pig || 0),
+            fcr: Number(result?.fcr || 0),
+            fcr_source: result?.fcr_source || null,
+            phase: result?.phase || null,
             pig_count: Number(result?.pig_count || 0),
         });
 
