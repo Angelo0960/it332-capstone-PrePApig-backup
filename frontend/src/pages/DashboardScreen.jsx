@@ -15,6 +15,7 @@ import {
   Trash2,
   Pencil,
   Users,
+  AlertTriangle,
 } from 'lucide-react';
 import pigImage from '../../src/assets/Gemini_Generated_Image_92oun292oun292ou-removebg-preview (1).webp';
 import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.webp';
@@ -45,6 +46,13 @@ const FeedSack = ({ className = '' }) => (
     <path d="M9 11h6M9.3 14h5.4M9.8 17h4.4" />
   </svg>
 );
+
+const FieldError = ({ id, message }) => message ? (
+  <p id={id} className="mt-1 flex items-center gap-1 text-xs font-medium text-red-700" role="alert">
+    <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+    {message}
+  </p>
+) : null;
 
 const getCachedDashboardBatches = () => {
   try {
@@ -98,6 +106,7 @@ export default function DashboardScreen() {
   const [showAddBatch, setShowAddBatch] = useState(false);
   const [isAddingBatch, setIsAddingBatch] = useState(false);
   const [showBreedOptions, setShowBreedOptions] = useState(false);
+  const [batchFieldErrors, setBatchFieldErrors] = useState({});
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
   const touchStartX = useRef(null);
@@ -465,11 +474,18 @@ export default function DashboardScreen() {
   }
 
   // ---------- Handle adding a batch ----------
+  const validateBatchFields = () => {
+    const errors = {};
+    if (!String(newBatch.pig_count).trim()) errors.pig_count = 'Number of pigs is required';
+    if (!String(newBatch.breed).trim()) errors.breed = 'Breed is required';
+    if (newBatch.age_on_acquisition === '') errors.age_on_acquisition = 'Pig age is required';
+    if (!String(newBatch.start_weight).trim()) errors.start_weight = 'Start weight is required';
+    setBatchFieldErrors(errors);
+    return errors;
+  };
+
   const handleAddBatch = async () => {
-    if (!newBatch.pig_count || !newBatch.start_weight || newBatch.age_on_acquisition === '') {
-      alert('Please fill in all required fields (Number of Pigs, Pig Age, Start Weight)');
-      return;
-    }
+    if (Object.keys(validateBatchFields()).length > 0) return;
 
     const dateAcquired = newBatch.date_acquired || getDateAcquiredFromAge(newBatch.age_on_acquisition);
 
@@ -498,6 +514,7 @@ export default function DashboardScreen() {
       if (json.success) {
         setShowAddBatch(false);
         setShowBreedOptions(false);
+        setBatchFieldErrors({});
         setNewBatch({ pig_count: '', breed: '', age_on_acquisition: '', start_weight: '', date_acquired: '', status: 'Active' });
         void fetchBatches();
       } else {
@@ -843,6 +860,7 @@ export default function DashboardScreen() {
                   onClick={() => {
                     setShowAddBatch(false);
                     setShowBreedOptions(false);
+                    setBatchFieldErrors({});
                     setNewBatch({
                       pig_count: '',
                       breed: '',
@@ -868,31 +886,45 @@ export default function DashboardScreen() {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-2">
-                    Number of Pigs
+                    Number of Pigs <span className="text-red-700" aria-hidden="true">*</span>
                   </label>
-                  <input
-                    type="number"
-                    value={newBatch.pig_count}
-                    onChange={(e) => setNewBatch({ ...newBatch, pig_count: e.target.value })}
-                    placeholder="12"
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  />
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={newBatch.pig_count}
+                      onChange={(e) => {
+                        setNewBatch({ ...newBatch, pig_count: e.target.value });
+                        setBatchFieldErrors((current) => ({ ...current, pig_count: '' }));
+                      }}
+                      placeholder="12"
+                      aria-required="true"
+                      aria-invalid={Boolean(batchFieldErrors.pig_count)}
+                      aria-describedby={batchFieldErrors.pig_count ? 'pig-count-error' : undefined}
+                      className={`w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${batchFieldErrors.pig_count ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
+                    />
+                    {batchFieldErrors.pig_count && <AlertTriangle className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
+                  </div>
+                  <FieldError id="pig-count-error" message={batchFieldErrors.pig_count} />
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-2">
-                    Breed
+                    Breed <span className="text-red-700" aria-hidden="true">*</span>
                   </label>
                   <div className="relative">
                     <button
                       type="button"
                       aria-haspopup="listbox"
                       aria-expanded={showBreedOptions}
+                      aria-required="true"
+                      aria-invalid={Boolean(batchFieldErrors.breed)}
+                      aria-describedby={batchFieldErrors.breed ? 'breed-error' : undefined}
                       onClick={() => setShowBreedOptions((open) => !open)}
-                      className="add-batch-breed-select w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 text-left focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
+                      className={`add-batch-breed-select w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 text-left focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${batchFieldErrors.breed ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
                     >
                       {newBatch.breed || 'Select breed...'}
                     </button>
+                    {batchFieldErrors.breed && <AlertTriangle className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
                     {showBreedOptions && (
                       <div className="add-batch-breed-options absolute left-0 right-0 top-full mt-2 z-30 rounded-xl p-1">
                         <button
@@ -901,6 +933,7 @@ export default function DashboardScreen() {
                           aria-selected={!newBatch.breed}
                           onClick={() => {
                             setNewBatch((current) => ({ ...current, breed: '' }));
+                            setBatchFieldErrors((current) => ({ ...current, breed: '' }));
                             setShowBreedOptions(false);
                           }}
                           className="add-batch-breed-option w-full text-left px-3 py-2 rounded-lg text-sm"
@@ -915,6 +948,7 @@ export default function DashboardScreen() {
                             key={breed}
                             onClick={() => {
                               setNewBatch((current) => ({ ...current, breed }));
+                              setBatchFieldErrors((current) => ({ ...current, breed: '' }));
                               setShowBreedOptions(false);
                             }}
                             className="add-batch-breed-option w-full text-left px-3 py-2 rounded-lg text-sm"
@@ -925,41 +959,60 @@ export default function DashboardScreen() {
                       </div>
                     )}
                   </div>
+                  <FieldError id="breed-error" message={batchFieldErrors.breed} />
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-2">
-                    Pig Age (days)
+                    Pig Age (days) <span className="text-red-700" aria-hidden="true">*</span>
                   </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={newBatch.age_on_acquisition}
-                    onChange={(e) => {
-                      const age = e.target.value;
-                      setNewBatch((current) => ({
-                        ...current,
-                        age_on_acquisition: age,
-                        date_acquired: age === '' ? '' : getDateAcquiredFromAge(age),
-                      }));
-                    }}
-                    placeholder="e.g. 30"
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  />
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      value={newBatch.age_on_acquisition}
+                      onChange={(e) => {
+                        const age = e.target.value;
+                        setNewBatch((current) => ({
+                          ...current,
+                          age_on_acquisition: age,
+                          date_acquired: age === '' ? '' : getDateAcquiredFromAge(age),
+                        }));
+                        setBatchFieldErrors((current) => ({ ...current, age_on_acquisition: '' }));
+                      }}
+                      placeholder="e.g. 30"
+                      aria-required="true"
+                      aria-invalid={Boolean(batchFieldErrors.age_on_acquisition)}
+                      aria-describedby={batchFieldErrors.age_on_acquisition ? 'age-error' : undefined}
+                      className={`w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${batchFieldErrors.age_on_acquisition ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
+                    />
+                    {batchFieldErrors.age_on_acquisition && <AlertTriangle className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
+                  </div>
+                  <FieldError id="age-error" message={batchFieldErrors.age_on_acquisition} />
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-2">
-                    Start Weight (kg)
+                    Start Weight (kg) <span className="text-red-700" aria-hidden="true">*</span>
                   </label>
-                  <input
-                    type="number"
-                    value={newBatch.start_weight}
-                    onChange={(e) => setNewBatch({ ...newBatch, start_weight: e.target.value })}
-                    placeholder="15"
-                    step="0.1"
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  />
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={newBatch.start_weight}
+                      onChange={(e) => {
+                        setNewBatch({ ...newBatch, start_weight: e.target.value });
+                        setBatchFieldErrors((current) => ({ ...current, start_weight: '' }));
+                      }}
+                      placeholder="15"
+                      step="0.1"
+                      aria-required="true"
+                      aria-invalid={Boolean(batchFieldErrors.start_weight)}
+                      aria-describedby={batchFieldErrors.start_weight ? 'start-weight-error' : undefined}
+                      className={`w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${batchFieldErrors.start_weight ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
+                    />
+                    {batchFieldErrors.start_weight && <AlertTriangle className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
+                  </div>
+                  <FieldError id="start-weight-error" message={batchFieldErrors.start_weight} />
                 </div>
 
                 <div>
