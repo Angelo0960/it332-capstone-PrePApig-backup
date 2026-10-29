@@ -2,6 +2,11 @@
 -- Run this in the Supabase SQL Editor before using Add Batch.
 BEGIN;
 
+ALTER TABLE public.pig_batches ADD COLUMN IF NOT EXISTS owner_id uuid;
+ALTER TABLE public.pig_batches ADD COLUMN IF NOT EXISTS age_on_acquisition integer;
+ALTER TABLE public.pig_batches ADD COLUMN IF NOT EXISTS sale_price_per_kg numeric;
+ALTER TABLE public.pigs ADD COLUMN IF NOT EXISTS owner_id uuid;
+
 CREATE OR REPLACE FUNCTION public.create_batch_with_pigs(p_owner_id uuid, p_batch jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql
