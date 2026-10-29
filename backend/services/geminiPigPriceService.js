@@ -1,12 +1,14 @@
 import 'dotenv/config';
 
-const DEFAULT_MODEL = 'gemini-3.8-flash';
+const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 
 const normalizeModel = (value) => {
   const configured = String(value || '').trim();
-  // Gemini 2.5 Flash is access-limited for newer projects; use the current
-  // stable Flash model when an old Render value is still configured.
-  return configured === 'gemini-2.5-flash' ? DEFAULT_MODEL : configured || DEFAULT_MODEL;
+  // Normalize the previous defaults so existing Render values switch to the
+  // requested low-latency Flash-Lite model without requiring a secret change.
+  return ['gemini-2.5-flash', 'gemini-3.8-flash'].includes(configured)
+    ? DEFAULT_MODEL
+    : configured || DEFAULT_MODEL;
 };
 
 const getConfiguredApiKey = () =>

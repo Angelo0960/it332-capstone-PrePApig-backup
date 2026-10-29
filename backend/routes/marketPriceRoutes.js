@@ -29,8 +29,11 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
     const locations = Array.isArray(req.body?.locations) && req.body.locations.length > 0
       ? req.body.locations
       : priceData.priceSourceLocations;
+    const configuredGeminiModel = ['gemini-2.5-flash', 'gemini-3.5-flash', 'gemini-3.8-flash'].includes(process.env.GEMINI_MODEL)
+      ? 'gemini-3.5-flash-lite'
+      : process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
     const configuredModel = process.env.GEMINI_API_KEY
-      ? process.env.GEMINI_MODEL || 'gemini-3.8-flash'
+      ? configuredGeminiModel
       : process.env.OPENROUTER_MODEL || process.env.OPENAI_MODEL || 'openrouter/free';
     console.log(JSON.stringify({
       event: 'pig_price_ai_started',
