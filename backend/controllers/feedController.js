@@ -104,9 +104,12 @@ export const createFeedRecord = async (req, res) => {
 
     } catch (error) {
         console.error('Error in createFeedRecord:', error);
-        res.status(500).json({
+        const permissionDenied = error.message?.toLowerCase().includes('permission denied for function create_feed_record_with_weight_gain');
+        res.status(permissionDenied ? 503 : 500).json({
             success: false,
-            message: error.message
+            message: permissionDenied
+                ? 'Feed RPC permission is not configured. Run backend/config/migrations/20261029_repair_feed_weight_rpc_grant.sql in Supabase, then retry.'
+                : error.message
         });
     }
 };
