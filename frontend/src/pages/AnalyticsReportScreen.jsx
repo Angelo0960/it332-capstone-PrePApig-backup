@@ -193,9 +193,11 @@ export default function AnalyticsReportsScreen() {
       if (err.name === 'AbortError') return;
       setAiAnalysis(null);
       setAiAnalysisError(
-        (err.message.includes('API key is not configured') || err.message.includes('No AI provider is configured'))
-          ? 'No AI provider is configured on the backend. Add OPENROUTER_API_KEY or OPENAI_API_KEY to the Render backend environment variables, then redeploy.'
-          : err.message
+        err instanceof TypeError || err.message === 'Failed to fetch'
+          ? 'Unable to reach the AI service. Check the deployed backend URL, CORS configuration, and Render deployment.'
+          : (err.message.includes('API key is not configured') || err.message.includes('No AI provider is configured'))
+            ? 'Gemini is not configured on the backend. Add GEMINI_API_KEY to the Render backend environment variables, then redeploy.'
+            : err.message
       );
     } finally {
       setAiAnalysisLoading(false);

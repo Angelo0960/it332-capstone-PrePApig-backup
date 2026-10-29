@@ -25,6 +25,8 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
 
 const app = express();
 
+const isAllowedVercelOrigin = (origin) => /^https:\/\/it332-capstone-pre-p-apig-backup(?:-[a-z0-9-]+)?\.vercel\.app$/i.test(origin);
+
 const allowedOrigins = [
   "http://localhost:5173",
   "https://it332-capstone-pre-p-apig-backup.vercel.app",
@@ -37,7 +39,7 @@ app.use(
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
+      if (allowedOrigins.includes(origin) || isAllowedVercelOrigin(origin)) {
         return callback(null, true);
       }
 
