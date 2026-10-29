@@ -46,6 +46,14 @@ const FeedSack = ({ className = '' }) => (
   </svg>
 );
 
+const getCachedDashboardBatches = () => {
+  try {
+    const cached = JSON.parse(localStorage.getItem(`prepapig:batches:${getUserCacheKey()}`) || 'null');
+    return Array.isArray(cached) ? cached : [];
+  } catch {
+    return [];
+  }
+};
 const getDateAcquiredFromAge = (ageDays) => {
   const date = new Date();
   date.setDate(date.getDate() - Math.max(0, Number.parseInt(ageDays, 10) || 0));
@@ -83,8 +91,8 @@ const getUserFromToken = () => {
 export default function DashboardScreen() {
   const navigate = useNavigate();
 
-  const [batches, setBatches] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [batches, setBatches] = useState(getCachedDashboardBatches);
+  const [loading, setLoading] = useState(() => getCachedDashboardBatches().length === 0);
   const [error, setError] = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAddBatch, setShowAddBatch] = useState(false);
@@ -221,7 +229,7 @@ export default function DashboardScreen() {
 
   // ---------- Fetch batches ----------
   const fetchBatches = async () => {
-    setLoading(true);
+    if (batches.length === 0) setLoading(true);
     setError(null);
     const cacheKey = `prepapig:batches:${user?.id || 'current'}`;
     let renderedCache = false;
