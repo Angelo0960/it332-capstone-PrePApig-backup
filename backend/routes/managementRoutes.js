@@ -8,7 +8,14 @@ const fail = (message, status = 400) => Object.assign(new Error(message), { stat
 const run = (fn) => async (req, res, next) => { try { await fn(req, res); } catch (error) { next(error); } };
 const uuid = (value) => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const date = (value) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
-const check = (result) => { if (result.error) throw fail(result.error.code === '23514' ? result.error.message : 'Database operation failed', result.error.code === '23514' ? 400 : 500); return result.data; };
+const check = (result, context = 'supabase_operation') => {
+ if (result.error) {
+  console.error(JSON.stringify({ event: 'management_supabase_error', context, code: result.error.code || null, message: result.error.message || 'unknown', hint: result.error.hint || null }));
+  const relationMissing = result.error.code === '42P01' || /does not exist|relation .* not found/i.test(result.error.message || '');
+  throw fail(relationMissing ? `Required database table is unavailable for ${context}; apply the farm-management migration` : 'Database operation failed', relationMissing ? 503 : 500);
+ }
+ return result.data;
+};
 const profileFields = ['first_name', 'middle_name', 'last_name', 'phone_number', 'farm_name', 'farm_address'];
 const preferenceFields = ['feed_reminders', 'vaccination_reminders', 'push_enabled'];
 const defaults = { feed_reminders: true, vaccination_reminders: true, push_enabled: true };
@@ -24,8 +31,8 @@ function pick(body, fields, required = []) {
  return result;
 }
 router.get('/settings', run(async (req, res) => {
- const profile = check(await supabase.from('profiles').select(`id,email,${profileFields.join(',')}`).eq('id', req.user.id).single());
- const preferences = check(await supabase.from('notification_preferences').select(preferenceFields.join(',')).eq('user_id', req.user.id).maybeSingle());
+ const profile = check(await supabase.from('profiles').select(`id,email,${profileFields.join(',')}`).eq('id', req.user.id).single(), 'profiles.settings');
+ const preferences = check(await supabase.from('notification_preferences').select(preferenceFields.join(',')).eq('user_id', req.user.id).maybeSingle(), 'notification_preferences.settings');
  res.json({ success: true, profile, preferences: preferences || defaults });
 }));
 router.put('/settings/profile', run(async (req, res) => {

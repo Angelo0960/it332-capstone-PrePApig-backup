@@ -26,7 +26,10 @@ export const api = {
       body: JSON.stringify({ email, password }),
     });
 
-    if (!res.ok) throw new Error('Login failed');
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null);
+      throw new Error(payload?.message || `Login failed (${res.status})`);
+    }
 
     return res.json();
   },

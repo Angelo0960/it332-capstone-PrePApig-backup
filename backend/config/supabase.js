@@ -3,10 +3,10 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!process.env.SUPABASE_URL || !supabaseKey) {
-  throw new Error('Supabase environment variables are not configured');
+  throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured; the backend cannot use SUPABASE_ANON_KEY for server operations');
 }
 
 const supabase = createClient(process.env.SUPABASE_URL, supabaseKey, {

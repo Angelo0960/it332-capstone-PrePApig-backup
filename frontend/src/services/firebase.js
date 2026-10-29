@@ -14,11 +14,18 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const messaging = getMessaging(app);
 
-export const generateToken = async () => {
+export const generateToken = async ({ requestPermission = false } = {}) => {
   try {
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-      console.log("❌ Notification permission denied");
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+      console.warn('Browser notifications are not supported');
+      return null;
+    }
+    let permission = Notification.permission;
+    if (permission === 'default' && requestPermission) {
+      permission = await Notification.requestPermission();
+    }
+    if (permission !== 'granted') {
+      console.log('Notification permission is not granted');
       return null;
     }
     const registration = await navigator.serviceWorker.register(

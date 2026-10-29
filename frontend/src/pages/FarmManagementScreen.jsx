@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { API_BASE, getAuthHeaders } from '../api.js';
+import { API_BASE, getAuthHeaders, registerFcmToken } from '../api.js';
 import BottomNav from '../components/BottomNav.jsx';
 
 const glass = 'bg-white/30 backdrop-blur-xl rounded-2xl border border-white/40 p-4 shadow-lg';
@@ -60,6 +60,15 @@ export default function FarmManagementScreen({ section = 'mortality' }) {
   setBusy(true); setError(''); setMessage('');
   try { await work(); } catch (err) { setError(err.message); } finally { setBusy(false); }
  }
+ async function enableNotifications() {
+  await act(async () => {
+   const { generateToken } = await import('../services/firebase.js');
+   const token = await generateToken({ requestPermission: true });
+   if (!token) throw new Error('Browser notifications were not enabled. Check the site permission in your browser.');
+   await registerFcmToken(token);
+   setMessage('Browser notifications enabled.');
+  });
+ }
  const change = (event) => setForm({ ...form, [event.target.name]: event.target.value });
  async function save(event) {
   event.preventDefault();
@@ -102,7 +111,7 @@ export default function FarmManagementScreen({ section = 'mortality' }) {
    <form className={`${glass} space-y-3`} onSubmit={(event) => { event.preventDefault(); act(async () => { const fields = ['first_name', 'middle_name', 'last_name', 'phone_number', 'farm_name', 'farm_address']; const result = await request('/management/settings/profile', 'PUT', Object.fromEntries(fields.map((field) => [field, profile[field] || '']))); setProfile(result.data); setMessage('Profile and farm settings saved.'); }); }}>
     <h2 className="font-semibold">Profile & farm</h2><p>{profile.email}</p>{['first_name', 'middle_name', 'last_name', 'phone_number', 'farm_name', 'farm_address'].map((field) => <Field key={field} name={field} value={profile[field]} onChange={(event) => setProfile({ ...profile, [field]: event.target.value })} />)}<button className={button} disabled={busy || !loaded}>Save settings</button>
    </form>
-   <form className={`${glass} space-y-3`} onSubmit={(event) => { event.preventDefault(); act(async () => { await request('/management/settings/notifications', 'PUT', preferences); setMessage('Notification preferences saved.'); }); }}><h2 className="font-semibold">Notification preferences</h2>{['feed_reminders', 'vaccination_reminders', 'push_enabled'].map((field) => <label className="flex gap-3" key={field}><input type="checkbox" checked={preferences[field] ?? false} onChange={(event) => setPreferences({ ...preferences, [field]: event.target.checked })} />{field.replaceAll('_', ' ')}</label>)}<p className="text-sm">Push delivery also requires browser permission. Reminder switches control future in-app and push reminders.</p><button className={button} disabled={busy || !loaded}>Save preferences</button></form>
+   <form className={`${glass} space-y-3`} onSubmit={(event) => { event.preventDefault(); act(async () => { await request('/management/settings/notifications', 'PUT', preferences); setMessage('Notification preferences saved.'); }); }}><h2 className="font-semibold">Notification preferences</h2>{['feed_reminders', 'vaccination_reminders', 'push_enabled'].map((field) => <label className="flex gap-3" key={field}><input type="checkbox" checked={preferences[field] ?? false} onChange={(event) => setPreferences({ ...preferences, [field]: event.target.checked })} />{field.replaceAll('_', ' ')}</label>)}<p className="text-sm">Push delivery also requires browser permission. Reminder switches control future in-app and push reminders.</p><button type="button" className={button} disabled={busy || !loaded} onClick={enableNotifications}>Enable browser notifications</button><button className={button} disabled={busy || !loaded}>Save preferences</button></form>
    <section className={`${glass} space-y-3`}><h2 className="font-semibold">JSON backup & validation</h2><p className="text-sm">Export stored farm records for this account. Credentials and device tokens are excluded. Reads are live, not a transactional snapshot. Validation checks structure and ownership; it does not import or restore records.</p>
     <button className={button} disabled={busy} onClick={() => act(async () => { const data = await request('/management/backup'); const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `prepapig-${new Date().toISOString().slice(0, 10)}.json`; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); setMessage('JSON export downloaded.'); })}>Download JSON export</button>
     <label className="block">Validate an export<input className={input} type="file" accept=".json,application/json" disabled={busy} onChange={(event) => { const file = event.target.files?.[0]; setValidation(null); if (file) act(async () => { if (file.size > 900000) throw new Error('Validation currently supports files up to 900 KB. Larger exports can be downloaded but cannot be validated here.'); const result = await request('/management/backup/validate', 'POST', JSON.parse(await file.text())); setValidation(result); }); event.target.value = ''; }} /></label>
