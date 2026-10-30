@@ -117,13 +117,7 @@ textarea {
     border-radius: 1rem;
   }
 
-  .dashboard-summary-grid > div:first-child {
-    grid-column: 1 / -1;
-    min-height: 4.75rem;
-  }
-
-  .dashboard-summary-grid > div:nth-child(2),
-  .dashboard-summary-grid > div:nth-child(3) {
+  .dashboard-summary-grid > div {
     min-height: 4.5rem;
   }
 
