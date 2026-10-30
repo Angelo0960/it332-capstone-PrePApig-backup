@@ -34,11 +34,18 @@ export default function BatchPigsScreen() {
   // Fetch pigs and batch metadata together, hydrating cached pigs first.
   const fetchPigs = async () => {
     const cacheKey = `prepapig:pigs:${getUserCacheKey()}:${batchId}`;
+    const batchCacheKey = `prepapig:pig-batch:${getUserCacheKey()}:${batchId}`;
     let renderedCache = false;
     try {
       const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+      const cachedBatch = JSON.parse(localStorage.getItem(batchCacheKey) || 'null');
       if (Array.isArray(cached)) {
         setPigs(cached);
+        if (cachedBatch) {
+          setBatchName(cachedBatch.batch_code || 'Batch');
+          const cachedPrice = Number(cachedBatch.sale_price_per_kg);
+          if (cachedPrice > 0) setLiveWeightPrice(cachedPrice);
+        }
         setLoading(false);
         renderedCache = true;
       }
@@ -61,6 +68,7 @@ export default function BatchPigsScreen() {
       const batchPrice = Number(json.batch?.sale_price_per_kg);
       setLiveWeightPrice(selectedPrice > 0 ? selectedPrice : batchPrice > 0 ? batchPrice : DEFAULT_LIVEWEIGHT_PRICE_PER_KG);
       localStorage.setItem(cacheKey, JSON.stringify(nextPigs));
+      localStorage.setItem(batchCacheKey, JSON.stringify(json.batch || null));
     } catch (err) {
       if (!renderedCache) setError(err.message);
     } finally {

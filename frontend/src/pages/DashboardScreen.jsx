@@ -37,6 +37,26 @@ const FieldError = ({ id, message }) => message ? (
   </p>
 ) : null;
 
+const pigPrefetches = new Map();
+const prefetchIndividualPigs = (batchId) => {
+  if (!batchId) return;
+  import('./BatchPigsScreen.jsx');
+  const cacheKey = `prepapig:pigs:${getUserCacheKey()}:${batchId}`;
+  if (localStorage.getItem(cacheKey)) return;
+  if (pigPrefetches.has(batchId)) return;
+  const request = fetch(`${API_BASE}/pigs/batch/${batchId}/pigs`, { headers: getAuthHeaders() })
+    .then((res) => res.ok ? res.json() : null)
+    .then((json) => {
+      if (json?.success && Array.isArray(json.data)) {
+        localStorage.setItem(cacheKey, JSON.stringify(json.data));
+        localStorage.setItem(`prepapig:pig-batch:${getUserCacheKey()}:${batchId}`, JSON.stringify(json.batch || null));
+      }
+    })
+    .catch(() => {})
+    .finally(() => pigPrefetches.delete(batchId));
+  pigPrefetches.set(batchId, request);
+};
+
 const getCachedDashboardBatches = () => {
   try {
     const cached = JSON.parse(localStorage.getItem(`prepapig:batches:${getUserCacheKey()}`) || 'null');
@@ -644,7 +664,7 @@ export default function DashboardScreen() {
                 <div className="relative z-10 max-w-[58%]">
                   <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#777D8D]">Current batch</p>
                   <h2 className="text-3xl font-extrabold tracking-[-0.05em] text-[#252838] sm:text-4xl">{currentBatch.name}</h2>
-                  <button onClick={() => navigate(`/batch/${currentBatch.id}/pigs`)} className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-[#6C63FF] px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#6C63FF]/25 transition hover:-translate-y-0.5">
+                  <button onClick={() => navigate(`/batch/${currentBatch.id}/pigs`)} onPointerEnter={() => prefetchIndividualPigs(currentBatch.id)} onFocus={() => prefetchIndividualPigs(currentBatch.id)} onTouchStart={() => prefetchIndividualPigs(currentBatch.id)} className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-[#6C63FF] px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#6C63FF]/25 transition hover:-translate-y-0.5">
                     <Users className="w-4 h-4" /> View individual pigs
                   </button>
                 </div>
