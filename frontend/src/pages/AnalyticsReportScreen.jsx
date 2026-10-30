@@ -344,6 +344,9 @@ export default function AnalyticsReportsScreen() {
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.message || 'Financial report unavailable');
       setFinancial(result.data);
+      setFinancialError(result.data.salesAvailable === false
+        ? 'Recorded sales are unavailable because the harvest sales ledger is not accessible. Apply the financial migrations in Supabase SQL Editor.'
+        : null);
       writeCache(financialCacheKey, result.data);
     }).catch((err) => {
       if (err.name !== 'AbortError') setFinancialError('Recorded financial results unavailable. Please refresh.');

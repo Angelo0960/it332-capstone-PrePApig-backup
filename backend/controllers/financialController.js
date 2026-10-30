@@ -19,6 +19,7 @@ export const getFinancialReport = async (req, res) => {
         if (expensesResult.status === 'rejected') throw expensesResult.reason;
 
         const salesAvailable = salesResult.status === 'fulfilled';
+        const salesError = salesAvailable ? null : String(salesResult.reason?.message || 'harvest_sales query failed');
         const sales = salesAvailable ? salesResult.value : [];
         const expenses = expensesResult.value;
         const months = new Map();
@@ -41,6 +42,7 @@ export const getFinancialReport = async (req, res) => {
             from, to, actualRevenue, recordedExpenses, recordedProfit,
             saleCount: salesAvailable ? sales.length : null,
             salesAvailable,
+            salesError,
             basis: salesAvailable
                 ? 'Recorded sales minus recorded expenses by transaction date. Excludes unrecorded costs; not full accounting profit.'
                 : 'Recorded expenses loaded. Recorded sales are unavailable until the harvest_sales migration/table is available.',
