@@ -730,6 +730,15 @@ export default function AnalyticsReportsScreen() {
                   </span>
                 </div>
                 <p className="text-xs text-gray-600">Facebook public listings for farmgate prices per kg across nearby markets</p>
+                {facebookPriceSources.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[10px] text-gray-500">
+                    {facebookPriceSources.map((source) => (
+                      <a key={source.location} href={source.url} target="_blank" rel="noreferrer" className="text-violet-600 underline">
+                        {source.location} Facebook search
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
               <button
                 type="button"
