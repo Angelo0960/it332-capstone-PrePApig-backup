@@ -8,11 +8,6 @@ import {
   Share,
   Home,
   FileText,
-  MapPin,
-  Radio,
-  Sparkles,
-  RefreshCw,
-
   ChevronDown,
 
 } from 'lucide-react';
@@ -90,7 +85,7 @@ export default function AnalyticsReportsScreen() {
 
   // --- Report modal state ---
   const aiAbortController = useRef(null);
-  const autoAiAnalysisRequested = useRef(false);
+
 
   const getDateQuery = () => {
     const end = new Date();
@@ -296,8 +291,6 @@ export default function AnalyticsReportsScreen() {
   useEffect(() => {
     const controller = new AbortController();
     fetchAllData(controller.signal);
-    fetchPigPriceBasis(controller.signal);
-    void fetchMarketHistory();
     return () => controller.abort();
   }, [dateRange]);
 
@@ -307,11 +300,6 @@ export default function AnalyticsReportsScreen() {
     return () => controller.abort();
   }, [selectedBatch, batches]);
 
-  useEffect(() => {
-    if (autoAiAnalysisRequested.current || !pigPriceReference || pigPriceLocations.length < 3) return;
-    autoAiAnalysisRequested.current = true;
-    void requestAiPriceAnalysis(pigPriceLocations);
-  }, [pigPriceReference, pigPriceLocations]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -662,125 +650,6 @@ export default function AnalyticsReportsScreen() {
                 {selectedBatch === 'All Batches' ? 'Total batches' : selectedBatch}
               </div>
             </div>
-          </div>
-
-          {/* Live web pig price analysis */}
-          <div className="bg-white/45 backdrop-blur-xl rounded-[1.75rem] border border-white/60 p-4 shadow-lg mb-4">
-            <div className="flex items-start justify-between gap-3 mb-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-gray-900">Live Hog Price Analysis</h3>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
-                    <Radio size={10} /> {aiAnalysisLoading ? 'Updating' : livePricePoints.length > 0 ? 'Live' : 'Search'}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-600">Farmgate prices per kg across nearby markets</p>
-              </div>
-              <button
-                type="button"
-                onClick={refreshMarketPrices}
-                disabled={marketRefreshLoading || aiAnalysisLoading}
-                className="inline-flex items-center gap-1 rounded-xl bg-violet-600 px-3 py-2 text-[10px] font-bold text-white shadow-md transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <RefreshCw size={13} className={marketRefreshLoading ? 'animate-spin' : ''} />
-                {marketRefreshLoading ? 'Refreshing' : 'Refresh prices'}
-              </button>
-            </div>
-            <div className="space-y-2">
-              {pricePoints.map((point) => {
-                const isSelected = point.location === selectedPriceLocation;
-                const isHighest = highestLivePrice?.location === point.location;
-                return (
-                  <button
-                    key={point.location}
-                    type="button"
-                    onClick={() => point.pricePhpPerKg != null && setSelectedPriceLocation(point.location)}
-                    className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-all ${
-                      isSelected
-                        ? 'border-violet-300 bg-violet-50/80 ring-2 ring-violet-200'
-                        : 'border-white/70 bg-white/65 hover:bg-white/85'
-                    }`}
-                  >
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-50 text-gray-500">
-                      <MapPin size={16} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-center gap-2 text-xs font-semibold text-gray-900">
-                        {point.location}
-                        {isHighest && <span className="rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold text-white">BEST FOUND</span>}
-                      </span>
-                      <span className="mt-1 block truncate text-[10px] text-gray-500">
-                        {point.pricePhpPerKg == null ? point.source || 'No qualifying public result' : `${point.unit || 'PHP/kg liveweight'} · ${point.period || priceUpdatedLabel}`}
-                      </span>
-                      {point.sourceUrl && point.sourceUrl !== 'unavailable' && (
-                        <a href={point.sourceUrl} target="_blank" rel="noreferrer" className="mt-1 block truncate text-[10px] text-violet-600 underline" onClick={(event) => event.stopPropagation()}>
-                          {point.source || 'Open source'}
-                        </a>
-                      )}
-                    </span>
-                    <span className="shrink-0 text-right">
-                      <span className={`block text-lg font-bold ${point.pricePhpPerKg == null ? 'text-gray-400' : 'text-gray-900'}`}>
-                        {point.pricePhpPerKg == null ? '—' : formatPricePerKg(point.pricePhpPerKg)}
-                      </span>
-                      <span className="block text-[10px] text-emerald-600">{point.pricePhpPerKg == null ? 'unavailable' : 'per kg'}</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            {pigPriceReference && (
-              <div className="mt-3 text-[10px] text-gray-500">Provincial reference: {formatPricePerKg(pigPriceReference.pricePhpPerKg)} ({pigPriceReference.period}); not a municipality-specific quote.</div>
-            )}
-            {pigPriceError && <div className="mt-2 text-xs text-red-600">{pigPriceError}</div>}
-            {marketRefreshError && <div className="mt-2 text-xs text-red-600">{marketRefreshError}</div>}
-            {aiAnalysisError && <div className="mt-2 text-xs text-red-600">{aiAnalysisError}</div>}
-            {aiAnalysis && (
-              <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50/70 p-4">
-                <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-violet-700"><Sparkles size={14} /> PrepAPig AI recommendation</div>
-                <div className="text-sm leading-relaxed text-gray-800">{aiAnalysis.suggestion || aiAnalysis.analysis || pricingActionSuggestion}</div>
-                {aiAnalysis.analysis && aiAnalysis.suggestion && <div className="mt-2 text-xs leading-relaxed text-gray-600">{aiAnalysis.analysis}</div>}
-                {aiAnalysis.sources?.length > 0 && <div className="mt-2 text-[10px] text-gray-500">Web sources checked: {aiAnalysis.sources.length}</div>}
-              </div>
-            )}
-            <div className="mt-3 text-[10px] text-gray-500">Prices come from public web search or the provincial source. Confirm the posting date, location, liveweight basis, and buyer offer before selling.</div>
-            {marketHistory.length > 1 && (
-              <div className="mt-4 rounded-2xl border border-white/60 bg-white/55 p-3">
-                <div className="mb-2 text-xs font-semibold text-gray-800">Historical observed prices</div>
-                <ResponsiveContainer width="100%" height={180}>
-                  <LineChart data={marketHistory.slice(0, 90).map((row) => ({
-                    date: row.observed_date || row.retrieved_at?.slice(0, 10),
-                    price: Number(row.price_average),
-                  })).filter((row) => Number.isFinite(row.price)).reverse()}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis dataKey="date" tick={{ fontSize: 9 }} />
-                    <YAxis tick={{ fontSize: 9 }} label={{ value: 'PHP/kg', angle: -90, position: 'insideLeft', style: { fontSize: 9 } }} />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="price" stroke="#7C3AED" strokeWidth={2} dot={false} name="Observed price" />
-                  </LineChart>
-                </ResponsiveContainer>
-                <div className="text-[10px] text-gray-500">Observed records only. Missing dates are not interpolated.</div>
-              </div>
-            )}
-            {marketForecast?.results?.some((result) => result.status === 'forecasted') && (
-              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/70 p-3">
-                <div className="mb-2 text-xs font-semibold text-amber-900">4-week statistical price forecast</div>
-                <div className="space-y-2">
-                  {marketForecast.results.filter((result) => result.status === 'forecasted').map((result) => (
-                    <div key={result.municipality} className="flex items-center justify-between gap-3 rounded-xl bg-white/60 px-3 py-2">
-                      <div>
-                        <div className="text-xs font-semibold text-gray-900">{result.municipality}</div>
-                        <div className="text-[10px] text-gray-500">MAE ₱{result.evaluation?.meanAbsoluteErrorPhpPerKg ?? '—'}/kg · {result.historyPoints} observations</div>
-                      </div>
-                      <div className="text-right text-sm font-bold text-amber-800">
-                        {result.forecast?.[0] ? formatPricePerKg(result.forecast[0].predictedPricePhpPerKg) : '—'}
-                        <div className="text-[10px] font-normal text-amber-700">{result.forecast?.[0]?.weekStart || '—'}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-2 text-[10px] text-gray-500">Forecasts require at least eight dated observations and are not guaranteed buyer quotes.</div>
-              </div>
-            )}
           </div>
 
           {/* Feed Consumption */}
