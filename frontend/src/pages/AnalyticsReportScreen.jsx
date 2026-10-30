@@ -8,6 +8,9 @@ import {
   Share,
   Home,
   FileText,
+  MapPin,
+  Radio,
+  Sparkles,
 
   ChevronDown,
 
@@ -140,7 +143,7 @@ export default function AnalyticsReportsScreen() {
       if (!json.success) throw new Error(json.message || 'Pig price unavailable');
       setPigPriceLocations(json.priceSourceLocations || []);
       setPigPriceReference(json.data || null);
-      setPricePoints(json.pricePoints || []);
+      setPricePoints(json.pricePoints?.length ? json.pricePoints : DEFAULT_PRICE_POINTS);
       setFacebookPriceSources(json.facebookPriceSources || []);
       setPigPriceError(null);
     } catch (err) {
@@ -156,10 +159,13 @@ export default function AnalyticsReportsScreen() {
   const requestAiPriceAnalysis = async (locations = pigPriceLocations) => {
     if (!Array.isArray(locations) || locations.length < 3) return;
 
-    const cacheKey = `price-ai-analysis-v2:${getUserCacheKey()}:${locations.join('|')}`;
+    const cacheKey = `price-ai-analysis-v3:${getUserCacheKey()}:${locations.join('|')}`;
     const cachedAnalysis = readCache(cacheKey);
     if (cachedAnalysis) {
       setAiAnalysis(cachedAnalysis);
+      if (Array.isArray(cachedAnalysis.pricePoints) && cachedAnalysis.pricePoints.length > 0) {
+        setPricePoints(cachedAnalysis.pricePoints);
+      }
       setAiAnalysisError(null);
       setAiAnalysisLoading(false);
       return;
@@ -190,6 +196,9 @@ export default function AnalyticsReportsScreen() {
         throw new Error(json.message || 'AI price analysis unavailable');
       }
       setAiAnalysis(json);
+      if (Array.isArray(json.pricePoints) && json.pricePoints.length > 0) {
+        setPricePoints(json.pricePoints);
+      }
       writeCache(cacheKey, json);
     } catch (err) {
       if (err.name === 'AbortError') return;
@@ -391,6 +400,19 @@ export default function AnalyticsReportsScreen() {
     || (pricePoints.length > 0
       ? 'Before selling, compare the buyer\'s liveweight offer with these local reference prices, confirm the price date and unit, and negotiate using the closest verified location rather than a retail price.'
       : 'Wait for a current local price source before setting a selling price; confirm the buyer\'s unit, location, and price date.');
+  const livePricePoints = useMemo(
+    () => pricePoints.filter((point) => Number.isFinite(Number(point.pricePhpPerKg))),
+    [pricePoints]
+  );
+  const highestLivePrice = useMemo(
+    () => livePricePoints.reduce((best, point) => (
+      !best || Number(point.pricePhpPerKg) > Number(best.pricePhpPerKg) ? point : best
+    ), null),
+    [livePricePoints]
+  );
+  const priceUpdatedLabel = aiAnalysis?.generatedAt
+    ? `updated ${new Date(aiAnalysis.generatedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+    : 'waiting for web search';
 
   const handleDownloadReport = (reportName) => {
     const content = [
@@ -550,100 +572,71 @@ export default function AnalyticsReportsScreen() {
             </div>
           </div>
 
-          {/* Local Pig Price Sources and OpenAI Analysis */}
-          <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg mb-4">
-            <div className="flex items-center justify-between mb-3">
+          {/* Live web pig price analysis */}
+          <div className="bg-white/45 backdrop-blur-xl rounded-[1.75rem] border border-white/60 p-4 shadow-lg mb-4">
+            <div className="flex items-start justify-between gap-3 mb-4">
               <div>
-                <h3 className="font-semibold text-gray-900">Local Pig Price Sources</h3>
-                <p className="text-xs text-gray-600">AI price analysis loads automatically from the available locations</p>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-gray-900">Live Hog Price Analysis</h3>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                    <Radio size={10} /> {aiAnalysisLoading ? 'Updating' : livePricePoints.length > 0 ? 'Live' : 'Search'}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600">Farmgate prices per kg across nearby markets</p>
               </div>
-              {aiAnalysisLoading && <span className="text-xs text-purple-700 font-semibold">Analyzing...</span>}
+              <Sparkles size={20} className="text-violet-500" aria-hidden="true" />
             </div>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {(pigPriceLocations.length > 0 ? pigPriceLocations : ['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Taal']).map((location) => (
-                <span key={location} className="px-2 py-1 bg-white/50 rounded-lg text-xs text-gray-800">
-                  {location}
-                </span>
-              ))}
+            <div className="space-y-2">
+              {pricePoints.map((point) => {
+                const isSelected = point.location === selectedPriceLocation;
+                const isHighest = highestLivePrice?.location === point.location;
+                return (
+                  <button
+                    key={point.location}
+                    type="button"
+                    onClick={() => point.pricePhpPerKg != null && setSelectedPriceLocation(point.location)}
+                    className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-all ${
+                      isSelected
+                        ? 'border-violet-300 bg-violet-50/80 ring-2 ring-violet-200'
+                        : 'border-white/70 bg-white/65 hover:bg-white/85'
+                    }`}
+                  >
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-50 text-gray-500">
+                      <MapPin size={16} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-2 text-xs font-semibold text-gray-900">
+                        {point.location}
+                        {isHighest && <span className="rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold text-white">BEST FOUND</span>}
+                      </span>
+                      <span className="mt-1 block truncate text-[10px] text-gray-500">
+                        {point.pricePhpPerKg == null ? point.source || 'No qualifying public result' : `${point.unit || 'PHP/kg liveweight'} · ${point.period || priceUpdatedLabel}`}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span className={`block text-lg font-bold ${point.pricePhpPerKg == null ? 'text-gray-400' : 'text-gray-900'}`}>
+                        {point.pricePhpPerKg == null ? '—' : formatPricePerKg(point.pricePhpPerKg)}
+                      </span>
+                      <span className="block text-[10px] text-emerald-600">{point.pricePhpPerKg == null ? 'unavailable' : 'per kg'}</span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
             {pigPriceReference && (
-              <div className="text-xs text-gray-600 mb-2">
-                Provincial reference: <span className="font-bold text-green-600">{formatPricePerKg(pigPriceReference.pricePhpPerKg)}</span> ({pigPriceReference.period}).
-              </div>
+              <div className="mt-3 text-[10px] text-gray-500">Provincial reference: {formatPricePerKg(pigPriceReference.pricePhpPerKg)} ({pigPriceReference.period}); not a municipality-specific quote.</div>
             )}
-            {pricePoints.length > 0 && (
-              <div className="mb-3">
-                <div className="text-xs text-gray-700 font-semibold mb-2">Choose a price for estimated profit</div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {pricePoints.map((point) => {
-                    const isSelected = point.location === selectedPriceLocation;
-                    return (
-                      <button
-                        key={point.location}
-                        type="button"
-                        onClick={() => setSelectedPriceLocation(point.location)}
-                        className={`text-left rounded-xl p-3 border transition-all ${
-                          isSelected
-                            ? 'bg-green-100/80 border-green-500 ring-2 ring-green-400/40'
-                            : 'bg-white/50 border-white/40 hover:bg-white/70'
-                        }`}
-                      >
-                        <div className="text-xs text-gray-600">{point.location}</div>
-                        <div className="text-lg font-bold text-green-700">
-                          {point.pricePhpPerKg == null ? 'Unavailable' : formatPricePerKg(point.pricePhpPerKg)}
-                        </div>
-                        <div className="text-[10px] text-gray-500">{point.source}</div>
-                        <div className="text-[10px] font-semibold text-gray-700 mt-1">
-                          {isSelected ? 'Selected for profit estimate' : 'Select price'}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-            {pigPriceError && <div className="text-xs text-red-600">{pigPriceError}</div>}
-            {facebookPriceSources.length > 0 && (
-              <div className="text-[10px] text-gray-600 mb-2">
-                Facebook public search sources: {facebookPriceSources.map((source) => (
-                  <a key={source.location} href={source.url} target="_blank" rel="noreferrer" className="underline mr-2">{source.location}</a>
-                ))}
-              </div>
-            )}
-            {aiAnalysisError && <div className="text-xs text-red-600 mt-2">{aiAnalysisError}</div>}
+            {pigPriceError && <div className="mt-2 text-xs text-red-600">{pigPriceError}</div>}
+            {aiAnalysisError && <div className="mt-2 text-xs text-red-600">{aiAnalysisError}</div>}
             {aiAnalysis && (
-              <div className="bg-purple-100/50 border border-purple-300/50 rounded-xl p-3 mt-3">
-                <div className="text-xs font-semibold text-purple-900 mb-2">Detailed AI pricing review</div>
-                {aiAnalysis.pricePoints?.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
-                    {aiAnalysis.pricePoints.map((point, index) => (
-                      <div key={`${point.location}-${index}`} className="bg-white/50 rounded-lg p-2">
-                        <div className="text-xs font-semibold text-gray-900">{point.location}</div>
-                        <div className="text-sm font-bold text-green-700">
-                          {point.pricePhpPerKg == null ? 'Unavailable' : formatPricePerKg(point.pricePhpPerKg)}
-                        </div>
-                        <div className="text-[10px] text-gray-600">{point.period || point.status || 'Source checked'}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <div className="text-sm text-gray-800 whitespace-pre-line">{aiAnalysis.analysis}</div>
-                {aiAnalysis.suggestion && (
-                  <div className="text-sm font-semibold text-purple-900 mt-2">Suggestion: {aiAnalysis.suggestion}</div>
-                )}
-                {aiAnalysis.limitations?.length > 0 && (
-                  <div className="text-[10px] text-gray-600 mt-2">Limits: {aiAnalysis.limitations.join(' ')}</div>
-                )}
-                {aiAnalysis.sources?.length > 0 && (
-                  <div className="text-[10px] text-gray-600 mt-2">Grounded sources: {aiAnalysis.sources.length}</div>
-                )}
+              <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50/70 p-4">
+                <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-violet-700"><Sparkles size={14} /> PrepAPig AI recommendation</div>
+                <div className="text-sm leading-relaxed text-gray-800">{aiAnalysis.suggestion || aiAnalysis.analysis || pricingActionSuggestion}</div>
+                {aiAnalysis.analysis && aiAnalysis.suggestion && <div className="mt-2 text-xs leading-relaxed text-gray-600">{aiAnalysis.analysis}</div>}
+                {aiAnalysis.sources?.length > 0 && <div className="mt-2 text-[10px] text-gray-500">Web sources checked: {aiAnalysis.sources.length}</div>}
               </div>
             )}
-            <div className="bg-amber-100/60 border border-amber-300/50 rounded-xl p-3 mt-3">
-              <div className="text-xs font-semibold text-amber-900 mb-1">What to do with these prices</div>
-              <div className="text-sm text-amber-950">{pricingActionSuggestion}</div>
-            </div>
-            <div className="text-[10px] text-gray-500 mt-2">AI analysis covers pricing only: observed prices, price range, location comparison, price direction, source quality, and limitations. It does not calculate profit or other financial results.</div>
+            <div className="mt-3 text-[10px] text-gray-500">Prices come from public web search or the provincial source. Confirm the posting date, location, liveweight basis, and buyer offer before selling.</div>
           </div>
 
           {/* Feed Consumption */}
