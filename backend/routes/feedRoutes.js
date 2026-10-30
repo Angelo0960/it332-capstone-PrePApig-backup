@@ -3,6 +3,8 @@ import express from 'express';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 import { validateBody } from '../middlewares/validate.js';
 import { getFeedConsumptionForecast } from '../services/feedForecastService.js';
+import { generateFeedForecastAnalysis } from '../services/feedForecastAiService.js';
+import { rateLimit } from '../middlewares/rateLimit.js';
 
 const feedRouter = express.Router();
 feedRouter.use(authMiddleware);
@@ -27,6 +29,18 @@ feedRouter.get('/forecast', async (req, res) => {
   } catch (error) {
     console.error(JSON.stringify({ event: 'feed_forecast_failed', requestId: req.requestId, message: error.message }));
     res.status(502).json({ success: false, message: 'Feed consumption forecast is unavailable', requestId: req.requestId });
+  }
+});
+
+feedRouter.post('/forecast/ai-analysis', rateLimit({ limit: 5, windowMs: 600000, key: (req) => req.user.id }), async (req, res) => {
+  try {
+    const forecast = await getFeedConsumptionForecast({ ownerId: req.user.id, batchId: req.body?.batch_id || 'all', horizonWeeks: req.body?.horizon_weeks || 4, source: 'uploaded_historical' });
+    const analysis = await generateFeedForecastAnalysis({ forecast });
+    res.json({ ...analysis, forecast: { status: forecast.status, granularity: forecast.granularity, historicalSummary: forecast.historicalSummary, evaluation: forecast.evaluation, provenance: forecast.provenance } });
+  } catch (error) {
+    console.error(JSON.stringify({ event: 'feed_forecast_ai_failed', requestId: req.requestId, message: String(error.message || '').slice(0, 300) }));
+    const missingKey = String(error.message || '').includes('API key is not configured');
+    res.status(missingKey ? 503 : 502).json({ success: false, message: missingKey ? 'Feed forecast AI analysis is not configured' : 'Feed forecast AI analysis is temporarily unavailable', requestId: req.requestId });
   }
 });
 

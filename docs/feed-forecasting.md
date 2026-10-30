@@ -25,6 +25,13 @@ GET /feeds/forecast?source=uploaded_historical&batch_id=all&horizon_weeks=4
 
 It displays uploaded historical actual consumption, planned consumption, variance, projected 50 kg bag equivalents, a four-week forecast line, forecast error, source dates, and the synthetic-data limitation. The Feed/Inventory screen continues to support the separate recorded-database forecast.
 
+The dashboard automatically requests AI interpretation after the weekly forecast is loaded:
+
+```text
+POST /feeds/forecast/ai-analysis
+```
+
+The AI receives the uploaded historical summary, recent weekly values, forecast values, projected bags/cost, and holdout error. It returns a separate analysis, suggestion, risk level, and actions. The result is cached per user and batch. If Gemini is not configured or unavailable, the forecast remains visible and the dashboard reports the AI limitation instead of fabricating advice.
 ## Forecast behavior
 
 `GET /feeds/forecast`:
