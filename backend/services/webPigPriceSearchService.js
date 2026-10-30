@@ -12,6 +12,11 @@ const getSearchQuery = (location, now = new Date()) => {
   return `site:facebook.com presyo ng buhay na baboy ${location} Batangas ${month} ${year} liveweight farmgate price per kilogram`;
 };
 
+const getGeneralSearchQuery = (location, now = new Date()) => {
+  const month = now.toLocaleString('en-US', { month: 'long', timeZone: 'Asia/Manila' });
+  const year = now.toLocaleString('en-US', { year: 'numeric', timeZone: 'Asia/Manila' });
+  return `presyo ng buhay na baboy ${location} Batangas ${month} ${year} liveweight farmgate price per kilogram`;
+};
 const decodeHtml = (value) => String(value || '')
   .replace(/<[^>]*>/g, ' ')
   .replace(/&amp;/g, '&')
@@ -138,22 +143,36 @@ export const searchPigPricesWeb = async ({
   const errors = [];
   const uniqueLocations = [...new Set(locations)].slice(0, 10);
   for (const location of uniqueLocations) {
-    const query = getSearchQuery(location, now);
+    const facebookQuery = getSearchQuery(location, now);
+    const generalQuery = getGeneralSearchQuery(location, now);
+    const queries = [facebookQuery, generalQuery];
+    const facebookResults = [];
+    const generalResults = [];
     try {
-      const results = provider === 'serper'
-        ? await searchSerper(query, fetchImpl)
-        : await searchGoogle(query, fetchImpl);
-      const facebookResults = results.filter((item) => isFacebookUrl(item.link || item.url));
-      const point = facebookResults.map((item) => normalizeResult(location, query, item)).find(Boolean);
+      for (const query of queries) {
+        const results = provider === 'serper'
+          ? await searchSerper(query, fetchImpl)
+          : await searchGoogle(query, fetchImpl);
+        const target = query === facebookQuery ? facebookResults : generalResults;
+        target.push(...results);
+        results.slice(0, 5).forEach((item) => {
+          const url = item.link || item.url;
+          if (url) sources.push({ title: decodeHtml(item.title || item.name || url), url });
+        });
+      }
+      const facebookPoint = facebookResults
+        .filter((item) => isFacebookUrl(item.link || item.url))
+        .map((item) => normalizeResult(location, facebookQuery, item))
+        .find(Boolean);
+      const generalPoint = generalResults
+        .map((item) => normalizeResult(location, generalQuery, item))
+        .find(Boolean);
+      const point = facebookPoint || generalPoint;
       if (point) pricePoints.push(point);
-      else pricePoints.push({ location, query, pricePhpPerKg: null, unit: 'PHP/kg liveweight', period: 'unavailable', source: 'No qualifying public Facebook result', sourceUrl: 'unavailable', status: 'unavailable', verificationStatus: 'unavailable' });
-      facebookResults.slice(0, 5).forEach((item) => {
-        const url = item.link || item.url;
-        if (url) sources.push({ title: decodeHtml(item.title || item.name || url), url });
-      });
+      else pricePoints.push({ location, query: facebookQuery, pricePhpPerKg: null, unit: 'PHP/kg liveweight', period: 'unavailable', source: 'No qualifying price result', sourceUrl: 'unavailable', status: 'unavailable', verificationStatus: 'unavailable' });
     } catch (error) {
       errors.push(`${location}: ${String(error.message || error)}`.slice(0, 240));
-      pricePoints.push({ location, query, pricePhpPerKg: null, unit: 'PHP/kg liveweight', period: 'unavailable', source: 'Facebook search failed', sourceUrl: 'unavailable', status: 'unavailable', verificationStatus: 'unavailable' });
+      pricePoints.push({ location, query: facebookQuery, pricePhpPerKg: null, unit: 'PHP/kg liveweight', period: 'unavailable', source: 'Price search failed', sourceUrl: 'unavailable', status: 'unavailable', verificationStatus: 'unavailable' });
     }
   }
 

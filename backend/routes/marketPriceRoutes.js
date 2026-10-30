@@ -38,7 +38,7 @@ marketPriceRouter.get('/pigs', rateLimit({ limit: 60, windowMs: 60000 }), async 
           ? CALACA_FACEBOOK_PRICE_POINT
           : point
       ));
-      result.facebookSources = facebookResult.sources;
+      result.priceSources = facebookResult.sources;
       result.facebookSearchGeneratedAt = facebookResult.generatedAt;
     } else {
       result.facebookSearchError = 'Configure SERPER_API_KEY or Google Custom Search credentials to fetch Facebook prices';

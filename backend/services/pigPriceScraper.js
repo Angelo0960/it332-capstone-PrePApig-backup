@@ -2,11 +2,14 @@ const PRICE_SOURCE_URL =
   'https://baboyph.com/data/hog-farmgate-household-regional.csv';
 const BATANGAS_PSGC = '0401000000';
 const PRICE_SOURCE_LOCATIONS = ['Lemery', 'Calaca', 'Tuy', 'Balayan', 'Lian', 'Nasugbu', 'Taal'];
+const CALACA_FACEBOOK_URL = 'https://www.facebook.com/share/1HmN99yxmE/';
 
 const FACEBOOK_PRICE_SOURCES = PRICE_SOURCE_LOCATIONS.map((location) => ({
   location,
   source: 'Facebook public search (manual verification required)',
-  url: `https://www.facebook.com/public/${encodeURIComponent(`${location} Batangas baboy presyo`)}`,
+  url: location === 'Calaca'
+    ? CALACA_FACEBOOK_URL
+    : `https://www.facebook.com/public/${encodeURIComponent(`${location} Batangas baboy presyo`)}`,
   status: 'unverified',
 }));
 const CALACA_FACEBOOK_PRICE_POINT = {
@@ -21,7 +24,7 @@ const CALACA_FACEBOOK_PRICE_POINT = {
   period: '2026-10-30',
   observedDate: '2026-10-30',
   source: 'Calaca City Veterinary Office Facebook post',
-  sourceUrl: 'unavailable',
+  sourceUrl: CALACA_FACEBOOK_URL,
   status: 'partially_verified',
   verificationStatus: 'user-provided-screenshot',
   evidence: 'Live weight hog price: PHP 150.00–155.00 per kilo as of October 30, 2026. Information attributed to hog agents and haulers.',
@@ -162,4 +165,4 @@ export const clearPigPriceCache = () => {
   inFlightRequest = null;
 };
 
-export { PRICE_SOURCE_URL, BATANGAS_PSGC, CALACA_FACEBOOK_PRICE_POINT, parseCsv };
+export { PRICE_SOURCE_URL, BATANGAS_PSGC, CALACA_FACEBOOK_URL, CALACA_FACEBOOK_PRICE_POINT, parseCsv };
