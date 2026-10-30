@@ -17,6 +17,17 @@ const marketPriceRouter = express.Router();
 marketPriceRouter.get('/pigs', rateLimit({ limit: 60, windowMs: 60000 }), async (_req, res) => {
   try {
     const result = await fetchBatangasPigPrice();
+    if (process.env.SERPER_API_KEY || (process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_ENGINE_ID)) {
+      try {
+        const facebookResult = await searchPigPricesWeb({ locations: result.priceSourceLocations });
+        result.pricePoints = facebookResult.pricePoints;
+        result.facebookSources = facebookResult.sources;
+        result.facebookSearchGeneratedAt = facebookResult.generatedAt;
+      } catch (searchError) {
+        result.facebookSearchError = 'Facebook price search is temporarily unavailable';
+        console.warn(JSON.stringify({ event: 'facebook_pig_price_search_failed', message: String(searchError.message || searchError).slice(0, 240) }));
+      }
+    }
     res.status(200).json(result);
   } catch (error) {
     console.error('Error scraping pig prices:', error);

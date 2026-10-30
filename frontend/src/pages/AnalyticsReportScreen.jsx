@@ -75,7 +75,7 @@ export default function AnalyticsReportsScreen() {
   const [selectedPriceLocation, setSelectedPriceLocation] = useState(() => (
     localStorage.getItem(`prepapig:${getUserCacheKey()}:selected-price-location`) || null
   ));
-  const [facebookPriceSources, setFacebookPriceSources] = useState([]);
+
   const [pigPriceError, setPigPriceError] = useState(null);
   const [aiAnalysis, setAiAnalysis] = useState(null);
   const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
@@ -188,7 +188,7 @@ export default function AnalyticsReportsScreen() {
       setPigPriceLocations(json.priceSourceLocations || []);
       setPigPriceReference(json.data || null);
       setPricePoints(json.pricePoints?.length ? json.pricePoints : DEFAULT_PRICE_POINTS);
-      setFacebookPriceSources(json.facebookPriceSources || []);
+
       setPigPriceError(null);
     } catch (err) {
       if (err.name === 'AbortError') return;
@@ -730,15 +730,7 @@ export default function AnalyticsReportsScreen() {
                   </span>
                 </div>
                 <p className="text-xs text-gray-600">Facebook public listings for farmgate prices per kg across nearby markets</p>
-                {facebookPriceSources.length > 0 && (
-                  <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[10px] text-gray-500">
-                    {facebookPriceSources.map((source) => (
-                      <a key={source.location} href={source.url} target="_blank" rel="noreferrer" className="text-violet-600 underline">
-                        {source.location} Facebook search
-                      </a>
-                    ))}
-                  </div>
-                )}
+
               </div>
               <button
                 type="button"
@@ -774,13 +766,8 @@ export default function AnalyticsReportsScreen() {
                         {isHighest && <span className="rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold text-white">BEST FOUND</span>}
                       </span>
                       <span className="mt-1 block truncate text-[10px] text-gray-500">
-                        {point.pricePhpPerKg == null ? point.source || 'No qualifying public result' : `${point.unit || 'PHP/kg liveweight'} · ${point.period || priceUpdatedLabel}`}
+                        {point.pricePhpPerKg == null ? point.source || 'No qualifying public Facebook result' : `${point.unit || 'PHP/kg liveweight'} · ${point.period || priceUpdatedLabel}`}
                       </span>
-                      {point.sourceUrl && point.sourceUrl !== 'unavailable' && (
-                        <a href={point.sourceUrl} target="_blank" rel="noreferrer" className="mt-1 block truncate text-[10px] text-violet-600 underline" onClick={(event) => event.stopPropagation()}>
-                          {point.source || 'Open source'}
-                        </a>
-                      )}
                     </span>
                     <span className="shrink-0 text-right">
                       <span className={`block text-lg font-bold ${point.pricePhpPerKg == null ? 'text-gray-400' : 'text-gray-900'}`}>
