@@ -45,6 +45,47 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  const logoutExpiredSession = () => {
+    localStorage.removeItem('token');
+    setIsLoggedIn(false);
+  };
+
+  useEffect(() => {
+    const originalFetch = window.fetch.bind(window);
+    const interceptedFetch = async (...args) => {
+      const response = await originalFetch(...args);
+      if (response.status === 401 && localStorage.getItem('token')) {
+        window.dispatchEvent(new CustomEvent('prepapig:auth-expired'));
+      }
+      return response;
+    };
+    window.fetch = interceptedFetch;
+    const handleAuthExpired = () => logoutExpiredSession();
+    window.addEventListener('prepapig:auth-expired', handleAuthExpired);
+    return () => {
+      window.removeEventListener('prepapig:auth-expired', handleAuthExpired);
+      if (window.fetch === interceptedFetch) window.fetch = originalFetch;
+    };
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token || token === 'null' || token === 'undefined') return undefined;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      if (!payload.exp) return undefined;
+      const remainingMs = (Number(payload.exp) * 1000) - Date.now();
+      if (remainingMs <= 0) {
+        logoutExpiredSession();
+        return undefined;
+      }
+      const timeoutId = window.setTimeout(logoutExpiredSession, remainingMs + 50);
+      return () => window.clearTimeout(timeoutId);
+    } catch {
+      return undefined;
+    }
+  }, [isLoggedIn]);
+
   useEffect(() => {
     let cancelled = false;
     const initAuth = async () => {
