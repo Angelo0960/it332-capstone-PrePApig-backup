@@ -86,6 +86,8 @@ export default function FeedsInventoryScreen() {
   const [batches, setBatches] = useState([]);
   const [feedStocks, setFeedStocks] = useState([]);
   const [feedExpenses, setFeedExpenses] = useState([]);
+  const [feedForecast, setFeedForecast] = useState(null);
+  const [feedForecastError, setFeedForecastError] = useState(null);
   const [pendingDone, setPendingDone] = useState({});
   const [usageErrors, setUsageErrors] = useState({});
   const [purchaseErrors, setPurchaseErrors] = useState({});
@@ -184,6 +186,21 @@ export default function FeedsInventoryScreen() {
     }
   };
 
+  const fetchFeedForecast = async () => {
+    try {
+      const query = new URLSearchParams({ batch_id: selectedBatch, horizon_days: '7', window_days: '28' });
+      const res = await fetch(`${API_BASE}/feeds/forecast?${query}`, { headers: getAuthHeaders() });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || 'Feed forecast unavailable');
+      setFeedForecast(json);
+      setFeedForecastError(null);
+    } catch (err) {
+      console.warn('Could not fetch feed forecast:', err.message);
+      setFeedForecast(null);
+      setFeedForecastError(err.message || 'Feed forecast unavailable');
+    }
+  };
+
   const fetchFeedStock = async () => {
     const cacheKey = `feed-stock:${getUserCacheKey()}`;
     const cached = readCache(cacheKey);
@@ -254,6 +271,10 @@ export default function FeedsInventoryScreen() {
   useEffect(() => {
     if (selectedBatch === 'all') return;
     fetchFeedRecords();
+  }, [selectedBatch]);
+
+  useEffect(() => {
+    void fetchFeedForecast();
   }, [selectedBatch]);
 
   // ----- Core: Save feed usage -----
@@ -493,13 +514,19 @@ export default function FeedsInventoryScreen() {
     };
   }, [feedRecords, feedStocks, selectedBatch]);
 
-  const chartData = useMemo(
-    () => feedRecords.map((r) => ({
+  const chartData = useMemo(() => {
+    const actual = feedRecords.map((r) => ({
       date: new Date(r.feeding_date).toLocaleDateString(),
-      actual: r.quantity_kg,
-    })),
-    [feedRecords]
-  );
+      actual: Number(r.quantity_kg),
+    }));
+    const forecast = (feedForecast?.forecast || []).map((row) => ({
+      date: new Date(`${row.date}T00:00:00`).toLocaleDateString(),
+      forecast: row.predictedKg,
+      lower: row.lowerKg,
+      upper: row.upperKg,
+    }));
+    return [...actual.slice(-30), ...forecast];
+  }, [feedRecords, feedForecast]);
 
   // ----- Today's date for checking existing feedings -----
   const todayStr = formatLocalDate();
@@ -807,9 +834,32 @@ export default function FeedsInventoryScreen() {
                       strokeWidth={3}
                       dot={{ fill: '#10B981', r: 4 }}
                     />
+                    <Line
+                      type="monotone"
+                      dataKey="forecast"
+                      stroke="#7C3AED"
+                      strokeWidth={2}
+                      strokeDasharray="6 4"
+                      dot={{ fill: '#7C3AED', r: 3 }}
+                      connectNulls={false}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
-                <p className="text-xs text-gray-600 text-center mt-2">Actual feed consumption</p>
+                <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-xs text-gray-600">
+                  <span className="text-emerald-700">● Actual feed consumption</span>
+                  <span className="text-violet-700">● 7-day forecast</span>
+                </div>
+                {feedForecast?.status === 'forecasted' && (
+                  <p className="text-[10px] text-gray-500 text-center mt-1">
+                    Forecast uses {feedForecast.historyDays} recorded days · holdout MAE {feedForecast.evaluation?.meanAbsoluteErrorKg ?? '—'} kg/day
+                  </p>
+                )}
+                {feedForecast?.status === 'insufficient_data' && (
+                  <p className="text-[10px] text-amber-700 text-center mt-1">
+                    Feed forecast needs at least {feedForecast.requiredHistoryDays} recorded days; currently {feedForecast.historyDays} available.
+                  </p>
+                )}
+                {feedForecastError && <p className="text-[10px] text-red-600 text-center mt-1">{feedForecastError}</p>}
               </div>
 
               {/* Automated Feeding Schedule */}
