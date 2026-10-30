@@ -453,8 +453,8 @@ textarea {
   .feeds-desktop-content .feeds-summary-card:nth-child(n+3) { display: none; }
   .feeds-desktop-content .feeds-stock-card { grid-column: 7 / span 6; grid-row: span 2; min-height: 330px; }
   .feeds-desktop-content .feeds-schedule-card { grid-column: 1 / span 6; grid-row: 2; min-height: 230px; }
-  .feeds-desktop-content .feeds-action-buttons { grid-column: 1 / span 6; grid-row: 3; }
-  .feeds-desktop-content .feeds-chart-card { grid-column: 1 / span 6; grid-row: 4; }
+  .feeds-desktop-content .feeds-action-buttons { display: none; }
+  .feeds-desktop-content .feeds-chart-card { grid-column: 1 / span 6; grid-row: 3; }
   .feeds-desktop-content .feeds-history-card { grid-column: 7 / span 6; grid-row: 3 / span 2; }
   .feeds-batch-selector > div { scrollbar-width: none; }
   .feeds-batch-selector > div::-webkit-scrollbar { display: none; }
