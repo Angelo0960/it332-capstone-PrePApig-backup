@@ -599,7 +599,7 @@ export default function FeedsInventoryScreen() {
                   {selectedBatch === 'all' ? 'Current Stock' : 'Feed Consumed'}
                 </span>
               </div>
-              <div className="text-2xl font-bold text-gray-900 mb-1">
+              <div className="feeds-hero-number text-4xl font-extrabold tracking-[-0.05em] text-gray-900 mb-1">
                 {selectedBatch === 'all' ? totalStock : totalFeedConsumed} kg
               </div>
               <div className="text-xs text-gray-600 mb-3">
@@ -621,15 +621,12 @@ export default function FeedsInventoryScreen() {
             </div>
 
             <div className="feeds-summary-card flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 bg-purple-100/80 rounded-xl flex items-center justify-center">
-                  <span className="text-purple-600 font-bold text-lg">₱</span>
-                </div>
+              <div className="mb-3">
                 <span className="text-xs text-gray-700 font-semibold">
                   {selectedBatch === 'all' ? 'All Batches' : selectedBatchData?.name}
                 </span>
               </div>
-              <div className="text-2xl font-bold text-gray-900 mb-1">
+              <div className="feeds-hero-number text-4xl font-extrabold tracking-[-0.05em] text-gray-900 mb-1">
                 {displayedFeedExpense == null ? 'Unavailable' : `₱${displayedFeedExpense.toLocaleString('en-PH', { maximumFractionDigits: 0 })}`}
               </div>
               <div className="text-xs text-gray-600">
@@ -649,7 +646,7 @@ export default function FeedsInventoryScreen() {
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-xs font-semibold text-gray-700">{feed.feed_type}</span>
                       </div>
-                      <div className="text-2xl font-bold text-gray-900 mb-1">
+                      <div className="feeds-hero-number text-4xl font-extrabold tracking-[-0.05em] text-gray-900 mb-1">
                         {feed.stock_quantity} kg
                       </div>
                       <div className="text-xs text-gray-600">
@@ -678,7 +675,7 @@ export default function FeedsInventoryScreen() {
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-xs font-semibold text-gray-700">{feedType}</span>
                       </div>
-                      <div className="text-2xl font-bold text-gray-900 mb-1">{totalKg} kg</div>
+                      <div className="feeds-hero-number text-4xl font-extrabold tracking-[-0.05em] text-gray-900 mb-1">{totalKg} kg</div>
                       <div className="text-xs text-gray-600">Consumed</div>
                       <div className="mt-2 h-1.5 bg-white/30 rounded-full overflow-hidden">
                         <div
