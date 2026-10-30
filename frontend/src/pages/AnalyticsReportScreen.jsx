@@ -203,7 +203,7 @@ export default function AnalyticsReportsScreen() {
   const requestAiPriceAnalysis = async (locations = pigPriceLocations, { bypassCache = false } = {}) => {
     if (!Array.isArray(locations) || locations.length < 3) return;
 
-    const cacheKey = `price-ai-analysis-v3:${getUserCacheKey()}:${locations.join('|')}`;
+    const cacheKey = `price-ai-analysis-v4:${getUserCacheKey()}:${locations.join('|')}`;
     const cachedAnalysis = readCache(cacheKey);
     if (cachedAnalysis && !bypassCache) {
       setAiAnalysis(cachedAnalysis);
