@@ -704,8 +704,7 @@ export default function DashboardScreen() {
                   </div>
                   <div className="bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3">
                     <div className="text-xs text-gray-700 mb-1 font-medium">Pig Age</div>
-                    <div className="text-sm font-bold text-gray-900">{currentBatch.ageOnAcquisition ?? 0} days at acquisition</div>
-                    <div className="text-xs text-gray-600 mt-1">Current: Day {currentBatch.day}</div>
+                    <div className="text-2xl font-extrabold text-[#252838]">Day {currentBatch.day}</div>
                   </div>
                   <div className="bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3">
                     <div className="text-xs text-gray-700 mb-1 font-medium">Estimated Profit</div>
