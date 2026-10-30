@@ -719,7 +719,8 @@ export default function DashboardScreen() {
                   {/* Avg Weight */}
                   <div className="dashboard-card flex min-h-[150px] flex-col items-center justify-center rounded-2xl p-2 text-center sm:p-3">
                     {(() => {
-                      const avgWeight = currentBatch.pigCount > 0 ? currentBatch.weight / currentBatch.pigCount : 0;
+                      // pig_batches.current_weight stores the batch's current average pig weight.
+                      const avgWeight = Number(currentBatch.weight) || 0;
                       const targetWeight = currentBatch.day <= 21 ? 30 : currentBatch.day <= 49 ? 60 : 90;
                       const weightProgress = Math.min(100, (avgWeight / targetWeight) * 100);
                       const circumference = 2 * Math.PI * 38;
