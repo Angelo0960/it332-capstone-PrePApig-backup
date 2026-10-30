@@ -438,21 +438,8 @@ textarea {
   .feeds-history-card { grid-area: history; border-radius: 1.5rem !important; }
   .feeds-main-content { overflow: visible; padding: 0 !important; }
   .feeds-header-actions { margin-right: 0.2rem; }
-  .feeds-desktop-content .flex.flex-nowrap { display: contents; }
-  .feeds-desktop-content > .px-4:first-child { display: contents; }
-  .feeds-desktop-content > .feeds-main-content { display: contents; }
-  .feeds-main-content > .space-y-4 { display: contents; }
-  .feeds-desktop-content { grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-areas: none; }
-  .feeds-summary-card { grid-area: auto; min-height: 150px; }
-  .feeds-desktop-content .feeds-summary-card:nth-child(1) { grid-column: span 3; }
-  .feeds-desktop-content .feeds-summary-card:nth-child(2) { grid-column: span 3; }
+  .feeds-desktop-content .flex.flex-nowrap { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; overflow: visible; }
   .feeds-desktop-content .feeds-summary-card:nth-child(n+3) { display: none; }
-  .feeds-desktop-content .feeds-stock-card { grid-column: 7 / span 6; grid-row: span 2; min-height: 330px; }
-  .feeds-desktop-content .feeds-action-buttons { grid-column: 1 / span 6; grid-row: 3; }
-  .feeds-desktop-content .feeds-chart-card { grid-column: 1 / span 6; grid-row: 4; }
-  .feeds-desktop-content .feeds-schedule-card { grid-column: 1 / span 6; grid-row: 2; min-height: 230px; }
-  .feeds-desktop-content .feeds-history-card { grid-column: 7 / span 6; grid-row: 3 / span 2; }
-  .feeds-batch-selector { background: rgba(255,255,255,0.18); }
-  .feeds-batch-selector > div { scrollbar-width: none; }
-  .feeds-batch-selector > div::-webkit-scrollbar { display: none; }
+  .feeds-desktop-content .feeds-stock-card .divide-y > div { min-height: 86px; }
+  .feeds-desktop-content .feeds-schedule-card button { border-radius: 999px; }
 }
