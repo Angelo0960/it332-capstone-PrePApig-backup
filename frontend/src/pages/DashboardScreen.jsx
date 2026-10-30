@@ -603,26 +603,32 @@ export default function DashboardScreen() {
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
-    <div className="dashboard-screen mobile-screen-shell w-full relative overflow-hidden flex flex-col">
+    <div className="dashboard-screen mobile-screen-shell w-full relative overflow-hidden flex flex-col text-gray-900">
       <div className="absolute inset-0">
-        <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover" />
+        <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover saturate-[0.65] brightness-[0.9] blur-[2px]" />
       </div>
+      <div className="absolute inset-0 bg-gradient-to-br from-[#F4F7F5]/80 via-[#EDF3EF]/72 to-[#DCE9E1]/76" />
 
       <div className="mobile-screen-layer relative z-10 flex flex-col flex-1 min-h-0">
         {/* Header */}
-        <div className="dashboard-header px-4 md:px-8 lg:px-12 pt-3 pb-3">
+        <div className="dashboard-header px-4 md:px-8 lg:px-12 pt-5 pb-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">
-              Prep<span className="text-pink-500">A</span>Pig
-            </h1>
+            <div>
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#777D8D]">PrepAPig farm center</p>
+              <h1 className="text-2xl font-extrabold tracking-[-0.04em] text-[#252838] sm:text-3xl">Good morning, {user?.name?.split(' ')[0] || 'there'}.</h1>
+              <p className="mt-1 text-sm text-[#777D8D]">Here’s the pulse of your farm.</p>
+            </div>
             <div className="flex items-center gap-2">
+              <button onClick={() => setShowAddBatch(true)} className="hidden sm:flex items-center gap-2 rounded-2xl bg-[#6C63FF] px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#6C63FF]/25 transition hover:-translate-y-0.5">
+                <Plus className="w-4 h-4" /> Add batch
+              </button>
               <button
                 onClick={() => {
                   const opening = !showNotifications;
                   setShowNotifications(opening);
                   if (opening) void fetchNotifications();
                 }}
-                className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all relative"
+                className="w-11 h-11 rounded-2xl bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-lg transition-all relative"
               >
                 <Bell className="w-4 h-4 text-gray-700" />
                 {unreadCount > 0 && (
@@ -651,14 +657,23 @@ export default function DashboardScreen() {
           {batches.length > 0 && currentBatch && (
             <>
               <>
-                <div
-                  key={currentBatch.id}
-
-
-
-
-                  className="dashboard-summary-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4"
-                >
+              <div className="relative col-span-full mb-1 min-h-[250px] overflow-hidden rounded-[24px] border border-white/45 bg-white/25 p-5 shadow-[0_16px_40px_rgba(31,64,49,0.13)] backdrop-blur-xl md:min-h-[300px]">
+                <div className="relative z-10 max-w-[58%]">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#777D8D]">Current batch</p>
+                  <h2 className="text-3xl font-extrabold tracking-[-0.05em] text-[#252838] sm:text-4xl">{currentBatch.name}</h2>
+                  <p className="mt-2 text-sm font-semibold text-[#777D8D]">Day {currentBatch.day} · {currentBatch.pigCount} pigs currently tracked</p>
+                  <button onClick={() => navigate(`/batch/${currentBatch.id}/pigs`)} className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-[#6C63FF] px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#6C63FF]/25 transition hover:-translate-y-0.5"><Users className="w-4 h-4" /> View individual pigs</button>
+                </div>
+                <img src={pigImage} alt="Pig character" className="absolute -bottom-8 -right-10 h-[112%] w-[68%] object-contain drop-shadow-[0_18px_16px_rgba(72,74,90,0.18)]" />
+                <div className="absolute bottom-5 left-5 flex gap-2">
+                  <button onClick={() => setCurrentBatchIndex((index) => (index - 1 + batches.length) % batches.length)} aria-label="Previous batch" className="grid h-9 w-9 place-items-center rounded-xl bg-white/35 text-[#555B6E] shadow-sm">‹</button>
+                  <button onClick={() => setCurrentBatchIndex((index) => (index + 1) % batches.length)} aria-label="Next batch" className="grid h-9 w-9 place-items-center rounded-xl bg-white/35 text-[#555B6E] shadow-sm">›</button>
+                </div>
+              </div>
+              <div
+                key={currentBatch.id}
+                className="dashboard-summary-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4"
+              >
                   <div className="bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3 relative">
                     <div className="text-xs text-gray-700 mb-1 font-medium">
                       {currentBatch.name}: {currentBatch.pigCount} Pigs
@@ -716,7 +731,7 @@ export default function DashboardScreen() {
 
 
 
-                  className="dashboard-progress-stack space-y-2 mb-4"
+                  className="dashboard-progress-stack grid grid-cols-1 md:grid-cols-3 gap-4 mb-4"
                 >
                   {/* Vaccination */}
                   <div className="bg-white/20 backdrop-blur-lg rounded-xl p-3 shadow-lg border border-white/30">
@@ -811,7 +826,7 @@ export default function DashboardScreen() {
               </>
 
               {/* Pig Character */}
-              <div className="dashboard-pig-hero flex items-center justify-center py-8 mb-4 relative min-h-[200px] md:min-h-[240px] lg:min-h-[288px]">
+              <div className="hidden dashboard-pig-hero flex items-center justify-center py-8 mb-4 relative min-h-[200px] md:min-h-[240px] lg:min-h-[288px]">
                 <>
                   <div
                     key={currentBatch.id}

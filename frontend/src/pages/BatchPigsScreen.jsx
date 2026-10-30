@@ -19,11 +19,14 @@ export default function BatchPigsScreen() {
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showSellModal, setShowSellModal] = useState(false);
+  const [isSelling, setIsSelling] = useState(false);
   const [editingPig, setEditingPig] = useState(null);
 
   // Form states
   const [newPig, setNewPig] = useState({ weight: '', health_status: 'Healthy', notes: '' });
   const [editPig, setEditPig] = useState({ weight: '', health_status: '', notes: '' });
+  const [saleForm, setSaleForm] = useState({ sale_date: new Date().toISOString().slice(0, 10), revenue: '', buyer: '', notes: '' });
 
   // Fetch pigs and batch metadata together, hydrating cached pigs first.
   const fetchPigs = async () => {
@@ -158,6 +161,41 @@ export default function BatchPigsScreen() {
   const totalWeight = pigs.reduce((sum, p) => sum + p.weight, 0);
   const avgWeight = pigs.length > 0 ? totalWeight / pigs.length : 0;
 
+  const handleSellBatch = async () => {
+    const revenue = Number(saleForm.revenue);
+    if (!saleForm.sale_date || !Number.isFinite(revenue) || revenue < 0) {
+      alert('Enter a valid sale date and total sale proceeds.');
+      return;
+    }
+    setIsSelling(true);
+    try {
+      const res = await fetch(`${API_BASE}/sales`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          batch_id: batchId,
+          harvest_date: saleForm.sale_date,
+          pig_count: pigs.length,
+          total_weight_kg: Number(totalWeight.toFixed(2)),
+          sale_date: saleForm.sale_date,
+          revenue,
+          buyer: saleForm.buyer || null,
+          notes: saleForm.notes || null,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || 'Failed to record batch sale');
+      window.dispatchEvent(new Event('prepapig:financial-data-changed'));
+      setShowSellModal(false);
+      setSaleForm({ sale_date: new Date().toISOString().slice(0, 10), revenue: '', buyer: '', notes: '' });
+      alert('Batch sale recorded successfully.');
+    } catch (err) {
+      alert('Error recording batch sale: ' + err.message);
+    } finally {
+      setIsSelling(false);
+    }
+  };
+
   return (
     <div className="mobile-screen-shell w-full relative overflow-hidden flex flex-col">
       <div className="absolute inset-0">
@@ -183,6 +221,13 @@ export default function BatchPigsScreen() {
             className="bg-gradient-to-r from-green-500 to-green-600 text-white font-bold px-4 py-2 rounded-xl shadow-lg active:scale-95 transition-transform flex items-center gap-1"
           >
             <Plus className="w-4 h-4" /> Add
+          </button>
+          <button
+            onClick={() => setShowSellModal(true)}
+            disabled={pigs.length === 0}
+            className="bg-gradient-to-r from-violet-500 to-violet-600 text-white font-bold px-4 py-2 rounded-xl shadow-lg active:scale-95 transition-transform flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <TrendingUp className="w-4 h-4" /> Sell Batch
           </button>
         </div>
 
@@ -380,6 +425,41 @@ export default function BatchPigsScreen() {
                 className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform"
               >
                 Update
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sell Batch Modal */}
+      {showSellModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center responsive-modal-overlay bg-black/50 backdrop-blur-sm p-4">
+          <div className="responsive-modal bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-sm max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-white/30">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Sell {batchName}</h2>
+                <p className="text-xs text-gray-700 mt-1">{pigs.length} pigs · {totalWeight.toFixed(2)} kg total</p>
+              </div>
+              <button onClick={() => setShowSellModal(false)} className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-lg">
+                <X className="w-4 h-4 text-gray-700" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-xs text-gray-700">This records the completed batch sale using the current individual-pig count and total weight.</p>
+              <label className="block text-sm font-semibold text-gray-800">Sale date
+                <input type="date" value={saleForm.sale_date} onChange={(e) => setSaleForm({ ...saleForm, sale_date: e.target.value })} className="w-full mt-2 px-4 py-3 rounded-xl bg-white/40 border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/50" />
+              </label>
+              <label className="block text-sm font-semibold text-gray-800">Total sale proceeds (PHP)
+                <input type="number" min="0" step="0.01" value={saleForm.revenue} onChange={(e) => setSaleForm({ ...saleForm, revenue: e.target.value })} placeholder="0.00" className="w-full mt-2 px-4 py-3 rounded-xl bg-white/40 border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50" />
+              </label>
+              <label className="block text-sm font-semibold text-gray-800">Buyer (optional)
+                <input type="text" value={saleForm.buyer} onChange={(e) => setSaleForm({ ...saleForm, buyer: e.target.value })} className="w-full mt-2 px-4 py-3 rounded-xl bg-white/40 border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/50" />
+              </label>
+              <label className="block text-sm font-semibold text-gray-800">Notes (optional)
+                <textarea rows={2} value={saleForm.notes} onChange={(e) => setSaleForm({ ...saleForm, notes: e.target.value })} className="w-full mt-2 px-4 py-3 rounded-xl bg-white/40 border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/50 resize-none" />
+              </label>
+              <button onClick={handleSellBatch} disabled={isSelling} className="w-full bg-gradient-to-r from-violet-500 to-violet-600 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform disabled:opacity-60">
+                {isSelling ? 'Saving...' : 'Record Batch Sale'}
               </button>
             </div>
           </div>
