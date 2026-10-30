@@ -52,7 +52,7 @@ feedRouter.get('/forecast', async (req, res) => {
 
 feedRouter.post('/forecast/ai-analysis', rateLimit({ limit: 5, windowMs: 600000, key: (req) => req.user.id }), async (req, res) => {
   try {
-    const forecast = await getFeedConsumptionForecast({ ownerId: req.user.id, batchId: req.body?.batch_id || 'all', horizonWeeks: req.body?.horizon_weeks || 4, source: 'uploaded_historical' });
+    const forecast = await getFeedConsumptionForecast({ ownerId: req.user.id, batchId: req.body?.batch_id || 'all', horizonWeeks: req.body?.horizon_weeks || 1, source: 'uploaded_historical' });
     const analysis = await generateFeedForecastAnalysis({ forecast });
     res.json({ ...analysis, forecast: { status: forecast.status, granularity: forecast.granularity, historicalSummary: forecast.historicalSummary, evaluation: forecast.evaluation, provenance: forecast.provenance } });
   } catch (error) {

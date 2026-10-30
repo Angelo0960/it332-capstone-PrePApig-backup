@@ -20,10 +20,10 @@ The uploaded rows are used as the active historical forecasting dataset and are 
 The Analytics dashboard now requests:
 
 ```text
-GET /feeds/forecast?source=uploaded_historical&batch_id=all&horizon_weeks=4&include_ai=true
+GET /feeds/forecast?source=uploaded_historical&batch_id=all&horizon_weeks=1&include_ai=true
 ```
 
-It displays uploaded historical actual consumption, planned consumption, variance, projected 50 kg bag equivalents, a four-week forecast line, forecast error, and source dates. The Feed/Inventory screen continues to support the separate recorded-database forecast.
+It displays uploaded historical actual consumption, planned consumption, variance, projected 50 kg bag equivalents, a one-week forecast line, forecast error, and source dates. The Feed/Inventory screen continues to support the separate recorded-database forecast.
 
 The dashboard automatically requests AI interpretation after the weekly forecast is loaded:
 
@@ -31,7 +31,7 @@ The dashboard automatically requests AI interpretation after the weekly forecast
 POST /feeds/forecast/ai-analysis
 ```
 
-The AI also reads the authenticated user's `feed_stocks` rows and compares total current stock against the four-week forecast. It reports stock kilograms, projected coverage in weeks, projected shortfall, and a next action such as purchase feed, monitor usage, or avoid unnecessary buying. If the stock table is unavailable, the AI result remains clearly limited rather than inventing inventory data.
+The AI also reads the authenticated user's `feed_stocks` rows and compares total current stock against the one-week forecast. It reports stock kilograms, projected coverage in weeks, projected shortfall, and a next action such as purchase feed, monitor usage, or avoid unnecessary buying. If the stock table is unavailable, the AI result remains clearly limited rather than inventing inventory data.
 ## Forecast behavior
 
 `GET /feeds/forecast`:

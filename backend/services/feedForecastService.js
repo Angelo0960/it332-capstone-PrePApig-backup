@@ -149,7 +149,7 @@ const forecastFeedConsumption = (dailyRows, horizonDays = 7, windowDays = DEFAUL
   };
 };
 
-export const getFeedConsumptionForecast = async ({ ownerId, batchId, horizonDays = 7, horizonWeeks = 4, windowDays = DEFAULT_WINDOW_DAYS, source = 'recorded' } = {}) => {
+export const getFeedConsumptionForecast = async ({ ownerId, batchId, horizonDays = 7, horizonWeeks = 1, windowDays = DEFAULT_WINDOW_DAYS, source = 'recorded' } = {}) => {
   if (source === 'uploaded_historical') {
     const { dailyRows, weeklyRows } = loadUploadedHistoricalData({ batchId });
     const historicalSummary = summarizeUploadedHistory(dailyRows, weeklyRows);
