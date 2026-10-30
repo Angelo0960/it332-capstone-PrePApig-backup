@@ -570,45 +570,26 @@ export default function FeedsInventoryScreen() {
 
         {/* Batch Selector */}
         <div className="px-4 md:px-8 lg:px-12 mb-4">
-          <div className="relative z-50 isolate bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-3 shadow-lg">
-            <button
-              type="button"
-              aria-expanded={showBatchMenu}
-              onClick={() => setShowBatchMenu((open) => !open)}
-              className="w-full flex items-center justify-between px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold text-sm shadow-lg"
-            >
-              <span>
-                {selectedBatch === 'all'
-                  ? 'All Batches'
-                  : `${selectedBatchData?.name || 'Selected Batch'} · ${selectedBatchData?.pigCount ?? 0} pigs`}
-              </span>
-              <span className="ml-3 text-base">{showBatchMenu ? '▴' : '▾'}</span>
-            </button>
-            {showBatchMenu && (
-              <div className="absolute z-[100] left-3 right-3 top-full mt-2 max-h-64 overflow-y-auto rounded-xl bg-white/90 backdrop-blur-lg border border-white/50 p-2 shadow-xl">
+          <div className="feeds-batch-selector relative z-50 isolate bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-3 shadow-lg">
+            <div className="flex items-center gap-2 overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setSelectedBatch('all')}
+                className={`px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${selectedBatch === 'all' ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg' : 'bg-white/30 text-gray-700'}`}
+              >
+                All Batches
+              </button>
+              {batches.map((batch) => (
                 <button
                   type="button"
-                  onClick={() => { setSelectedBatch('all'); setShowBatchMenu(false); }}
-                  className="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold text-gray-700 hover:bg-emerald-100/70"
+                  key={batch.id}
+                  onClick={() => setSelectedBatch(String(batch.id))}
+                  className={`px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${String(selectedBatch) === String(batch.id) ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg' : 'bg-white/30 text-gray-700'}`}
                 >
-                  All Batches
+                  {batch.name}
                 </button>
-                {batches.map((batch) => (
-                  <button
-                    type="button"
-                    key={batch.id}
-                    onClick={() => { setSelectedBatch(String(batch.id)); setShowBatchMenu(false); }}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
-                      String(selectedBatch) === String(batch.id)
-                        ? 'bg-emerald-100/80 text-emerald-700'
-                        : 'text-gray-700 hover:bg-emerald-100/70'
-                    }`}
-                  >
-                    {batch.name} · {batch.pigCount ?? 0} pigs · Day {batch.day ?? 0} · {batch.breed || 'Unknown'}
-                  </button>
-                ))}
-              </div>
-            )}
+              ))}
+            </div>
           </div>
         </div>
 
