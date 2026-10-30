@@ -675,27 +675,7 @@ export default function DashboardScreen() {
                 key={currentBatch.id}
                 className="dashboard-summary-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4"
               >
-                  <div className="bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3 relative">
-                    <div className="text-xs text-gray-700 mb-1 font-medium">
-                      {currentBatch.name}: {currentBatch.pigCount} Pigs
-                      <button
-                        onClick={() => handleOpenEditPig(currentBatch.id, currentBatch.pigCount)}
-                        className="ml-1 inline-flex items-center text-blue-500 hover:text-blue-700 transition-colors"
-                        title="Edit pig count"
-                      >
-                        <Pencil className="w-3 h-3" />
-                      </button>
-                    </div>
-                    <div className="text-sm font-bold text-gray-900">Day {currentBatch.day}</div>
 
-                    <button
-                      onClick={() => handleDeleteBatch(currentBatch.id, currentBatch.name)}
-                      className="absolute top-2 right-2 w-6 h-6 rounded-full bg-red-100/80 flex items-center justify-center hover:bg-red-200 transition-all"
-                      title="Delete batch"
-                    >
-                      <Trash2 className="w-3 h-3 text-red-600" />
-                    </button>
-                  </div>
                   <div className="bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3">
                     <div className="text-xs text-gray-700 mb-1 font-medium">Pig Age</div>
                     <div className="text-2xl font-extrabold text-[#252838]">Day {currentBatch.day}</div>
