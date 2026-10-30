@@ -152,6 +152,15 @@ export default function AnalyticsReportsScreen() {
     try {
       const batch = selectedBatch !== 'All Batches' ? batches.find((row) => row.batch_code === selectedBatch) : null;
       const batchId = batch?.batch_code || 'all';
+      const cacheKey = `feed-ai-analysis-v1:${getUserCacheKey()}:${batchId}:1`;
+      const cached = readCache(cacheKey);
+      if (cached && typeof cached === 'object') {
+        setFeedForecast(cached);
+        setFeedForecastAi(cached.aiAnalysis || null);
+        setFeedForecastAiError(cached.aiAnalysisError || null);
+        setFeedForecastError(null);
+        return;
+      }
       const response = await fetch(`${API_BASE}/feeds/forecast?source=uploaded_historical&batch_id=${encodeURIComponent(batchId)}&horizon_weeks=1&include_ai=true`, {
         headers: getAuthHeaders(), signal,
       });
@@ -161,6 +170,7 @@ export default function AnalyticsReportsScreen() {
       setFeedForecastAi(json.aiAnalysis || null);
       setFeedForecastAiError(json.aiAnalysisError || null);
       setFeedForecastError(null);
+      writeCache(cacheKey, json);
     } catch (err) {
       if (err.name === 'AbortError') return;
       setFeedForecast(null);
@@ -505,7 +515,7 @@ export default function AnalyticsReportsScreen() {
       breakdown,
       recordCount: filteredExpenses.length,
     };
-    const cacheKey = `expense-ai-analysis-v1:${getUserCacheKey()}:${dateRange}:${selectedBatch}:${JSON.stringify(breakdown)}`;
+    const cacheKey = `expense-ai-analysis-v2:${getUserCacheKey()}:${dateRange}:${selectedBatch}:${summary.totalRecordedExpenses}:${summary.recordCount}:${JSON.stringify(breakdown)}`;
     const cached = readCache(cacheKey);
     if (cached) {
       setExpenseAiAnalysis(cached);
