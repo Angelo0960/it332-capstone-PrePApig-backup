@@ -60,7 +60,7 @@ const parseObservedDate = (text, item = {}) => {
 const looksLikeLiveweight = (text) => /live\s*weight|liveweight|farmgate|farm\s*gate|buhay na baboy|live hog|per\s*kg|\/\s*kg/i.test(text)
   && !/retail pork|dressed meat|pork chop|liempo|kasim|baboy na karne/i.test(text);
 
-const isFacebookUrl = (value) => /^https?:\/\/(?:www\.)?facebook\.com\//i.test(String(value || ''));
+const isFacebookUrl = (value) => /^https?:\/\/(?:[a-z0-9-]+\.)?facebook\.com\//i.test(String(value || ''));
 
 const normalizeResult = (location, query, item) => {
   const title = decodeHtml(item.title || item.name || 'Web search result');

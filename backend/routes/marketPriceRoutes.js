@@ -15,27 +15,35 @@ import { rateLimit } from '../middlewares/rateLimit.js';
 const marketPriceRouter = express.Router();
 
 marketPriceRouter.get('/pigs', rateLimit({ limit: 60, windowMs: 60000 }), async (_req, res) => {
+  let result;
   try {
-    const result = await fetchBatangasPigPrice();
-    if (process.env.SERPER_API_KEY || (process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_ENGINE_ID)) {
-      try {
-        const facebookResult = await searchPigPricesWeb({ locations: result.priceSourceLocations });
-        result.pricePoints = facebookResult.pricePoints;
-        result.facebookSources = facebookResult.sources;
-        result.facebookSearchGeneratedAt = facebookResult.generatedAt;
-      } catch (searchError) {
-        result.facebookSearchError = 'Facebook price search is temporarily unavailable';
-        console.warn(JSON.stringify({ event: 'facebook_pig_price_search_failed', message: String(searchError.message || searchError).slice(0, 240) }));
-      }
-    }
-    res.status(200).json(result);
+    result = await fetchBatangasPigPrice();
   } catch (error) {
-    console.error('Error scraping pig prices:', error);
-    res.status(502).json({
-      success: false,
-      message: 'Pig price source is temporarily unavailable',
-    });
+    result = {
+      success: true,
+      data: null,
+      priceSourceLocations: DEFAULT_LOCATIONS,
+      pricePoints: [],
+      basis: [],
+      limitations: ['The provincial reference source is temporarily unavailable.'],
+      sourceError: 'Provincial pig-price reference is temporarily unavailable',
+    };
+    console.warn(JSON.stringify({ event: 'provincial_pig_price_source_failed', message: String(error.message || error).slice(0, 240) }));
   }
+  try {
+    if (process.env.SERPER_API_KEY || (process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_ENGINE_ID)) {
+      const facebookResult = await searchPigPricesWeb({ locations: result.priceSourceLocations });
+      result.pricePoints = facebookResult.pricePoints;
+      result.facebookSources = facebookResult.sources;
+      result.facebookSearchGeneratedAt = facebookResult.generatedAt;
+    } else {
+      result.facebookSearchError = 'Configure SERPER_API_KEY or Google Custom Search credentials to fetch Facebook prices';
+    }
+  } catch (searchError) {
+    result.facebookSearchError = 'Facebook price search is temporarily unavailable';
+    console.warn(JSON.stringify({ event: 'facebook_pig_price_search_failed', message: String(searchError.message || searchError).slice(0, 240) }));
+  }
+  res.status(200).json(result);
 });
 
 marketPriceRouter.get('/history', authMiddleware, rateLimit({ limit: 30, windowMs: 60000, key: (req) => req.user.id }), async (req, res) => {
