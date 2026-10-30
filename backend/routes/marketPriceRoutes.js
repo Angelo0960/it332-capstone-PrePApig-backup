@@ -1,5 +1,5 @@
 import express from 'express';
-import { fetchBatangasPigPrice } from '../services/pigPriceScraper.js';
+import { CALACA_FACEBOOK_PRICE_POINT, fetchBatangasPigPrice } from '../services/pigPriceScraper.js';
 import { generatePigPriceAnalysis } from '../services/openaiPigPriceService.js';
 import { searchPigPricesWeb } from '../services/webPigPriceSearchService.js';
 import { forecastPigMarketPrices } from '../services/pigMarketForecastService.js';
@@ -23,12 +23,29 @@ marketPriceRouter.get('/pigs', rateLimit({ limit: 60, windowMs: 60000 }), async 
       success: true,
       data: null,
       priceSourceLocations: DEFAULT_LOCATIONS,
-      pricePoints: [],
+      pricePoints: [CALACA_FACEBOOK_PRICE_POINT],
       basis: [],
       limitations: ['The provincial reference source is temporarily unavailable.'],
       sourceError: 'Provincial pig-price reference is temporarily unavailable',
     };
     console.warn(JSON.stringify({ event: 'provincial_pig_price_source_failed', message: String(error.message || error).slice(0, 240) }));
+  }
+  try {
+    if (process.env.SERPER_API_KEY || (process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_ENGINE_ID)) {
+      const facebookResult = await searchPigPricesWeb({ locations: result.priceSourceLocations });
+      result.pricePoints = facebookResult.pricePoints.map((point) => (
+        point.location === CALACA_FACEBOOK_PRICE_POINT.location
+          ? CALACA_FACEBOOK_PRICE_POINT
+          : point
+      ));
+      result.facebookSources = facebookResult.sources;
+      result.facebookSearchGeneratedAt = facebookResult.generatedAt;
+    } else {
+      result.facebookSearchError = 'Configure SERPER_API_KEY or Google Custom Search credentials to fetch Facebook prices';
+    }
+  } catch (searchError) {
+    result.facebookSearchError = 'Facebook price search is temporarily unavailable';
+    console.warn(JSON.stringify({ event: 'facebook_pig_price_search_failed', message: String(searchError.message || searchError).slice(0, 240) }));
   }
   res.status(200).json(result);
 });
@@ -108,7 +125,10 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
           pricePhpPerKg: priceData.data.pricePhpPerKg,
           unit: priceData.data.unit,
         },
-        localPricePoints: webSearchResult?.pricePoints || [],
+        localPricePoints: [
+          CALACA_FACEBOOK_PRICE_POINT,
+          ...(webSearchResult?.pricePoints || []).filter((point) => point.location !== CALACA_FACEBOOK_PRICE_POINT.location),
+        ],
       });
     } catch (error) {
       const webFound = webSearchResult?.pricePoints?.some((point) => point.pricePhpPerKg != null);

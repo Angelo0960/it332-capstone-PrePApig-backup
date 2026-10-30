@@ -203,7 +203,7 @@ export default function AnalyticsReportsScreen() {
   const requestAiPriceAnalysis = async (locations = pigPriceLocations, { bypassCache = false } = {}) => {
     if (!Array.isArray(locations) || locations.length < 3) return;
 
-    const cacheKey = `price-ai-analysis-v5:${getUserCacheKey()}:${locations.join('|')}`;
+    const cacheKey = `price-ai-analysis-v4:${getUserCacheKey()}:${locations.join('|')}`;
     const cachedAnalysis = readCache(cacheKey);
     if (cachedAnalysis && !bypassCache) {
       setAiAnalysis(cachedAnalysis);
@@ -729,7 +729,7 @@ export default function AnalyticsReportsScreen() {
                     <Radio size={10} /> {aiAnalysisLoading ? 'Updating' : livePricePoints.length > 0 ? 'Live' : 'Search'}
                   </span>
                 </div>
-                <p className="text-xs text-gray-600">Web-scraped farmgate prices per kg across nearby markets</p>
+                <p className="text-xs text-gray-600">Facebook public listings for farmgate prices per kg across nearby markets</p>
 
               </div>
               <button

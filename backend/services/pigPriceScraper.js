@@ -9,7 +9,24 @@ const FACEBOOK_PRICE_SOURCES = PRICE_SOURCE_LOCATIONS.map((location) => ({
   url: `https://www.facebook.com/public/${encodeURIComponent(`${location} Batangas baboy presyo`)}`,
   status: 'unverified',
 }));
-
+const CALACA_FACEBOOK_PRICE_POINT = {
+  location: 'Calaca',
+  province: 'Batangas',
+  pricePhpPerKg: 152.5,
+  priceMinPhpPerKg: 150,
+  priceMaxPhpPerKg: 155,
+  priceAveragePhpPerKg: 152.5,
+  priceType: 'liveweight',
+  unit: 'PHP/kg liveweight',
+  period: '2026-10-30',
+  observedDate: '2026-10-30',
+  source: 'Calaca City Veterinary Office Facebook post',
+  sourceUrl: 'unavailable',
+  status: 'partially_verified',
+  verificationStatus: 'user-provided-screenshot',
+  evidence: 'Live weight hog price: PHP 150.00–155.00 per kilo as of October 30, 2026. Information attributed to hog agents and haulers.',
+  sourceType: 'User-provided Facebook screenshot; verify the buyer offer before selling',
+};
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 let cache = { expiresAt: 0, value: null };
@@ -103,17 +120,7 @@ export const fetchBatangasPigPrice = async ({ fetchImpl = fetch, now = Date.now(
     success: true,
     data: latest,
     priceSourceLocations: PRICE_SOURCE_LOCATIONS,
-    pricePoints: [{
-      location: 'Calaca',
-      pricePhpPerKg: latest.pricePhpPerKg,
-      unit: latest.unit,
-      period: latest.period,
-      source: latest.source,
-      sourceUrl: latest.sourceUrl,
-      status: 'observed',
-      verificationStatus: 'source_csv',
-      sourceType: 'Baboy PH / PSA OpenSTAT web-scraped provincial reference',
-    }],
+    pricePoints: [CALACA_FACEBOOK_PRICE_POINT],
     facebookPriceSources: FACEBOOK_PRICE_SOURCES,
     basis: priceRows,
     basisSummary: {
@@ -155,4 +162,4 @@ export const clearPigPriceCache = () => {
   inFlightRequest = null;
 };
 
-export { PRICE_SOURCE_URL, BATANGAS_PSGC, parseCsv };
+export { PRICE_SOURCE_URL, BATANGAS_PSGC, CALACA_FACEBOOK_PRICE_POINT, parseCsv };
