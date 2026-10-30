@@ -25,6 +25,15 @@ feedRouter.get('/forecast', async (req, res) => {
       windowDays: req.query.window_days,
       source: req.query.source || 'recorded',
     });
+    if (String(req.query.include_ai).toLowerCase() === 'true' && result.status === 'forecasted') {
+      try {
+        result.aiAnalysis = await generateFeedForecastAnalysis({ forecast: result });
+      } catch (error) {
+        result.aiAnalysisError = String(error.message || '').includes('API key is not configured')
+          ? 'Feed forecast AI analysis is not configured'
+          : 'Feed forecast AI analysis is temporarily unavailable';
+      }
+    }
     res.json(result);
   } catch (error) {
     console.error(JSON.stringify({ event: 'feed_forecast_failed', requestId: req.requestId, message: error.message }));

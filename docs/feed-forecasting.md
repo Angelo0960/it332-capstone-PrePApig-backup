@@ -20,7 +20,7 @@ The uploaded rows are explicitly synthetic. They are filtered to dates no later 
 The Analytics dashboard now requests:
 
 ```text
-GET /feeds/forecast?source=uploaded_historical&batch_id=all&horizon_weeks=4
+GET /feeds/forecast?source=uploaded_historical&batch_id=all&horizon_weeks=4&include_ai=true
 ```
 
 It displays uploaded historical actual consumption, planned consumption, variance, projected 50 kg bag equivalents, a four-week forecast line, forecast error, source dates, and the synthetic-data limitation. The Feed/Inventory screen continues to support the separate recorded-database forecast.

@@ -66,7 +66,6 @@ export default function AnalyticsReportsScreen() {
   const [feedForecastError, setFeedForecastError] = useState(null);
   const [feedForecastAi, setFeedForecastAi] = useState(null);
   const [feedForecastAiError, setFeedForecastAiError] = useState(null);
-  const [feedForecastAiLoading, setFeedForecastAiLoading] = useState(false);
   const [pigPriceLocations, setPigPriceLocations] = useState(DEFAULT_PRICE_POINTS.map((point) => point.location));
   const [pigPriceReference, setPigPriceReference] = useState(null);
   const [pricePoints, setPricePoints] = useState(DEFAULT_PRICE_POINTS);
@@ -150,44 +149,19 @@ export default function AnalyticsReportsScreen() {
     try {
       const batch = selectedBatch !== 'All Batches' ? batches.find((row) => row.batch_code === selectedBatch) : null;
       const batchId = batch?.batch_code || 'all';
-      const response = await fetch(`${API_BASE}/feeds/forecast?source=uploaded_historical&batch_id=${encodeURIComponent(batchId)}&horizon_weeks=4`, {
+      const response = await fetch(`${API_BASE}/feeds/forecast?source=uploaded_historical&batch_id=${encodeURIComponent(batchId)}&horizon_weeks=4&include_ai=true`, {
         headers: getAuthHeaders(), signal,
       });
       const json = await response.json();
       if (!response.ok || !json.success) throw new Error(json.message || 'Feed forecast unavailable');
       setFeedForecast(json);
+      setFeedForecastAi(json.aiAnalysis || null);
+      setFeedForecastAiError(json.aiAnalysisError || null);
       setFeedForecastError(null);
     } catch (err) {
       if (err.name === 'AbortError') return;
       setFeedForecast(null);
       setFeedForecastError(err.message || 'Uploaded feed forecast unavailable');
-    }
-  };
-
-  const fetchFeedForecastAi = async () => {
-    if (!feedForecast || feedForecast.status !== 'forecasted') return;
-    const cacheKey = `feed-forecast-ai:${getUserCacheKey()}:${selectedBatch}`;
-    const cached = readCache(cacheKey);
-    if (cached) {
-      setFeedForecastAi(cached);
-      return;
-    }
-    setFeedForecastAiLoading(true);
-    setFeedForecastAiError(null);
-    try {
-      const response = await fetch(`${API_BASE}/feeds/forecast/ai-analysis`, {
-        method: 'POST', headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ batch_id: selectedBatch === 'All Batches' ? 'all' : selectedBatch, horizon_weeks: 4 }),
-      });
-      const json = await response.json();
-      if (!response.ok || !json.success) throw new Error(json.message || 'Feed forecast AI analysis unavailable');
-      setFeedForecastAi(json);
-      writeCache(cacheKey, json);
-    } catch (err) {
-      setFeedForecastAi(null);
-      setFeedForecastAiError(err.message || 'Feed forecast AI analysis unavailable');
-    } finally {
-      setFeedForecastAiLoading(false);
     }
   };
 
@@ -332,10 +306,6 @@ export default function AnalyticsReportsScreen() {
     void fetchFeedForecast(controller.signal);
     return () => controller.abort();
   }, [selectedBatch, batches]);
-
-  useEffect(() => {
-    void fetchFeedForecastAi();
-  }, [feedForecast, selectedBatch]);
 
   useEffect(() => {
     if (autoAiAnalysisRequested.current || !pigPriceReference || pigPriceLocations.length < 3) return;
@@ -855,7 +825,7 @@ export default function AnalyticsReportsScreen() {
             <div className="flex flex-wrap gap-3 text-[10px] text-gray-600 mb-2"><span className="text-emerald-700">● Uploaded weekly actual</span><span className="text-violet-700">● 4-week forecast</span></div>
             {feedForecast?.status === 'forecasted' && <p className="text-[10px] text-gray-500 mb-2">Source: uploaded synthetic weekly feed data · {feedForecast.historyWeeks} historical weeks · holdout MAE {feedForecast.evaluation?.meanAbsoluteErrorKg ?? '—'} kg/week.</p>}
             {feedForecastError && <p className="text-[10px] text-red-700 mb-2">{feedForecastError}</p>}
-            {feedForecastAiLoading && <p className="text-[10px] text-violet-700 mb-2">Generating AI feed-planning analysis…</p>}
+
             {feedForecastAi && (
               <div className="bg-violet-100/60 border border-violet-300/50 rounded-xl p-3 mb-3">
                 <div className="flex items-center justify-between gap-2 mb-1"><span className="text-xs font-semibold text-violet-900">AI Forecast Analysis</span><span className="text-[10px] uppercase text-violet-700">{feedForecastAi.riskLevel || 'unknown'} risk</span></div>
