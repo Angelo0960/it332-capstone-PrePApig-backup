@@ -685,6 +685,15 @@ export default function DashboardScreen() {
             <>
               <>
               <div className="dashboard-batch-hero relative col-span-full mb-1 min-h-[250px] overflow-hidden rounded-[24px] border border-white/45 bg-white/25 p-5 shadow-[0_16px_40px_rgba(31,64,49,0.13)] backdrop-blur-xl md:min-h-[300px]">
+                <button
+                  type="button"
+                  onClick={() => handleDeleteBatch(currentBatch.id, currentBatch.name)}
+                  aria-label={`Delete ${currentBatch.name}`}
+                  title="Delete batch"
+                  className="absolute right-4 top-4 z-20 grid h-9 w-9 place-items-center rounded-xl bg-red-100/70 text-red-600 shadow-sm transition hover:bg-red-200/80"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
                 <div className="relative z-10 max-w-[58%]">
                   <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#777D8D]">Current batch</p>
                   <h2 className="text-3xl font-extrabold tracking-[-0.05em] text-[#252838] sm:text-4xl">{currentBatch.name}</h2>
