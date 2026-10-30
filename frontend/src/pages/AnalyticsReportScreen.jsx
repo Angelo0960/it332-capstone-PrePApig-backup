@@ -729,7 +729,7 @@ export default function AnalyticsReportsScreen() {
                     <Radio size={10} /> {aiAnalysisLoading ? 'Updating' : livePricePoints.length > 0 ? 'Live' : 'Search'}
                   </span>
                 </div>
-                <p className="text-xs text-gray-600">Farmgate prices per kg across nearby markets</p>
+                <p className="text-xs text-gray-600">Facebook public listings for farmgate prices per kg across nearby markets</p>
               </div>
               <button
                 type="button"

@@ -9,7 +9,7 @@ const getGoogleCx = () => String(process.env.GOOGLE_SEARCH_ENGINE_ID || '').trim
 const getSearchQuery = (location, now = new Date()) => {
   const month = now.toLocaleString('en-US', { month: 'long', timeZone: 'Asia/Manila' });
   const year = now.toLocaleString('en-US', { year: 'numeric', timeZone: 'Asia/Manila' });
-  return `presyo ng buhay na baboy ${location} Batangas ${month} ${year} liveweight farmgate price per kilogram`;
+  return `site:facebook.com presyo ng buhay na baboy ${location} Batangas ${month} ${year} liveweight farmgate price per kilogram`;
 };
 
 const decodeHtml = (value) => String(value || '')
@@ -60,6 +60,8 @@ const parseObservedDate = (text, item = {}) => {
 const looksLikeLiveweight = (text) => /live\s*weight|liveweight|farmgate|farm\s*gate|buhay na baboy|live hog|per\s*kg|\/\s*kg/i.test(text)
   && !/retail pork|dressed meat|pork chop|liempo|kasim|baboy na karne/i.test(text);
 
+const isFacebookUrl = (value) => /^https?:\/\/(?:www\.)?facebook\.com\//i.test(String(value || ''));
+
 const normalizeResult = (location, query, item) => {
   const title = decodeHtml(item.title || item.name || 'Web search result');
   const snippet = decodeHtml(item.snippet || item.description || '');
@@ -83,7 +85,7 @@ const normalizeResult = (location, query, item) => {
     status: observedDate ? 'partially_verified' : 'unverified',
     verificationStatus: observedDate ? 'partially_verified' : 'unverified',
     evidence: snippet,
-    sourceType: 'web search result; verify with buyer before selling',
+    sourceType: 'Facebook public post/page/group search result; verify with buyer before selling',
   };
 };
 
@@ -141,16 +143,17 @@ export const searchPigPricesWeb = async ({
       const results = provider === 'serper'
         ? await searchSerper(query, fetchImpl)
         : await searchGoogle(query, fetchImpl);
-      const point = results.map((item) => normalizeResult(location, query, item)).find(Boolean);
+      const facebookResults = results.filter((item) => isFacebookUrl(item.link || item.url));
+      const point = facebookResults.map((item) => normalizeResult(location, query, item)).find(Boolean);
       if (point) pricePoints.push(point);
-      else pricePoints.push({ location, query, pricePhpPerKg: null, unit: 'PHP/kg liveweight', period: 'unavailable', source: 'No qualifying public web result', sourceUrl: 'unavailable', status: 'unavailable', verificationStatus: 'unavailable' });
-      results.slice(0, 5).forEach((item) => {
+      else pricePoints.push({ location, query, pricePhpPerKg: null, unit: 'PHP/kg liveweight', period: 'unavailable', source: 'No qualifying public Facebook result', sourceUrl: 'unavailable', status: 'unavailable', verificationStatus: 'unavailable', sourceType: 'Facebook public post/page/group search' });
+      facebookResults.slice(0, 5).forEach((item) => {
         const url = item.link || item.url;
         if (url) sources.push({ title: decodeHtml(item.title || item.name || url), url });
       });
     } catch (error) {
       errors.push(`${location}: ${String(error.message || error)}`.slice(0, 240));
-      pricePoints.push({ location, query, pricePhpPerKg: null, unit: 'PHP/kg liveweight', period: 'unavailable', source: 'Web search failed', sourceUrl: 'unavailable', status: 'unavailable', verificationStatus: 'unavailable' });
+      pricePoints.push({ location, query, pricePhpPerKg: null, unit: 'PHP/kg liveweight', period: 'unavailable', source: 'Facebook search failed', sourceUrl: 'unavailable', status: 'unavailable', verificationStatus: 'unavailable', sourceType: 'Facebook public post/page/group search' });
     }
   }
 
@@ -162,7 +165,7 @@ export const searchPigPricesWeb = async ({
     pricePoints,
     sources: [...new Map(sources.map((source) => [source.url, source])).values()],
     limitations: [
-      'Search snippets are public web observations, not guaranteed buyer offers.',
+      'Facebook search snippets are public observations, not guaranteed buyer offers.',
       'Confirm location, date, liveweight basis, and price directly before selling.',
       ...errors,
     ],
