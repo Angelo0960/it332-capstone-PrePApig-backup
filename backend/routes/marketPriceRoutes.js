@@ -2,6 +2,12 @@ import express from 'express';
 import { fetchBatangasPigPrice } from '../services/pigPriceScraper.js';
 import { generatePigPriceAnalysis } from '../services/openaiPigPriceService.js';
 import { searchPigPricesWeb } from '../services/webPigPriceSearchService.js';
+import { forecastPigMarketPrices } from '../services/pigMarketForecastService.js';
+import {
+  DEFAULT_LOCATIONS,
+  getLatestPigMarketPrices,
+  refreshPigMarketPrices,
+} from '../services/pigMarketPriceHistoryService.js';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 
 import { rateLimit } from '../middlewares/rateLimit.js';
@@ -21,6 +27,42 @@ marketPriceRouter.get('/pigs', rateLimit({ limit: 60, windowMs: 60000 }), async 
   }
 });
 
+marketPriceRouter.get('/history', authMiddleware, rateLimit({ limit: 30, windowMs: 60000, key: (req) => req.user.id }), async (req, res) => {
+  try {
+    const requested = String(req.query.locations || '').split(',').map((value) => value.trim()).filter(Boolean);
+    const locations = (requested.length ? requested : DEFAULT_LOCATIONS).slice(0, 10);
+    const rows = await getLatestPigMarketPrices({ locations, from: req.query.from, to: req.query.to, limit: req.query.limit });
+    res.json({ success: true, locations, rows });
+  } catch (error) {
+    console.error(JSON.stringify({ event: 'pig_market_history_failed', requestId: req.requestId, message: error.message }));
+    res.status(502).json({ success: false, message: 'Pig market price history is unavailable', requestId: req.requestId });
+  }
+});
+
+marketPriceRouter.post('/refresh', authMiddleware, rateLimit({ limit: 2, windowMs: 3600000, key: (req) => req.user.id }), async (req, res) => {
+  try {
+    const requested = Array.isArray(req.body?.locations) && req.body.locations.length ? req.body.locations : DEFAULT_LOCATIONS;
+    const locations = [...new Set(requested)].filter((location) => typeof location === 'string' && location.trim()).slice(0, 10);
+    const result = await refreshPigMarketPrices({ locations });
+    res.json(result);
+  } catch (error) {
+    console.error(JSON.stringify({ event: 'pig_market_refresh_failed', requestId: req.requestId, message: error.message }));
+    res.status(502).json({ success: false, message: 'Pig market price refresh failed', requestId: req.requestId });
+  }
+});
+
+marketPriceRouter.get('/forecast', authMiddleware, rateLimit({ limit: 20, windowMs: 60000, key: (req) => req.user.id }), async (req, res) => {
+  try {
+    const requested = String(req.query.locations || '').split(',').map((value) => value.trim()).filter(Boolean);
+    const locations = (requested.length ? requested : DEFAULT_LOCATIONS).slice(0, 10);
+    const result = await forecastPigMarketPrices({ locations, horizonWeeks: req.query.horizon_weeks });
+    res.json(result);
+  } catch (error) {
+    console.error(JSON.stringify({ event: 'pig_market_forecast_failed', requestId: req.requestId, message: error.message }));
+    res.status(502).json({ success: false, message: 'Pig market forecast is unavailable', requestId: req.requestId });
+  }
+});
+
 marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5, windowMs: 600000, key: (req) => req.user.id }), async (req, res) => {
   try {
     if (req.body?.locations !== undefined && (!Array.isArray(req.body.locations) || req.body.locations.length > 20 || req.body.locations.some((location) => typeof location !== 'string' || !location.trim() || location.length > 100))) {
@@ -29,7 +71,7 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
     const priceData = await fetchBatangasPigPrice();
     const locations = Array.isArray(req.body?.locations) && req.body.locations.length > 0
       ? req.body.locations
-      : priceData.priceSourceLocations;
+      : DEFAULT_LOCATIONS;
     let webSearchResult = null;
     if (process.env.SERPER_API_KEY || (process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_ENGINE_ID)) {
       webSearchResult = await searchPigPricesWeb({ locations });
@@ -77,7 +119,7 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
       const aiByLocation = new Map(aiPoints.map((point) => [String(point.location).toLowerCase(), point]));
       result.pricePoints = webSearchResult.pricePoints.map((webPoint) => {
         const aiPoint = aiByLocation.get(String(webPoint.location).toLowerCase());
-        return aiPoint?.pricePhpPerKg != null ? aiPoint : webPoint;
+        return aiPoint?.pricePhpPerKg != null ? { ...webPoint, ...aiPoint } : webPoint;
       });
       result.sources = [...new Map([
         ...(result.sources || []),

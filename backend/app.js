@@ -15,7 +15,7 @@ import notificationRouter from "./routes/notificationRoutes.js";
 import marketPriceRouter from "./routes/marketPriceRoutes.js";
 import managementRouter from './routes/managementRoutes.js';
 
-import { workerStatus, runReminders } from './scheduler.js';
+import { workerStatus, runReminders, marketPriceWorkerStatus, runMarketPriceRefresh } from './scheduler.js';
 import { authMiddleware } from './middlewares/authMiddleware.js';
 import { operationsAuth } from './middlewares/operationsAuth.js';
 
@@ -96,13 +96,21 @@ app.use("/market-prices", marketPriceRouter);
 app.use('/management', managementRouter);
 
 app.get('/operations/worker', authMiddleware, operationsAuth, (req, res) => {
-  res.json({ success: true, worker: workerStatus, scope: 'this process', timezone: process.env.APP_TIMEZONE || 'Asia/Manila' });
+  res.json({ success: true, worker: workerStatus, marketPriceWorker: marketPriceWorkerStatus, scope: 'this process', timezone: process.env.APP_TIMEZONE || 'Asia/Manila' });
 });
 app.post('/operations/reminders/run', authMiddleware, operationsAuth, async (req, res, next) => {
   try {
     console.log(JSON.stringify({ event: 'operations_reminders_requested', actorId: req.user.id, requestId: req.requestId }));
     await runReminders();
     res.json({ success: true, worker: workerStatus });
+  } catch (error) { next(error); }
+});
+
+app.post('/operations/market-prices/run', authMiddleware, operationsAuth, async (req, res, next) => {
+  try {
+    console.log(JSON.stringify({ event: 'operations_market_price_refresh_requested', actorId: req.user.id, requestId: req.requestId }));
+    const result = await runMarketPriceRefresh();
+    res.json({ success: true, result, marketPriceWorker: marketPriceWorkerStatus });
   } catch (error) { next(error); }
 });
 

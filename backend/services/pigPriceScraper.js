@@ -1,7 +1,7 @@
 const PRICE_SOURCE_URL =
   'https://baboyph.com/data/hog-farmgate-household-regional.csv';
 const BATANGAS_PSGC = '0401000000';
-const PRICE_SOURCE_LOCATIONS = ['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Taal'];
+const PRICE_SOURCE_LOCATIONS = ['Lemery', 'Calaca', 'Tuy', 'Balayan', 'Lian', 'Nasugbu', 'Taal'];
 
 const FACEBOOK_PRICE_SOURCES = PRICE_SOURCE_LOCATIONS.map((location) => ({
   location,

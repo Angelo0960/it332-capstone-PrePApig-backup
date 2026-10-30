@@ -11,6 +11,7 @@ import {
   MapPin,
   Radio,
   Sparkles,
+  RefreshCw,
 
   ChevronDown,
 
@@ -38,10 +39,12 @@ import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 // ────────────────────────────────────────────────────────────────
 
 const DEFAULT_PRICE_POINTS = [
-  { location: 'Calaca', pricePhpPerKg: null, unit: 'PHP/kg liveweight', source: 'Search unavailable', status: 'unavailable' },
   { location: 'Lemery', pricePhpPerKg: null, unit: 'PHP/kg liveweight', source: 'Search unavailable', status: 'unavailable' },
-  { location: 'Balayan', pricePhpPerKg: null, unit: 'PHP/kg liveweight', source: 'Search unavailable', status: 'unavailable' },
+  { location: 'Calaca', pricePhpPerKg: null, unit: 'PHP/kg liveweight', source: 'Search unavailable', status: 'unavailable' },
   { location: 'Tuy', pricePhpPerKg: null, unit: 'PHP/kg liveweight', source: 'Search unavailable', status: 'unavailable' },
+  { location: 'Balayan', pricePhpPerKg: null, unit: 'PHP/kg liveweight', source: 'Search unavailable', status: 'unavailable' },
+  { location: 'Lian', pricePhpPerKg: null, unit: 'PHP/kg liveweight', source: 'Search unavailable', status: 'unavailable' },
+  { location: 'Nasugbu', pricePhpPerKg: null, unit: 'PHP/kg liveweight', source: 'Search unavailable', status: 'unavailable' },
   { location: 'Taal', pricePhpPerKg: null, unit: 'PHP/kg liveweight', source: 'Search unavailable', status: 'unavailable' },
 ];
 
@@ -59,7 +62,7 @@ export default function AnalyticsReportsScreen() {
   const [financial, setFinancial] = useState(null);
   const [financialError, setFinancialError] = useState(null);
   const [feedStock, setFeedStock] = useState([]);
-  const [pigPriceLocations, setPigPriceLocations] = useState(['Calaca', 'Lemery', 'Balayan', 'Tuy', 'Taal']);
+  const [pigPriceLocations, setPigPriceLocations] = useState(DEFAULT_PRICE_POINTS.map((point) => point.location));
   const [pigPriceReference, setPigPriceReference] = useState(null);
   const [pricePoints, setPricePoints] = useState(DEFAULT_PRICE_POINTS);
   const [selectedPriceLocation, setSelectedPriceLocation] = useState(() => (
@@ -70,6 +73,10 @@ export default function AnalyticsReportsScreen() {
   const [aiAnalysis, setAiAnalysis] = useState(null);
   const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
   const [aiAnalysisError, setAiAnalysisError] = useState(null);
+  const [marketRefreshLoading, setMarketRefreshLoading] = useState(false);
+  const [marketRefreshError, setMarketRefreshError] = useState(null);
+  const [marketHistory, setMarketHistory] = useState([]);
+  const [marketForecast, setMarketForecast] = useState(null);
 
   // Filters
   const [dateRange, setDateRange] = useState('Last 30 days');
@@ -156,12 +163,12 @@ export default function AnalyticsReportsScreen() {
     }
   };
 
-  const requestAiPriceAnalysis = async (locations = pigPriceLocations) => {
+  const requestAiPriceAnalysis = async (locations = pigPriceLocations, { bypassCache = false } = {}) => {
     if (!Array.isArray(locations) || locations.length < 3) return;
 
     const cacheKey = `price-ai-analysis-v3:${getUserCacheKey()}:${locations.join('|')}`;
     const cachedAnalysis = readCache(cacheKey);
-    if (cachedAnalysis) {
+    if (cachedAnalysis && !bypassCache) {
       setAiAnalysis(cachedAnalysis);
       if (Array.isArray(cachedAnalysis.pricePoints) && cachedAnalysis.pricePoints.length > 0) {
         setPricePoints(cachedAnalysis.pricePoints);
@@ -221,10 +228,52 @@ export default function AnalyticsReportsScreen() {
     }
   };
 
+  const fetchMarketHistory = async (locations = pigPriceLocations) => {
+    try {
+      const response = await fetch(`${API_BASE}/market-prices/history?locations=${encodeURIComponent(locations.join(','))}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return;
+      const json = await response.json();
+      setMarketHistory(json.rows || []);
+      const forecastResponse = await fetch(`${API_BASE}/market-prices/forecast?locations=${encodeURIComponent(locations.join(','))}&horizon_weeks=4`, {
+        headers: getAuthHeaders(),
+      });
+      if (forecastResponse.ok) {
+        const forecastJson = await forecastResponse.json();
+        setMarketForecast(forecastJson);
+      }
+    } catch (err) {
+      console.warn('Market price history unavailable:', err.message);
+    }
+  };
+
+  const refreshMarketPrices = async () => {
+    setMarketRefreshLoading(true);
+    setMarketRefreshError(null);
+    try {
+      const response = await fetch(`${API_BASE}/market-prices/refresh`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locations: pigPriceLocations }),
+      });
+      const json = await response.json();
+      if (!response.ok || !json.success) throw new Error(json.message || 'Market price refresh failed');
+      setPricePoints(json.pricePoints?.length ? json.pricePoints : DEFAULT_PRICE_POINTS);
+      await requestAiPriceAnalysis(pigPriceLocations, { bypassCache: true });
+      await fetchMarketHistory(pigPriceLocations);
+    } catch (err) {
+      setMarketRefreshError(err.message || 'Market price refresh failed');
+    } finally {
+      setMarketRefreshLoading(false);
+    }
+  };
+
   useEffect(() => {
     const controller = new AbortController();
     fetchAllData(controller.signal);
     fetchPigPriceBasis(controller.signal);
+    void fetchMarketHistory();
     return () => controller.abort();
   }, [dateRange]);
 
@@ -584,7 +633,15 @@ export default function AnalyticsReportsScreen() {
                 </div>
                 <p className="text-xs text-gray-600">Farmgate prices per kg across nearby markets</p>
               </div>
-              <Sparkles size={20} className="text-violet-500" aria-hidden="true" />
+              <button
+                type="button"
+                onClick={refreshMarketPrices}
+                disabled={marketRefreshLoading || aiAnalysisLoading}
+                className="inline-flex items-center gap-1 rounded-xl bg-violet-600 px-3 py-2 text-[10px] font-bold text-white shadow-md transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <RefreshCw size={13} className={marketRefreshLoading ? 'animate-spin' : ''} />
+                {marketRefreshLoading ? 'Refreshing' : 'Refresh prices'}
+              </button>
             </div>
             <div className="space-y-2">
               {pricePoints.map((point) => {
@@ -612,6 +669,11 @@ export default function AnalyticsReportsScreen() {
                       <span className="mt-1 block truncate text-[10px] text-gray-500">
                         {point.pricePhpPerKg == null ? point.source || 'No qualifying public result' : `${point.unit || 'PHP/kg liveweight'} · ${point.period || priceUpdatedLabel}`}
                       </span>
+                      {point.sourceUrl && point.sourceUrl !== 'unavailable' && (
+                        <a href={point.sourceUrl} target="_blank" rel="noreferrer" className="mt-1 block truncate text-[10px] text-violet-600 underline" onClick={(event) => event.stopPropagation()}>
+                          {point.source || 'Open source'}
+                        </a>
+                      )}
                     </span>
                     <span className="shrink-0 text-right">
                       <span className={`block text-lg font-bold ${point.pricePhpPerKg == null ? 'text-gray-400' : 'text-gray-900'}`}>
@@ -627,6 +689,7 @@ export default function AnalyticsReportsScreen() {
               <div className="mt-3 text-[10px] text-gray-500">Provincial reference: {formatPricePerKg(pigPriceReference.pricePhpPerKg)} ({pigPriceReference.period}); not a municipality-specific quote.</div>
             )}
             {pigPriceError && <div className="mt-2 text-xs text-red-600">{pigPriceError}</div>}
+            {marketRefreshError && <div className="mt-2 text-xs text-red-600">{marketRefreshError}</div>}
             {aiAnalysisError && <div className="mt-2 text-xs text-red-600">{aiAnalysisError}</div>}
             {aiAnalysis && (
               <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50/70 p-4">
@@ -637,6 +700,44 @@ export default function AnalyticsReportsScreen() {
               </div>
             )}
             <div className="mt-3 text-[10px] text-gray-500">Prices come from public web search or the provincial source. Confirm the posting date, location, liveweight basis, and buyer offer before selling.</div>
+            {marketHistory.length > 1 && (
+              <div className="mt-4 rounded-2xl border border-white/60 bg-white/55 p-3">
+                <div className="mb-2 text-xs font-semibold text-gray-800">Historical observed prices</div>
+                <ResponsiveContainer width="100%" height={180}>
+                  <LineChart data={marketHistory.slice(0, 90).map((row) => ({
+                    date: row.observed_date || row.retrieved_at?.slice(0, 10),
+                    price: Number(row.price_average),
+                  })).filter((row) => Number.isFinite(row.price)).reverse()}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis dataKey="date" tick={{ fontSize: 9 }} />
+                    <YAxis tick={{ fontSize: 9 }} label={{ value: 'PHP/kg', angle: -90, position: 'insideLeft', style: { fontSize: 9 } }} />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="price" stroke="#7C3AED" strokeWidth={2} dot={false} name="Observed price" />
+                  </LineChart>
+                </ResponsiveContainer>
+                <div className="text-[10px] text-gray-500">Observed records only. Missing dates are not interpolated.</div>
+              </div>
+            )}
+            {marketForecast?.results?.some((result) => result.status === 'forecasted') && (
+              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/70 p-3">
+                <div className="mb-2 text-xs font-semibold text-amber-900">4-week statistical price forecast</div>
+                <div className="space-y-2">
+                  {marketForecast.results.filter((result) => result.status === 'forecasted').map((result) => (
+                    <div key={result.municipality} className="flex items-center justify-between gap-3 rounded-xl bg-white/60 px-3 py-2">
+                      <div>
+                        <div className="text-xs font-semibold text-gray-900">{result.municipality}</div>
+                        <div className="text-[10px] text-gray-500">MAE ₱{result.evaluation?.meanAbsoluteErrorPhpPerKg ?? '—'}/kg · {result.historyPoints} observations</div>
+                      </div>
+                      <div className="text-right text-sm font-bold text-amber-800">
+                        {result.forecast?.[0] ? formatPricePerKg(result.forecast[0].predictedPricePhpPerKg) : '—'}
+                        <div className="text-[10px] font-normal text-amber-700">{result.forecast?.[0]?.weekStart || '—'}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-2 text-[10px] text-gray-500">Forecasts require at least eight dated observations and are not guaranteed buyer quotes.</div>
+              </div>
+            )}
           </div>
 
           {/* Feed Consumption */}

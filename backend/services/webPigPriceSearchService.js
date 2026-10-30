@@ -1,16 +1,16 @@
 import 'dotenv/config';
 
-const SEARCH_QUERIES = {
-  Calaca: 'magkano ang presyo ng buhay na baboy sa calaca',
-  Lemery: 'magkano ang presyo ng buhay na baboy sa lemery',
-  Balayan: 'magakano ang presyo ng buhay na baboy sa balayan',
-  Tuy: 'magakano ang presyo ng buhay na baboy sa tuy',
-  Taal: 'magkano ang presyo ng buhay na baboy sa taal',
-};
+const SEARCH_LOCATIONS = ['Lemery', 'Calaca', 'Tuy', 'Balayan', 'Lian', 'Nasugbu', 'Taal'];
 
 const getSerperKey = () => String(process.env.SERPER_API_KEY || '').trim();
 const getGoogleKey = () => String(process.env.GOOGLE_SEARCH_API_KEY || '').trim();
 const getGoogleCx = () => String(process.env.GOOGLE_SEARCH_ENGINE_ID || '').trim();
+
+const getSearchQuery = (location, now = new Date()) => {
+  const month = now.toLocaleString('en-US', { month: 'long', timeZone: 'Asia/Manila' });
+  const year = now.toLocaleString('en-US', { year: 'numeric', timeZone: 'Asia/Manila' });
+  return `presyo ng buhay na baboy ${location} Batangas ${month} ${year} liveweight farmgate price per kilogram`;
+};
 
 const decodeHtml = (value) => String(value || '')
   .replace(/<[^>]*>/g, ' ')
@@ -36,23 +36,52 @@ const parsePrice = (text) => {
   return null;
 };
 
-const looksLikeLiveweight = (text) => /live\s*weight|liveweight|farmgate|farm\s*gate|buhay na baboy|live hog|per\s*kg|\/\s*kg/i.test(text);
+const parsePrices = (text) => {
+  const normalized = decodeHtml(text);
+  const range = normalized.match(/(?:₱|PHP|Php)\s*([\d,]+(?:\.\d{1,2})?)\s*(?:-|–|to)\s*(?:₱|PHP|Php)?\s*([\d,]+(?:\.\d{1,2})?)/i)
+    || normalized.match(/([\d,]+(?:\.\d{1,2})?)\s*(?:-|–|to)\s*([\d,]+(?:\.\d{1,2})?)\s*(?:PHP|pesos?)\b/i);
+  if (range) {
+    const values = range.slice(1).map((value) => Number(value.replace(/,/g, ''))).filter((value) => Number.isFinite(value) && value >= 20 && value <= 1000);
+    if (values.length === 2) return { min: Math.min(...values), max: Math.max(...values), average: Number(((values[0] + values[1]) / 2).toFixed(2)) };
+  }
+  const single = parsePrice(normalized);
+  return single == null ? null : { min: single, max: single, average: single };
+};
+
+const parseObservedDate = (text, item = {}) => {
+  const raw = [item.date, item.publishedDate, item.pagemap?.metatags?.[0]?.['article:published_time'], text].filter(Boolean).join(' ');
+  const iso = raw.match(/\b(20\d{2})[-/](\d{1,2})[-/](\d{1,2})\b/);
+  if (iso) return `${iso[1]}-${String(iso[2]).padStart(2, '0')}-${String(iso[3]).padStart(2, '0')}`;
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime()) && parsed.getFullYear() >= 2020) return parsed.toISOString().slice(0, 10);
+  return null;
+};
+
+const looksLikeLiveweight = (text) => /live\s*weight|liveweight|farmgate|farm\s*gate|buhay na baboy|live hog|per\s*kg|\/\s*kg/i.test(text)
+  && !/retail pork|dressed meat|pork chop|liempo|kasim|baboy na karne/i.test(text);
 
 const normalizeResult = (location, query, item) => {
   const title = decodeHtml(item.title || item.name || 'Web search result');
   const snippet = decodeHtml(item.snippet || item.description || '');
   const combined = `${title}. ${snippet}`;
-  const price = parsePrice(combined);
-  if (price == null || !looksLikeLiveweight(combined)) return null;
+  const prices = parsePrices(combined);
+  if (!prices || !looksLikeLiveweight(combined)) return null;
+  const observedDate = parseObservedDate(combined, item);
   return {
     location,
     query,
-    pricePhpPerKg: price,
+    pricePhpPerKg: prices.average,
+    priceMinPhpPerKg: prices.min,
+    priceMaxPhpPerKg: prices.max,
+    priceAveragePhpPerKg: prices.average,
+    priceType: /farmgate|farm\s*gate/i.test(combined) ? 'farmgate/liveweight' : 'liveweight',
     unit: 'PHP/kg liveweight',
-    period: 'search result date unavailable',
+    period: observedDate || 'search result date unavailable',
+    observedDate,
     source: title,
     sourceUrl: item.link || item.url || 'unavailable',
-    status: 'found',
+    status: observedDate ? 'partially_verified' : 'unverified',
+    verificationStatus: observedDate ? 'partially_verified' : 'unverified',
     evidence: snippet,
     sourceType: 'web search result; verify with buyer before selling',
   };
@@ -87,8 +116,9 @@ const searchGoogle = async (query, fetchImpl) => {
 };
 
 export const searchPigPricesWeb = async ({
-  locations = Object.keys(SEARCH_QUERIES),
+  locations = SEARCH_LOCATIONS,
   fetchImpl = fetch,
+  now = new Date(),
 } = {}) => {
   // Google Custom Search is the primary pricing source. Serper remains an
   // explicitly configured fallback when Google credentials are unavailable.
@@ -104,30 +134,31 @@ export const searchPigPricesWeb = async ({
   const pricePoints = [];
   const sources = [];
   const errors = [];
-  for (const location of [...new Set(locations)].slice(0, 10)) {
-    const query = SEARCH_QUERIES[location] || `magkano ang presyo ng buhay na baboy sa ${location.toLowerCase()}`;
+  const uniqueLocations = [...new Set(locations)].slice(0, 10);
+  for (const location of uniqueLocations) {
+    const query = getSearchQuery(location, now);
     try {
       const results = provider === 'serper'
         ? await searchSerper(query, fetchImpl)
         : await searchGoogle(query, fetchImpl);
       const point = results.map((item) => normalizeResult(location, query, item)).find(Boolean);
       if (point) pricePoints.push(point);
-      else pricePoints.push({ location, query, pricePhpPerKg: null, unit: 'PHP/kg liveweight', period: 'unavailable', source: 'No qualifying public web result', sourceUrl: 'unavailable', status: 'unavailable' });
+      else pricePoints.push({ location, query, pricePhpPerKg: null, unit: 'PHP/kg liveweight', period: 'unavailable', source: 'No qualifying public web result', sourceUrl: 'unavailable', status: 'unavailable', verificationStatus: 'unavailable' });
       results.slice(0, 5).forEach((item) => {
         const url = item.link || item.url;
         if (url) sources.push({ title: decodeHtml(item.title || item.name || url), url });
       });
     } catch (error) {
       errors.push(`${location}: ${String(error.message || error)}`.slice(0, 240));
-      pricePoints.push({ location, query, pricePhpPerKg: null, unit: 'PHP/kg liveweight', period: 'unavailable', source: 'Web search failed', sourceUrl: 'unavailable', status: 'unavailable' });
+      pricePoints.push({ location, query, pricePhpPerKg: null, unit: 'PHP/kg liveweight', period: 'unavailable', source: 'Web search failed', sourceUrl: 'unavailable', status: 'unavailable', verificationStatus: 'unavailable' });
     }
   }
 
   return {
     success: true,
     provider,
-    locations: [...new Set(locations)].slice(0, 10),
-    searchQueries: [...new Set(locations)].slice(0, 10).map((location) => SEARCH_QUERIES[location] || `magkano ang presyo ng buhay na baboy sa ${location.toLowerCase()}`),
+    locations: uniqueLocations,
+    searchQueries: uniqueLocations.map((location) => getSearchQuery(location, now)),
     pricePoints,
     sources: [...new Map(sources.map((source) => [source.url, source])).values()],
     limitations: [
@@ -139,4 +170,4 @@ export const searchPigPricesWeb = async ({
   };
 };
 
-export { SEARCH_QUERIES, parsePrice, normalizeResult };
+export { SEARCH_LOCATIONS, getSearchQuery, parsePrice, parsePrices, normalizeResult };

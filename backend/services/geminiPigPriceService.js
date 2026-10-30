@@ -2,10 +2,12 @@ import 'dotenv/config';
 
 const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 const LIVE_WEIGHT_SEARCH_QUERIES = [
-  'magkano ang presyo ng buhay na baboy sa calaca',
   'magkano ang presyo ng buhay na baboy sa lemery',
-  'magakano ang presyo ng buhay na baboy sa balayan',
+  'magkano ang presyo ng buhay na baboy sa calaca',
   'magakano ang presyo ng buhay na baboy sa tuy',
+  'magakano ang presyo ng buhay na baboy sa balayan',
+  'magkano ang presyo ng buhay na baboy sa lian',
+  'magkano ang presyo ng buhay na baboy sa nasugbu',
   'magkano ang presyo ng buhay na baboy sa taal',
 ];
 
@@ -69,7 +71,7 @@ export const generatePigPriceAnalysis = async ({
   const prompt = [
     'You are analyzing pig selling-price options for a farmer near Calaca, Batangas, Philippines.',
     `Search each of these exact Filipino queries separately: ${JSON.stringify(LIVE_WEIGHT_SEARCH_QUERIES)}.`,
-    `Find current public pig liveweight or farmgate price points for these locations: ${uniqueLocations.join(', ')}.`,
+    `Find current public pig liveweight or farmgate price points for these locations: ${uniqueLocations.join(', ')}. Use at least 3 different nearby locations when sources are available.`,
     'Use web search grounding and prioritize public Facebook posts, pages, and groups for local price evidence when available. Do not use private or login-only content. Do not invent prices. If a location has no reliable public price, label it unavailable.',
     'Separate liveweight/farmgate prices from retail, dressed-meat, or unrelated prices.',
     'Recommend which available location/source is the most useful price basis and explain why.',
