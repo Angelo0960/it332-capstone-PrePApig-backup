@@ -179,6 +179,11 @@ export default function DashboardScreen() {
     return names[feedType];
   };
 
+  const getFeedLevelPercentage = (day) => {
+    const feedType = getFeedTypeForAge(day);
+    return feedType === 'starter' ? 33 : feedType === 'grower' ? 66 : 100;
+  };
+
   const getDaysUntilFeedChange = (day) => {
     if (day <= 21) return 22 - day;
     if (day <= 49) return 50 - day;
@@ -266,6 +271,7 @@ export default function DashboardScreen() {
         const savedPrice = Number(localStorage.getItem(`prepapig:${getUserCacheKey()}:selected-price-per-kg`));
         const cachedWithEstimate = cached.map((batch) => ({
           ...batch,
+          feed: getFeedLevelPercentage(Number(batch.day) || 0),
           pricePerKg: Number(batch.pricePerKg) > 0
             ? batch.pricePerKg
             : savedPrice > 0
@@ -297,7 +303,7 @@ export default function DashboardScreen() {
           const growth = Math.min(100, Math.floor(day / 0.5));
           const vaccination = Math.min(100, Math.floor((day / 50) * 100));
           const health = 80;
-          const feed = Math.max(0, 100 - Math.floor(day / 1.2));
+          const feed = getFeedLevelPercentage(day);
           const savedPrice = Number(localStorage.getItem(`prepapig:${getUserCacheKey()}:selected-price-per-kg`));
           const recordedPrice = Number(batch.sale_price_per_kg);
           const financial = financialByBatch.get(batch.id);
