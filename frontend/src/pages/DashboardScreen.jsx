@@ -12,6 +12,9 @@ import {
 
   User,
   LogOut,
+  Package,
+  Syringe,
+  Settings,
   Trash2,
   Pencil,
   Users,
@@ -482,7 +485,7 @@ export default function DashboardScreen() {
             </button>
           </div>
         </div>
-        <BottomNav active="Home" />
+        <BottomNav active="Home" className="dashboard-bottom-nav" />
       </div>
     );
   }
@@ -562,7 +565,7 @@ export default function DashboardScreen() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24">
+          <div className="dashboard-page-content flex-1 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24">
             <div className="dashboard-summary-grid grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 animate-pulse">
               <div className="h-24 sm:col-span-2 rounded-2xl bg-white/65 border border-white/60" />
               <div className="h-20 rounded-2xl bg-white/65 border border-white/60" />
@@ -580,7 +583,7 @@ export default function DashboardScreen() {
             </div>
           </div>
         </div>
-        <BottomNav active="Home" />
+        <BottomNav active="Home" className="dashboard-bottom-nav" />
       </div>
     );
   }
@@ -613,6 +616,27 @@ export default function DashboardScreen() {
       <div className="absolute inset-0 bg-gradient-to-br from-[#F4F7F5]/80 via-[#EDF3EF]/72 to-[#DCE9E1]/76" />
 
       <div className="mobile-screen-layer relative z-10 flex flex-col flex-1 min-h-0">
+        <aside className="dashboard-desktop-sidebar" aria-label="Farm navigation">
+          <div className="dashboard-sidebar-brand">
+            <div className="dashboard-sidebar-logo"><span>🐖</span></div>
+            <div><strong>Prep<span>AP</span>ig</strong><small>FARM OS</small></div>
+          </div>
+          <p className="dashboard-sidebar-label">Workspace</p>
+          <nav className="dashboard-sidebar-nav">
+            <button className="active" onClick={() => navigate('/dashboard')}><Home size={19} /> Overview <span>•</span></button>
+            <button onClick={() => navigate('/feeds')}><Package size={19} /> Feed inventory</button>
+            <button onClick={() => navigate('/vaccination')}><Syringe size={19} /> Vaccinations</button>
+            <button onClick={() => navigate('/reports')}><TrendingUp size={19} /> Farm reports</button>
+          </nav>
+          <div className="dashboard-sidebar-footer">
+            <button className="dashboard-sidebar-settings" onClick={() => setShowProfileModal(true)}><Settings size={19} /> Settings</button>
+            <button className="dashboard-sidebar-user" onClick={() => setShowProfileModal(true)}>
+              <span className="dashboard-sidebar-avatar">{(user?.name || 'U').slice(0, 2).toUpperCase()}</span>
+              <span><strong>{user?.name || 'Farm manager'}</strong><small>Farm manager</small></span>
+              <LogOut size={17} />
+            </button>
+          </div>
+        </aside>
         {/* Header */}
         <div className="dashboard-header px-4 md:px-8 lg:px-12 pt-5 pb-4">
           <div className="flex items-center justify-between">
@@ -652,7 +676,7 @@ export default function DashboardScreen() {
 
         {/* Content */}
         <div
-          className="flex-1 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24"
+          className="dashboard-page-content flex-1 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           onTouchCancel={handleTouchCancel}
@@ -660,7 +684,7 @@ export default function DashboardScreen() {
           {batches.length > 0 && currentBatch && (
             <>
               <>
-              <div className="relative col-span-full mb-1 min-h-[250px] overflow-hidden rounded-[24px] border border-white/45 bg-white/25 p-5 shadow-[0_16px_40px_rgba(31,64,49,0.13)] backdrop-blur-xl md:min-h-[300px]">
+              <div className="dashboard-batch-hero relative col-span-full mb-1 min-h-[250px] overflow-hidden rounded-[24px] border border-white/45 bg-white/25 p-5 shadow-[0_16px_40px_rgba(31,64,49,0.13)] backdrop-blur-xl md:min-h-[300px]">
                 <div className="relative z-10 max-w-[58%]">
                   <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#777D8D]">Current batch</p>
                   <h2 className="text-3xl font-extrabold tracking-[-0.05em] text-[#252838] sm:text-4xl">{currentBatch.name}</h2>
@@ -1135,7 +1159,7 @@ export default function DashboardScreen() {
           </div>
         )}
 
-        <BottomNav active="Home" />
+        <BottomNav active="Home" className="dashboard-bottom-nav" />
       </div>
     </div>
   );
