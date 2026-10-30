@@ -673,7 +673,7 @@ export default function DashboardScreen() {
               </div>
               <div
                 key={currentBatch.id}
-                className="dashboard-summary-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4"
+                className="dashboard-summary-grid grid grid-cols-2 gap-3 mb-4"
               >
 
                   <div className="bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3">
@@ -698,10 +698,10 @@ export default function DashboardScreen() {
 
 
 
-                  className="dashboard-progress-stack grid grid-cols-1 md:grid-cols-3 gap-4 mb-4"
+                  className="dashboard-progress-stack grid grid-cols-3 gap-2 sm:gap-4 mb-4"
                 >
                   {/* Vaccination */}
-                  <div className="bg-white/20 backdrop-blur-lg rounded-xl p-3 shadow-lg border border-white/30">
+                  <div className="bg-white/25 backdrop-blur-xl rounded-2xl p-3 shadow-lg border border-white/40 text-center min-h-[128px]">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-semibold text-gray-800">Vaccination</span>
                       <span className="text-xs font-bold text-blue-600">
@@ -729,7 +729,7 @@ export default function DashboardScreen() {
                   </div>
 
                   {/* Avg Weight */}
-                  <div className="bg-white/20 backdrop-blur-lg rounded-xl p-3 shadow-lg border border-white/30">
+                  <div className="bg-white/25 backdrop-blur-xl rounded-2xl p-3 shadow-lg border border-white/40 text-center min-h-[128px]">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-semibold text-gray-800">Avg Weight</span>
                       <span className="text-xs font-bold text-purple-600">
@@ -763,7 +763,7 @@ export default function DashboardScreen() {
                   </div>
 
                   {/* Feed Level */}
-                  <div className="bg-white/20 backdrop-blur-lg rounded-xl p-3 shadow-lg border border-white/30">
+                  <div className="bg-white/25 backdrop-blur-xl rounded-2xl p-3 shadow-lg border border-white/40 text-center min-h-[128px]">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-semibold text-gray-800">
                         Feed: {getFeedTypeName(getFeedTypeForAge(currentBatch.day))}
