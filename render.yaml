@@ -31,6 +31,12 @@ services:
         sync: false
       - key: GEMINI_MODEL
         sync: false
+      - key: SERPER_API_KEY
+        sync: false
+      - key: GOOGLE_SEARCH_API_KEY
+        sync: false
+      - key: GOOGLE_SEARCH_ENGINE_ID
+        sync: false
 
   - type: web
     name: prepapig-frontend

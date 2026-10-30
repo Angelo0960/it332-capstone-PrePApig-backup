@@ -1,6 +1,7 @@
 import express from 'express';
 import { fetchBatangasPigPrice } from '../services/pigPriceScraper.js';
 import { generatePigPriceAnalysis } from '../services/openaiPigPriceService.js';
+import { searchPigPricesWeb } from '../services/webPigPriceSearchService.js';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 
 import { rateLimit } from '../middlewares/rateLimit.js';
@@ -29,6 +30,10 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
     const locations = Array.isArray(req.body?.locations) && req.body.locations.length > 0
       ? req.body.locations
       : priceData.priceSourceLocations;
+    let webSearchResult = null;
+    if (process.env.SERPER_API_KEY || (process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_ENGINE_ID)) {
+      webSearchResult = await searchPigPricesWeb({ locations });
+    }
     const configuredGeminiModel = ['gemini-2.5-flash', 'gemini-3.5-flash', 'gemini-3.8-flash'].includes(process.env.GEMINI_MODEL)
       ? 'gemini-3.5-flash-lite'
       : process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
@@ -45,16 +50,41 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
       webSearchRequested: !/(?:\/free|:free)$/.test(configuredModel),
     }));
 
-    const result = await generatePigPriceAnalysis({
-      locations,
-      provincialReference: {
-        location: priceData.data.location,
-        period: priceData.data.period,
-        pricePhpPerKg: priceData.data.pricePhpPerKg,
-        unit: priceData.data.unit,
-      },
-      localPricePoints: priceData.pricePoints || [],
-    });
+    let result;
+    try {
+      result = await generatePigPriceAnalysis({
+        locations,
+        provincialReference: {
+          location: priceData.data.location,
+          period: priceData.data.period,
+          pricePhpPerKg: priceData.data.pricePhpPerKg,
+          unit: priceData.data.unit,
+        },
+        localPricePoints: webSearchResult?.pricePoints || [],
+      });
+    } catch (error) {
+      const webFound = webSearchResult?.pricePoints?.some((point) => point.pricePhpPerKg != null);
+      if (!webFound) throw error;
+      result = {
+        ...webSearchResult,
+        analysis: 'Prices were collected from public web-search snippets. They are liveweight price observations, not guaranteed buyer offers.',
+        suggestion: 'Verify the posting date, location, unit, and current buyer offer before selling.',
+        limitations: webSearchResult.limitations,
+      };
+    }
+    if (webSearchResult) {
+      const aiPoints = Array.isArray(result.pricePoints) ? result.pricePoints : [];
+      const aiByLocation = new Map(aiPoints.map((point) => [String(point.location).toLowerCase(), point]));
+      result.pricePoints = webSearchResult.pricePoints.map((webPoint) => {
+        const aiPoint = aiByLocation.get(String(webPoint.location).toLowerCase());
+        return aiPoint?.pricePhpPerKg != null ? aiPoint : webPoint;
+      });
+      result.sources = [...new Map([
+        ...(result.sources || []),
+        ...(webSearchResult.sources || []),
+      ].filter((source) => source?.url).map((source) => [source.url, source])).values()];
+      result.searchProvider = webSearchResult.provider;
+    }
 
     console.log(JSON.stringify({
       event: 'pig_price_ai_succeeded',

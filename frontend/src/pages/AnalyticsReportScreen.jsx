@@ -575,7 +575,7 @@ export default function AnalyticsReportsScreen() {
               <div className="mb-3">
                 <div className="text-xs text-gray-700 font-semibold mb-2">Choose a price for estimated profit</div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {pricePoints.slice(0, 3).map((point) => {
+                  {pricePoints.map((point) => {
                     const isSelected = point.location === selectedPriceLocation;
                     return (
                       <button
