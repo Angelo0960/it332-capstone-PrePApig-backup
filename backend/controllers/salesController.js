@@ -53,11 +53,11 @@ export const saveSale = async (req, res) => {
         res.status(req.params.id ? 200 : 201).json({ success: true, data });
     } catch (error) {
         const message = String(error.message || '');
-        const migrationMissing = message.includes('harvest_sales') && (message.includes('schema cache') || message.includes('does not exist'));
+        const migrationMissing = message.includes('harvest_sales') && (message.includes('schema cache') || message.includes('does not exist') || message.toLowerCase().includes('permission denied'));
         res.status(500).json({
             success: false,
             message: migrationMissing
-                ? 'Harvest sales is not enabled yet. Run backend/config/migrations/20261013_financial_reliability.sql in Supabase SQL Editor, then retry.'
+                ? 'Harvest sales permissions are not configured. Run backend/config/migrations/20261013_financial_reliability.sql and backend/config/migrations/20261030_repair_harvest_sales_permissions.sql in Supabase SQL Editor, then retry.'
                 : message,
         });
     }
