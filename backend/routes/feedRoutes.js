@@ -5,6 +5,7 @@ import { validateBody } from '../middlewares/validate.js';
 import { getFeedConsumptionForecast } from '../services/feedForecastService.js';
 import { generateFeedForecastAnalysis } from '../services/feedForecastAiService.js';
 import { rateLimit } from '../middlewares/rateLimit.js';
+import supabase from '../config/supabase.js';
 
 const feedRouter = express.Router();
 feedRouter.use(authMiddleware);
@@ -27,7 +28,15 @@ feedRouter.get('/forecast', async (req, res) => {
     });
     if (String(req.query.include_ai).toLowerCase() === 'true' && result.status === 'forecasted') {
       try {
-        result.aiAnalysis = await generateFeedForecastAnalysis({ forecast: result });
+        const { data: feedStocks, error: stockError } = await supabase
+          .from('feed_stocks')
+          .select('feed_type,stock_quantity,unit_price,last_updated')
+          .eq('owner_id', req.user.id)
+          .order('feed_type');
+        const stocks = stockError?.code === '42P01' ? [] : (feedStocks || []);
+        if (stockError && stockError.code !== '42P01') throw stockError;
+        result.aiAnalysis = await generateFeedForecastAnalysis({ forecast: result, feedStocks: stocks });
+        result.feedStockSnapshot = result.aiAnalysis.stockContext;
       } catch (error) {
         result.aiAnalysisError = String(error.message || '').includes('API key is not configured')
           ? 'Feed forecast AI analysis is not configured'

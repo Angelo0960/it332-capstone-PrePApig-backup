@@ -31,7 +31,7 @@ The dashboard automatically requests AI interpretation after the weekly forecast
 POST /feeds/forecast/ai-analysis
 ```
 
-The AI receives the uploaded historical summary, recent weekly values, forecast values, projected bags/cost, and holdout error. It returns a separate analysis, suggestion, risk level, and actions. The result is cached per user and batch. If Gemini is not configured or unavailable, the forecast remains visible and the dashboard reports the AI limitation instead of fabricating advice.
+The AI also reads the authenticated user's `feed_stocks` rows and compares total current stock against the four-week forecast. It reports stock kilograms, projected coverage in weeks, projected shortfall, and a next action such as purchase feed, monitor usage, or avoid unnecessary buying. If the stock table is unavailable, the AI result remains clearly limited rather than inventing inventory data.
 ## Forecast behavior
 
 `GET /feeds/forecast`:

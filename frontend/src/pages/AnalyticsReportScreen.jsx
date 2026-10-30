@@ -831,6 +831,8 @@ export default function AnalyticsReportsScreen() {
                 <div className="flex items-center justify-between gap-2 mb-1"><span className="text-xs font-semibold text-violet-900">AI Forecast Analysis</span><span className="text-[10px] uppercase text-violet-700">{feedForecastAi.riskLevel || 'unknown'} risk</span></div>
                 <p className="text-xs text-violet-950 mb-2">{feedForecastAi.analysis}</p>
                 <p className="text-xs text-violet-950"><strong>Suggestion:</strong> {feedForecastAi.suggestion}</p>
+                {feedForecastAi.stockContext && <div className="grid grid-cols-3 gap-2 mt-2 text-[10px] text-violet-900"><span>Stock: <strong>{feedForecastAi.stockContext.totalStockKg} kg</strong></span><span>4-week need: <strong>{feedForecastAi.stockContext.forecastKg} kg</strong></span><span>Coverage: <strong>{feedForecastAi.stockContext.coverageWeeks == null ? '—' : `${feedForecastAi.stockContext.coverageWeeks} wk`}</strong></span></div>}
+                {feedForecastAi.stockContext?.projectedShortfallKg > 0 && <p className="text-[10px] text-red-700 mt-2">Projected stock shortfall: {feedForecastAi.stockContext.projectedShortfallKg} kg.</p>}
                 {feedForecastAi.actions?.length > 0 && <ul className="list-disc pl-4 mt-2 text-[10px] text-violet-900">{feedForecastAi.actions.map((action) => <li key={action}>{action}</li>)}</ul>}
                 <p className="text-[10px] text-violet-700 mt-2">AI interpretation only; it does not replace recorded feed, inventory, expense, financial, or FCR calculations.</p>
               </div>
