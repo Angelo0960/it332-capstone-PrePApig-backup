@@ -814,16 +814,6 @@ export default function AnalyticsReportsScreen() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            {feedForecast?.historicalSummary && (
-              <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
-                <div className="bg-white/40 rounded-lg p-2"><span className="text-gray-600">Historical actual</span><strong className="block">{feedForecast.historicalSummary.actualKg.toLocaleString()} kg</strong></div>
-                <div className="bg-white/40 rounded-lg p-2"><span className="text-gray-600">Historical planned</span><strong className="block">{feedForecast.historicalSummary.plannedKg.toLocaleString()} kg</strong></div>
-                <div className="bg-white/40 rounded-lg p-2"><span className="text-gray-600">Variance</span><strong className="block">{feedForecast.historicalSummary.varianceKg.toLocaleString()} kg</strong></div>
-                <div className="bg-white/40 rounded-lg p-2"><span className="text-gray-600">Projected 4-week bags</span><strong className="block">{(feedForecast.forecast || []).reduce((sum, row) => sum + row.projectedBagEquivalent, 0).toFixed(2)} bags</strong></div>
-              </div>
-            )}
-            <div className="flex flex-wrap gap-3 text-[10px] text-gray-600 mb-2"><span className="text-emerald-700">● Uploaded weekly actual</span><span className="text-violet-700">● 4-week forecast</span></div>
-            {feedForecast?.status === 'forecasted' && <p className="text-[10px] text-gray-500 mb-2">Source: uploaded synthetic weekly feed data · {feedForecast.historyWeeks} historical weeks · holdout MAE {feedForecast.evaluation?.meanAbsoluteErrorKg ?? '—'} kg/week.</p>}
             {feedForecastError && <p className="text-[10px] text-red-700 mb-2">{feedForecastError}</p>}
 
             {feedForecastAi && (
