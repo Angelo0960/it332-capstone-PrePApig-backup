@@ -659,13 +659,13 @@ export default function DashboardScreen() {
                 className="dashboard-summary-grid grid grid-cols-2 gap-3 mb-4"
               >
 
-                  <div className="col-span-1 bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3">
+                  <div className="col-span-1 min-w-0 overflow-hidden bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3">
                     <div className="text-xs text-gray-700 mb-1 font-medium">Pig Age</div>
                     <div className="text-2xl font-extrabold text-[#252838]">Day {currentBatch.day}</div>
                   </div>
-                  <div className="col-span-1 bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3">
+                  <div className="col-span-1 min-w-0 overflow-hidden bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3">
                     <div className="text-xs text-gray-700 mb-1 font-medium">Estimated Price</div>
-                    <div className="text-2xl font-extrabold text-[#252838]">
+                    <div className="text-[clamp(1rem,4.2vw,1.5rem)] font-extrabold tracking-tight text-[#252838] whitespace-nowrap">
                       {currentBatch?.pricePerKg > 0
                         ? formatCurrency(currentBatch.weight * currentBatch.pricePerKg)
                         : 'Unavailable'}
