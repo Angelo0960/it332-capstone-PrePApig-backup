@@ -828,12 +828,6 @@ export default function AnalyticsReportsScreen() {
               </div>
             )}
             {feedForecastAiError && <p className="text-[10px] text-amber-800 mb-2">AI suggestion unavailable: {feedForecastAiError}</p>}
-            <div className="bg-blue-100/60 backdrop-blur-lg border border-blue-300/50 rounded-xl p-3">
-              <div className="text-xs text-blue-800 font-medium">
-                {selectedBatch === 'All Batches' ? 'All batches' : selectedBatch} ·{' '}
-                {filteredFeedRecords.length} feeding records
-              </div>
-            </div>
           </div>
 
           {/* Profit Analysis */}
