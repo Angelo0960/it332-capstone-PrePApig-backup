@@ -66,6 +66,9 @@ export default function AnalyticsReportsScreen() {
   const [feedForecastError, setFeedForecastError] = useState(null);
   const [feedForecastAi, setFeedForecastAi] = useState(null);
   const [feedForecastAiError, setFeedForecastAiError] = useState(null);
+  const [expenseAiAnalysis, setExpenseAiAnalysis] = useState(null);
+  const [expenseAiLoading, setExpenseAiLoading] = useState(false);
+  const [expenseAiError, setExpenseAiError] = useState(null);
   const [pigPriceLocations, setPigPriceLocations] = useState(DEFAULT_PRICE_POINTS.map((point) => point.location));
   const [pigPriceReference, setPigPriceReference] = useState(null);
   const [pricePoints, setPricePoints] = useState(DEFAULT_PRICE_POINTS);
@@ -488,6 +491,48 @@ export default function AnalyticsReportsScreen() {
   const profitTrend = financial?.monthly || [];
   const expenseBreakdown = useMemo(() => getExpenseBreakdown(), [filteredExpenses]);
   const vaccinationSummary = useMemo(() => getVaccinationSummary(), [filteredVaccinationRecords]);
+  useEffect(() => {
+    if (filteredExpenses.length === 0) {
+      setExpenseAiAnalysis(null);
+      setExpenseAiError(null);
+      return undefined;
+    }
+    const breakdown = expenseBreakdown.map(({ name, value }) => ({ name, amount: value, percentage: Math.round((value / filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0)) * 100) }));
+    const summary = {
+      dateRange,
+      selectedBatch,
+      totalRecordedExpenses: Math.round(filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0) * 100) / 100,
+      breakdown,
+      recordCount: filteredExpenses.length,
+    };
+    const cacheKey = `expense-ai-analysis-v1:${getUserCacheKey()}:${dateRange}:${selectedBatch}:${JSON.stringify(breakdown)}`;
+    const cached = readCache(cacheKey);
+    if (cached) {
+      setExpenseAiAnalysis(cached);
+      setExpenseAiError(null);
+      return undefined;
+    }
+    const controller = new AbortController();
+    setExpenseAiLoading(true);
+    setExpenseAiError(null);
+    fetch(`${API_BASE}/expenses/ai-analysis`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ summary }),
+      signal: controller.signal,
+    }).then(async (response) => {
+      const json = await response.json();
+      if (!response.ok || !json.success) throw new Error(json.message || 'Expense AI analysis unavailable');
+      setExpenseAiAnalysis(json);
+      writeCache(cacheKey, json);
+    }).catch((err) => {
+      if (err.name !== 'AbortError') {
+        setExpenseAiAnalysis(null);
+        setExpenseAiError(err.message || 'Expense AI analysis unavailable');
+      }
+    }).finally(() => setExpenseAiLoading(false));
+    return () => controller.abort();
+  }, [filteredExpenses, expenseBreakdown, dateRange, selectedBatch]);
   const pricingActionSuggestion = aiAnalysis?.suggestion
     || (pricePoints.length > 0
       ? 'Before selling, compare the buyer\'s liveweight offer with these local reference prices, confirm the price date and unit, and negotiate using the closest verified location rather than a retail price.'
@@ -938,6 +983,22 @@ export default function AnalyticsReportsScreen() {
                   ))}
                 </div>
               </div>
+            </div>
+
+            <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-3 mb-3">
+              <div className="flex items-center gap-2 text-sm font-semibold text-violet-900 mb-2"><Sparkles size={14} /> AI Expense Analysis</div>
+              {expenseAiLoading && <p className="text-xs text-violet-700">Analyzing recorded expense categories...</p>}
+              {expenseAiError && <p className="text-xs text-red-700">{expenseAiError}</p>}
+              {!expenseAiLoading && !expenseAiError && expenseAiAnalysis && (
+                <>
+                  <p className="text-xs leading-relaxed text-violet-950">{expenseAiAnalysis.analysis}</p>
+                  <p className="text-xs leading-relaxed text-violet-950 mt-2"><strong>Suggestion:</strong> {expenseAiAnalysis.suggestion}</p>
+                  {expenseAiAnalysis.actions?.length > 0 && <ul className="list-disc pl-4 mt-2 text-[10px] text-violet-900">{expenseAiAnalysis.actions.map((action) => <li key={action}>{action}</li>)}</ul>}
+                  {expenseAiAnalysis.limitations?.length > 0 && <p className="text-[10px] text-violet-700 mt-2">{expenseAiAnalysis.limitations.join(' ')}</p>}
+                </>
+              )}
+              {!expenseAiLoading && !expenseAiError && !expenseAiAnalysis && <p className="text-xs text-violet-700">No recorded expenses are available for this filter.</p>}
+              <p className="text-[10px] text-violet-700 mt-2">AI interpretation is advisory and uses recorded expense categories only; it does not create or modify expense records.</p>
             </div>
 
             {/* Profit Trend */}
