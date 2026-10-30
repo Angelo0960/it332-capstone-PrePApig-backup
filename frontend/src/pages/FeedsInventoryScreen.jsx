@@ -549,9 +549,14 @@ export default function FeedsInventoryScreen() {
             </button>
             <h1 className="text-xl font-bold text-gray-900">Feeds Inventory</h1>
           </div>
-          <div className="flex items-center gap-2">
-
-            <button className="relative w-9 h-9 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all">
+          <div className="feeds-header-actions flex items-center gap-2">
+                      <button onClick={() => setShowRecordUsage(true)} className="hidden lg:inline-flex items-center gap-2 rounded-2xl bg-[#6C63FF] px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#6C63FF]/25">
+                        <Plus className="w-4 h-4" /> Record Feed Usage
+                      </button>
+                      <button onClick={() => setShowAddPurchase(true)} className="hidden lg:inline-flex items-center gap-2 rounded-2xl bg-white/65 px-4 py-2.5 text-xs font-bold text-emerald-700 border border-white/70 shadow-lg">
+                        <Plus className="w-4 h-4" /> Add Feed Purchase
+                      </button>
+                      <button className="relative w-9 h-9 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all">
               {isOnline ? (
                 <>
                   <Cloud className="w-5 h-5 text-green-600" />
@@ -613,10 +618,11 @@ export default function FeedsInventoryScreen() {
           </div>
         </div>
 
+        <div className="feeds-desktop-content">
         {/* Summary Cards */}
         <div className="px-4 md:px-8 lg:px-12 mb-4">
           <div className="flex flex-nowrap overflow-x-auto gap-3 pb-2">
-            <div className="flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
+            <div className="feeds-summary-card flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-xs text-gray-700 font-semibold">
                   {selectedBatch === 'all' ? 'Current Stock' : 'Feed Consumed'}
@@ -643,7 +649,7 @@ export default function FeedsInventoryScreen() {
               </div>
             </div>
 
-            <div className="flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
+            <div className="feeds-summary-card flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-8 h-8 bg-purple-100/80 rounded-xl flex items-center justify-center">
                   <span className="text-purple-600 font-bold text-lg">₱</span>
@@ -667,7 +673,7 @@ export default function FeedsInventoryScreen() {
                   return (
                     <div
                       key={feed.feed_type}
-                      className="flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg"
+                      className="feeds-summary-card flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg"
                     >
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-xs font-semibold text-gray-700">{feed.feed_type}</span>
@@ -696,7 +702,7 @@ export default function FeedsInventoryScreen() {
                   return (
                     <div
                       key={feedType}
-                      className="flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg"
+                      className="feeds-summary-card flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg"
                     >
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-xs font-semibold text-gray-700">{feedType}</span>
@@ -716,7 +722,7 @@ export default function FeedsInventoryScreen() {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 min-h-0 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24">
+        <div className="feeds-main-content flex-1 min-h-0 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24">
           {loading ? (
             <div className="flex items-center justify-center h-40">
               <div className="text-gray-600">Loading...</div>
@@ -731,7 +737,7 @@ export default function FeedsInventoryScreen() {
           ) : (
             <div className="space-y-4">
               {/* Stock / Consumption Table */}
-              <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg">
+              <div className="feeds-stock-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg">
                 <div className="p-4 border-b border-white/20">
                   <h3 className="font-semibold text-gray-900">
                     {selectedBatch === 'all' ? 'Feed Stock by Type' : 'Feed Consumption by Type'}
@@ -798,7 +804,7 @@ export default function FeedsInventoryScreen() {
               </div>
 
               {/* Action Buttons */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              <div className="feeds-action-buttons grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 <button
                   onClick={() => setShowRecordUsage(true)}
                   className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold py-3 rounded-xl shadow-[6px_6px_12px_rgba(16,185,129,0.3),-6px_-6px_12px_rgba(255,255,255,0.5)] active:shadow-[inset_3px_3px_6px_rgba(5,150,105,0.4),inset_-3px_-3px_6px_rgba(110,231,183,0.4)] transition-all"
@@ -814,7 +820,7 @@ export default function FeedsInventoryScreen() {
               </div>
 
               {/* Chart */}
-              <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg">
+                            <div className="feeds-chart-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg">
                 <h3 className="font-semibold text-gray-900 mb-2">Feed Consumption & Forecast</h3>
                 <ResponsiveContainer width="100%" height={220}>
                   <LineChart
@@ -863,7 +869,7 @@ export default function FeedsInventoryScreen() {
               </div>
 
               {/* Automated Feeding Schedule */}
-              <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg">
+                            <div className="feeds-schedule-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold text-gray-900">
                     Automated Feeding Schedule
@@ -952,7 +958,7 @@ export default function FeedsInventoryScreen() {
               </div>
 
               {/* History */}
-              <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg">
+                            <div className="feeds-history-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg">
                 <div className="p-4 border-b border-white/20">
                   <h3 className="font-semibold text-gray-900">
                     Feed Consumption History
@@ -999,6 +1005,7 @@ export default function FeedsInventoryScreen() {
               </div>
             </div>
           )}
+        </div>
         </div>
 
         {/* Modals */}

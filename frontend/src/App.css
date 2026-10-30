@@ -424,3 +424,22 @@ textarea {
   .dashboard-screen .floating-action-button { display: none; }
   .desktop-app-shell .app-bottom-nav { display: none; }
 }
+
+@media (min-width: 1024px) {
+  .feeds-desktop-content { display: grid; grid-template-columns: minmax(0, 1.22fr) minmax(320px, 0.9fr); grid-template-areas: "summary stock" "schedule stock" "chart stock" "actions history"; gap: 1rem 1.1rem; align-items: start; padding: 0 2.4rem 2rem; }
+  .feeds-desktop-content > .px-4:first-child { grid-area: summary; padding: 0; margin: 0; }
+  .feeds-desktop-content > .feeds-main-content { display: contents; }
+  .feeds-main-content > .space-y-4 { display: contents; }
+  .feeds-summary-card { width: auto !important; min-height: 150px; padding: 1.25rem !important; border-radius: 1.5rem !important; }
+  .feeds-stock-card { grid-area: stock; min-height: 330px; border-radius: 1.5rem !important; }
+  .feeds-schedule-card { grid-area: schedule; min-height: 230px; border-radius: 1.5rem !important; }
+  .feeds-chart-card { grid-area: chart; border-radius: 1.5rem !important; }
+  .feeds-action-buttons { grid-area: actions; }
+  .feeds-history-card { grid-area: history; border-radius: 1.5rem !important; }
+  .feeds-main-content { overflow: visible; padding: 0 !important; }
+  .feeds-header-actions { margin-right: 0.2rem; }
+  .feeds-desktop-content .flex.flex-nowrap { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; overflow: visible; }
+  .feeds-desktop-content .feeds-summary-card:nth-child(n+3) { display: none; }
+  .feeds-desktop-content .feeds-stock-card .divide-y > div { min-height: 86px; }
+  .feeds-desktop-content .feeds-schedule-card button { border-radius: 999px; }
+}
