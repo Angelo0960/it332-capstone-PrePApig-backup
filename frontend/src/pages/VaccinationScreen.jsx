@@ -364,8 +364,10 @@ export default function VaccinationScreen() {
           ...(price === null ? {} : { price_per_dose: price }),
         }),
       });
-      if (!res.ok) throw new Error('Failed to restock');
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || `Failed to restock (HTTP ${res.status})`);
+      }
       if (json.success) {
         alert('Stock updated successfully!');
         setShowRestockVaccine(false);

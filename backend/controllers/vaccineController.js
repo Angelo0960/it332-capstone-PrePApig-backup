@@ -307,9 +307,12 @@ export const getVaccineStock = async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching vaccine stock:', error);
-        const message = error.message?.includes('vaccine_stocks.owner_id')
+        const messageText = String(error.message || '');
+        const message = messageText.includes('vaccine_stocks.owner_id')
             ? 'Database migration required: run backend/config/migrations/20261010_vaccine_stock_owner.sql in Supabase.'
-            : error.message;
+            : messageText.includes('vaccine_stocks_owner_name') || messageText.includes('ON CONFLICT')
+                ? 'Database migration required: run backend/config/migrations/20261030_repair_vaccine_stock_upsert.sql in Supabase.'
+                : messageText;
         res.status(500).json({
             success: false,
             message
@@ -359,9 +362,12 @@ export const updateVaccineStock = async (req, res) => {
         });
 
     } catch (error) {
-        const message = error.message?.includes('vaccine_stocks.owner_id')
+        const messageText = String(error.message || '');
+        const message = messageText.includes('vaccine_stocks.owner_id')
             ? 'Database migration required: run backend/config/migrations/20261010_vaccine_stock_owner.sql in Supabase.'
-            : error.message;
+            : messageText.includes('vaccine_stocks_owner_name') || messageText.includes('ON CONFLICT')
+                ? 'Database migration required: run backend/config/migrations/20261030_repair_vaccine_stock_upsert.sql in Supabase.'
+                : messageText;
         res.status(500).json({
             success: false,
             message
