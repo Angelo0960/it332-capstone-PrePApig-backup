@@ -51,7 +51,16 @@ export const saveSale = async (req, res) => {
         if (error) throw error;
         if (!data) return res.status(404).json({ success: false, message: 'Harvest/sale not found' });
         res.status(req.params.id ? 200 : 201).json({ success: true, data });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+    } catch (error) {
+        const message = String(error.message || '');
+        const migrationMissing = message.includes('harvest_sales') && (message.includes('schema cache') || message.includes('does not exist'));
+        res.status(500).json({
+            success: false,
+            message: migrationMissing
+                ? 'Harvest sales is not enabled yet. Run backend/config/migrations/20261013_financial_reliability.sql in Supabase SQL Editor, then retry.'
+                : message,
+        });
+    }
 };
 
 export const deleteSale = async (req, res) => {

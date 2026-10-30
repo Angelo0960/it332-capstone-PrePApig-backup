@@ -349,7 +349,7 @@ export const getPigsByBatch = async (req, res) => {
         const [batchResult, pigsResult] = await Promise.all([
             supabase
                 .from('pig_batches')
-                .select('id,batch_code')
+                .select('id,batch_code,sale_price_per_kg,current_weight,start_weight,pig_count')
                 .eq('id', batchId)
                 .eq('owner_id', req.user.id)
                 .single(),
