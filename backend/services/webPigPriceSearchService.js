@@ -90,9 +90,15 @@ export const searchPigPricesWeb = async ({
   locations = Object.keys(SEARCH_QUERIES),
   fetchImpl = fetch,
 } = {}) => {
-  const provider = getSerperKey() ? 'serper' : getGoogleKey() && getGoogleCx() ? 'google_custom_search' : null;
+  // Google Custom Search is the primary pricing source. Serper remains an
+  // explicitly configured fallback when Google credentials are unavailable.
+  const provider = getGoogleKey() && getGoogleCx()
+    ? 'google_custom_search'
+    : getSerperKey()
+      ? 'serper'
+      : null;
   if (!provider) {
-    throw new Error('Web search is not configured. Set SERPER_API_KEY or GOOGLE_SEARCH_API_KEY and GOOGLE_SEARCH_ENGINE_ID.');
+    throw new Error('Google web search is not configured. Set GOOGLE_SEARCH_API_KEY and GOOGLE_SEARCH_ENGINE_ID in the backend environment.');
   }
 
   const pricePoints = [];
