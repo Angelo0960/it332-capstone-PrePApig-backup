@@ -829,11 +829,39 @@ export default function AnalyticsReportsScreen() {
             {marketRefreshError && <div className="mt-2 text-xs text-red-600">{marketRefreshError}</div>}
             {aiAnalysisError && <div className="mt-2 text-xs text-red-600">{aiAnalysisError}</div>}
             {aiAnalysis && (
-              <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50/70 p-4">
-                <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-violet-700"><Sparkles size={14} /> PrepAPig AI recommendation</div>
-                <div className="text-sm leading-relaxed text-gray-800">{aiAnalysis.suggestion || aiAnalysis.analysis || pricingActionSuggestion}</div>
-                {aiAnalysis.analysis && aiAnalysis.suggestion && <div className="mt-2 text-xs leading-relaxed text-gray-600">{aiAnalysis.analysis}</div>}
-                {aiAnalysis.sources?.length > 0 && <div className="mt-2 text-[10px] text-gray-500">Web sources checked: {aiAnalysis.sources.length}</div>}
+              <div className="mt-4 rounded-[1.5rem] border border-violet-200/80 bg-gradient-to-br from-violet-50/95 via-indigo-50/90 to-white/75 p-5 shadow-[0_12px_28px_rgba(108,99,255,0.12)]">
+                <div className="mb-3 flex items-center gap-2 text-sm font-bold leading-tight text-violet-600">
+                  <Sparkles size={16} />
+                  <span>PrepAPig AI<br />recommendation</span>
+                </div>
+                <h4 className="max-w-sm text-lg font-extrabold leading-snug text-gray-900">
+                  {highestLivePrice
+                    ? `${highestLivePrice.location} has the strongest verified price point at ${formatPricePerKg(highestLivePrice.pricePhpPerKg)}.`
+                    : 'A verified live market recommendation is not available yet.'}
+                </h4>
+                <p className="mt-3 text-sm leading-relaxed text-gray-700">
+                  {aiAnalysis.suggestion || aiAnalysis.analysis || pricingActionSuggestion}
+                </p>
+                {aiAnalysis.analysis && aiAnalysis.suggestion && (
+                  <p className="mt-3 text-sm leading-relaxed text-gray-600">{aiAnalysis.analysis}</p>
+                )}
+                {highestLivePrice && selectedPriceLocation && selectedPriceLocation !== highestLivePrice.location && (
+                  <p className="mt-3 text-sm font-semibold leading-relaxed text-violet-600">
+                    {selectedPriceLocation} is currently selected. Compare it with the recommended market before selling.
+                  </p>
+                )}
+                {aiAnalysis.sources?.length > 0 && (
+                  <p className="mt-3 text-[10px] text-gray-500">Web sources checked: {aiAnalysis.sources.length}</p>
+                )}
+                {highestLivePrice && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPriceLocation(highestLivePrice.location)}
+                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-transparent py-2 text-sm font-bold text-violet-600 transition hover:bg-violet-100/70"
+                  >
+                    Use recommended market <span aria-hidden="true">↗</span>
+                  </button>
+                )}
               </div>
             )}
             <div className="mt-3 text-[10px] text-gray-500">Prices come from public web search or the provincial source. Confirm the posting date, location, liveweight basis, and buyer offer before selling.</div>
