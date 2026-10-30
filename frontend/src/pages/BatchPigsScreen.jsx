@@ -218,7 +218,7 @@ export default function BatchPigsScreen() {
   };
 
   return (
-    <div className="mobile-screen-shell w-full relative overflow-hidden flex flex-col">
+    <div className="dashboard-theme mobile-screen-shell w-full relative overflow-hidden flex flex-col">
       <div className="absolute inset-0">
         <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover" />
       </div>

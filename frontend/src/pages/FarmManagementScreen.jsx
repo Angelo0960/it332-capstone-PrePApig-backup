@@ -85,7 +85,7 @@ export default function FarmManagementScreen({ section = 'mortality' }) {
   await act(async () => { await request(section === 'expenses' ? `/expenses/${row.id}` : `${config.endpoint}/${row.id}`, 'DELETE'); await load(); setMessage('Record deleted.'); });
  }
  const visible = config ? rows.filter((row) => (!filter || row.batch_id === filter) && (!from || row[config.date] >= from) && (!to || row[config.date] <= to)) : [];
- return <div className="mobile-screen-shell bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100"><div className="mobile-screen-layer"><main className="mobile-page-content max-w-4xl mx-auto p-5 space-y-4">
+ return <div className="dashboard-theme mobile-screen-shell bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100"><div className="mobile-screen-layer"><main className="mobile-page-content max-w-4xl mx-auto p-5 space-y-4">
   <h1 className="text-2xl font-bold text-gray-900">{config?.title || 'Profile & farm settings'}</h1>
   <nav className={`${glass} flex flex-wrap gap-3`} aria-label="Farm management"><Link to="/mortality">Mortality</Link><Link to="/treatments">Health history</Link><Link to="/expenses">Expenses</Link><Link to="/settings">Settings & backup</Link></nav>
   {error && <p role="alert" className="text-red-700">{error}</p>}{message && <p role="status" className="text-green-800">{message}</p>}

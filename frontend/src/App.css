@@ -441,5 +441,43 @@ textarea {
   .feeds-desktop-content .flex.flex-nowrap { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; overflow: visible; }
   .feeds-desktop-content .feeds-summary-card:nth-child(n+3) { display: none; }
   .feeds-desktop-content .feeds-stock-card .divide-y > div { min-height: 86px; }
-  .feeds-desktop-content .feeds-schedule-card button { border-radius: 999px; }
+  .feeds-schedule-card button { border-radius: 999px; }
 }
+
+/* Shared dashboard palette for non-overview screens. */
+.dashboard-theme {
+  --dashboard-ink: #252838;
+  --dashboard-muted: #777d8d;
+  --dashboard-label: #555b6e;
+  --dashboard-primary: #6c63ff;
+  --dashboard-primary-dark: #5d55e9;
+  --dashboard-teal: #00a896;
+}
+
+.dashboard-theme .mobile-screen-layer {
+  background: linear-gradient(135deg, rgba(244, 247, 245, 0.5), rgba(237, 243, 239, 0.42) 48%, rgba(220, 233, 225, 0.48));
+}
+
+.dashboard-theme .text-gray-900 { color: var(--dashboard-ink) !important; }
+.dashboard-theme .text-gray-800,
+.dashboard-theme .text-gray-700 { color: var(--dashboard-label) !important; }
+.dashboard-theme .text-gray-600,
+.dashboard-theme .text-gray-500 { color: var(--dashboard-muted) !important; }
+.dashboard-theme [class*="from-emerald-"],
+.dashboard-theme [class*="from-green-"],
+.dashboard-theme [class*="from-violet-"] { background-image: linear-gradient(to right, var(--dashboard-primary), var(--dashboard-primary-dark)) !important; }
+.dashboard-theme [class*="to-teal-"],
+.dashboard-theme [class*="to-green-"],
+.dashboard-theme [class*="to-violet-"] { --tw-gradient-to: var(--dashboard-primary-dark) !important; }
+.dashboard-theme [class*="text-emerald-"],
+.dashboard-theme [class*="text-green-"] { color: var(--dashboard-teal) !important; }
+.dashboard-theme [class*="text-violet-"],
+.dashboard-theme [class*="text-purple-"] { color: var(--dashboard-primary) !important; }
+.dashboard-theme [class*="bg-emerald-"],
+.dashboard-theme [class*="bg-green-"] { background-color: rgba(0, 168, 150, 0.14) !important; }
+.dashboard-theme [class*="bg-violet-"],
+.dashboard-theme [class*="bg-purple-"] { background-color: rgba(108, 99, 255, 0.14) !important; }
+.dashboard-theme [class*="ring-green-"] { --tw-ring-color: rgba(108, 99, 255, 0.5) !important; }
+.dashboard-theme [class*="focus:ring-green-"]:focus,
+.dashboard-theme [class*="focus:ring-violet-"]:focus { --tw-ring-color: rgba(108, 99, 255, 0.5) !important; }
+.dashboard-theme .desktop-app-content { color: var(--dashboard-ink); }
