@@ -35,7 +35,7 @@ export const generateFeedForecastAnalysis = async ({ forecast, feedStocks = [], 
   const prompt = [
     'You are an agricultural feed-planning advisor reviewing a weekly feed-consumption forecast for a pig farm.',
     'Use only the supplied historical and forecast values. Do not invent measurements, prices, causes, or farm conditions.',
-    'The uploaded source is synthetic historical data. Clearly state that the results are planning guidance, not verified operational measurements.',
+    'Treat the uploaded historical feed data as the active dataset for this analysis. Do not replace its values with invented measurements.',
     'Analyze the direction of weekly consumption, actual-versus-planned variance, projected bag requirements, projected cost, forecast error, and uncertainty.',
     'Check the current feed-stock quantities against the total four-week forecast. Calculate whether the stock covers the forecast, estimate coverage in weeks, identify a projected shortfall or surplus, and suggest the next action: purchase, monitor, or avoid unnecessary buying. Do not recommend a purchase when stock coverage is sufficient.',
     'Give practical but qualified suggestions for feed purchasing and monitoring. Do not replace recorded feed, inventory, expense, financial, or FCR calculations.',

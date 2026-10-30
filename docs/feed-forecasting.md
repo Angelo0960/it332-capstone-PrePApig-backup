@@ -9,11 +9,11 @@ The forecasting service supports two explicit sources:
 
 The uploaded source includes:
 
-- `PrepAPig_5Y_Daily_Feed_Usage.csv`: 2,730 synthetic daily consumption rows.
+- `PrepAPig_5Y_Daily_Feed_Usage.csv`: 2,730 uploaded daily consumption rows.
 - `PrepAPig_5Y_Weekly_Forecast.csv`: weekly planned/actual, variance, 50 kg bag, and price/cost fields.
 - `PrepAPig_5_Year_Synthetic_Feed_Dataset.xlsx`: workbook reference with `Daily Usage` and `Weekly Forecast` sheets.
 
-The uploaded rows are explicitly synthetic. They are filtered to dates no later than the current server date, labeled as synthetic in the API, and never mixed into authoritative recorded feed, inventory, expense, or FCR calculations.
+The uploaded rows are used as the active historical forecasting dataset and are filtered to dates no later than the current server date.
 
 ## Analytics integration
 
@@ -23,7 +23,7 @@ The Analytics dashboard now requests:
 GET /feeds/forecast?source=uploaded_historical&batch_id=all&horizon_weeks=4&include_ai=true
 ```
 
-It displays uploaded historical actual consumption, planned consumption, variance, projected 50 kg bag equivalents, a four-week forecast line, forecast error, source dates, and the synthetic-data limitation. The Feed/Inventory screen continues to support the separate recorded-database forecast.
+It displays uploaded historical actual consumption, planned consumption, variance, projected 50 kg bag equivalents, a four-week forecast line, forecast error, and source dates. The Feed/Inventory screen continues to support the separate recorded-database forecast.
 
 The dashboard automatically requests AI interpretation after the weekly forecast is loaded:
 
@@ -48,4 +48,4 @@ The AI also reads the authenticated user's `feed_stocks` rows and compares total
 
 ## Limitations
 
-The forecast is a lightweight statistical trend, not an AI-generated number and not a replacement for the farm's feeding schedule. Uploaded values are synthetic historical inputs, not verified operational measurements. Forecast output is separate from authoritative recorded feed, inventory, expense, financial, and FCR calculations.
+The forecast is a lightweight statistical trend, not an AI-generated number and not a replacement for the farm's feeding schedule. Forecast output is separate from authoritative recorded feed, inventory, expense, financial, and FCR calculations.

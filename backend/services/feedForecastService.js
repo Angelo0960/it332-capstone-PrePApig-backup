@@ -101,7 +101,7 @@ const forecastUploadedWeeklyConsumption = (weeklyRows, horizonWeeks = 4, options
     lastObservedDate: weekly.at(-1).week_start,
     evaluation: { holdoutWeeks: holdoutCount, meanAbsoluteErrorKg: Number(mae.toFixed(3)) },
     history: weekly.map((row) => ({ date: row.week_start, quantityKg: Number(Number(row.actual_weekly_kg).toFixed(3)), plannedKg: Number(Number(row.planned_weekly_kg).toFixed(3)) })),
-    forecast, limitations: ['Forecast uses the uploaded weekly historical feed dataset.', 'Uploaded source data is synthetic historical input and must not be treated as verified farm measurements.', 'Forecast does not replace recorded feed, inventory, expense, or FCR calculations.'], ...options,
+    forecast, limitations: ['Forecast uses the uploaded weekly historical feed dataset.', 'Forecast does not replace recorded feed, inventory, expense, or FCR calculations.'], ...options,
   };
 };
 
@@ -144,7 +144,7 @@ const forecastFeedConsumption = (dailyRows, horizonDays = 7, windowDays = DEFAUL
     evaluation: { holdoutDays: holdoutCount, meanAbsoluteErrorKg: Number(mae.toFixed(3)) },
     history: daily,
     forecast,
-    limitations: options.limitations || ['Forecast is a transparent statistical baseline, not an AI-generated quantity.', 'Uploaded source data is synthetic historical input and must not be treated as verified farm measurements.', 'Forecast does not replace recorded feed, inventory, expense, or FCR calculations.'],
+    limitations: options.limitations || ['Forecast is a transparent statistical baseline, not an AI-generated quantity.', 'Forecast does not replace recorded feed, inventory, expense, or FCR calculations.'],
     ...options,
   };
 };
@@ -156,8 +156,8 @@ export const getFeedConsumptionForecast = async ({ ownerId, batchId, horizonDays
     return {
       success: true,
       batchId: batchId || 'all',
-      dataType: 'uploaded_synthetic_historical_feed_usage',
-      provenance: { files: ['PrepAPig_5Y_Daily_Feed_Usage.csv', 'PrepAPig_5Y_Weekly_Forecast.csv', 'PrepAPig_5_Year_Synthetic_Feed_Dataset.xlsx'], label: 'Synthetic historical input supplied by the user' },
+      dataType: 'uploaded_historical_feed_usage',
+      provenance: { files: ['PrepAPig_5Y_Daily_Feed_Usage.csv', 'PrepAPig_5Y_Weekly_Forecast.csv', 'PrepAPig_5_Year_Synthetic_Feed_Dataset.xlsx'], label: 'Uploaded historical feed data' },
       historicalSummary,
       ...forecastUploadedWeeklyConsumption(weeklyRows, horizonWeeks, { averageRecentPricePer50kgBagPhp: historicalSummary.averageRecentPricePer50kgBagPhp, historicalSummary }),
       generatedAt: new Date().toISOString(),
