@@ -661,8 +661,9 @@ export default function DashboardScreen() {
                 <div className="relative z-10 max-w-[58%]">
                   <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#777D8D]">Current batch</p>
                   <h2 className="text-3xl font-extrabold tracking-[-0.05em] text-[#252838] sm:text-4xl">{currentBatch.name}</h2>
-                  <p className="mt-2 text-sm font-semibold text-[#777D8D]">Day {currentBatch.day} · {currentBatch.pigCount} pigs currently tracked</p>
-                  <button onClick={() => navigate(`/batch/${currentBatch.id}/pigs`)} className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-[#6C63FF] px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#6C63FF]/25 transition hover:-translate-y-0.5"><Users className="w-4 h-4" /> View individual pigs</button>
+                  <button onClick={() => navigate(`/batch/${currentBatch.id}/pigs`)} className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-[#6C63FF] px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#6C63FF]/25 transition hover:-translate-y-0.5">
+                    <Users className="w-4 h-4" /> View individual pigs
+                  </button>
                 </div>
                 <img src={pigImage} alt="Pig character" className="absolute -bottom-8 -right-10 h-[112%] w-[68%] object-contain drop-shadow-[0_18px_16px_rgba(72,74,90,0.18)]" />
                 <div className="absolute bottom-5 left-5 flex gap-2">
