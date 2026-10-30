@@ -547,9 +547,18 @@ export default function FeedsInventoryScreen() {
             >
               <ArrowLeft className="w-5 h-5 text-gray-700" />
             </button>
-            <h1 className="text-xl font-bold text-gray-900">Feeds Inventory</h1>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900 lg:text-2xl">Feeds Inventory</h1>
+              <p className="hidden text-sm text-gray-600 lg:block">Monitor and manage feed stock across all batches</p>
+            </div>
           </div>
           <div className="feeds-header-actions flex items-center gap-2">
+            <button onClick={() => setShowRecordUsage(true)} className="hidden lg:inline-flex items-center gap-2 rounded-2xl bg-[#6C63FF] px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#6C63FF]/25">
+              <Plus className="w-4 h-4" /> Record Feed Usage
+            </button>
+            <button onClick={() => setShowAddPurchase(true)} className="hidden lg:inline-flex items-center gap-2 rounded-2xl bg-white/65 px-4 py-2.5 text-xs font-bold text-emerald-700 border border-white/70 shadow-lg">
+              <Plus className="w-4 h-4" /> Add Feed Purchase
+            </button>
             <button className="relative w-9 h-9 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all">
               {isOnline ? (
                 <>
@@ -570,45 +579,13 @@ export default function FeedsInventoryScreen() {
 
         {/* Batch Selector */}
         <div className="px-4 md:px-8 lg:px-12 mb-4">
-          <div className="relative z-50 isolate bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-3 shadow-lg">
-            <button
-              type="button"
-              aria-expanded={showBatchMenu}
-              onClick={() => setShowBatchMenu((open) => !open)}
-              className="w-full flex items-center justify-between px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold text-sm shadow-lg"
-            >
-              <span>
-                {selectedBatch === 'all'
-                  ? 'All Batches'
-                  : `${selectedBatchData?.name || 'Selected Batch'} · ${selectedBatchData?.pigCount ?? 0} pigs`}
-              </span>
-              <span className="ml-3 text-base">{showBatchMenu ? '▴' : '▾'}</span>
-            </button>
-            {showBatchMenu && (
-              <div className="absolute z-[100] left-3 right-3 top-full mt-2 max-h-64 overflow-y-auto rounded-xl bg-white/90 backdrop-blur-lg border border-white/50 p-2 shadow-xl">
-                <button
-                  type="button"
-                  onClick={() => { setSelectedBatch('all'); setShowBatchMenu(false); }}
-                  className="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold text-gray-700 hover:bg-emerald-100/70"
-                >
-                  All Batches
-                </button>
-                {batches.map((batch) => (
-                  <button
-                    type="button"
-                    key={batch.id}
-                    onClick={() => { setSelectedBatch(String(batch.id)); setShowBatchMenu(false); }}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
-                      String(selectedBatch) === String(batch.id)
-                        ? 'bg-emerald-100/80 text-emerald-700'
-                        : 'text-gray-700 hover:bg-emerald-100/70'
-                    }`}
-                  >
-                    {batch.name} · {batch.pigCount ?? 0} pigs · Day {batch.day ?? 0} · {batch.breed || 'Unknown'}
-                  </button>
-                ))}
-              </div>
-            )}
+          <div className="feeds-batch-selector relative z-50 isolate bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-3 shadow-lg">
+            <div className="flex items-center gap-2 overflow-x-auto">
+              <button type="button" onClick={() => setSelectedBatch('all')} className={`px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${selectedBatch === 'all' ? 'bg-[#6C63FF] text-white shadow-lg' : 'bg-white/30 text-gray-700'}`}>All Batches</button>
+              {batches.map((batch) => (
+                <button type="button" key={batch.id} onClick={() => setSelectedBatch(String(batch.id))} className={`px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${String(selectedBatch) === String(batch.id) ? 'bg-[#6C63FF] text-white shadow-lg' : 'bg-white/30 text-gray-700'}`}>{batch.name}</button>
+              ))}
+            </div>
           </div>
         </div>
 
