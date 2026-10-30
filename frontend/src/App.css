@@ -12,6 +12,14 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
+.dashboard-card {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 10px 24px rgba(31, 64, 49, 0.1);
+}
+
 button,
 a,
 input,

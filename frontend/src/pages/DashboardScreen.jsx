@@ -679,12 +679,12 @@ export default function DashboardScreen() {
                 className="dashboard-summary-grid grid grid-cols-2 gap-3 mb-4"
               >
 
-                  <div className="col-span-1 min-w-0 overflow-hidden bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3">
-                    <div className="text-xs text-gray-700 mb-1 font-medium">Pig Age</div>
+                  <div className="dashboard-card col-span-1 min-w-0 overflow-hidden flex min-h-[88px] flex-col justify-center rounded-2xl p-3 text-left">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#555B6E]">Pig Age</div>
                     <div className="text-2xl font-extrabold text-[#252838]">Day {currentBatch.day}</div>
                   </div>
-                  <div className="col-span-1 min-w-0 overflow-hidden bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3">
-                    <div className="text-xs text-gray-700 mb-1 font-medium">Estimated Price</div>
+                  <div className="dashboard-card col-span-1 min-w-0 overflow-hidden flex min-h-[88px] flex-col justify-center rounded-2xl p-3 text-left">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#555B6E]">Estimated Price</div>
                     <div className="text-[clamp(1rem,4.2vw,1.5rem)] font-extrabold tracking-tight text-[#252838] whitespace-nowrap">
                       {currentBatch?.pricePerKg > 0
                         ? formatCurrency(currentBatch.weight * currentBatch.pricePerKg)
@@ -704,7 +704,7 @@ export default function DashboardScreen() {
                   className="dashboard-progress-stack grid grid-cols-3 gap-2 sm:gap-4 mb-4"
                 >
                   {/* Vaccination */}
-                  <div className="bg-white/25 backdrop-blur-xl rounded-2xl p-2 sm:p-3 shadow-lg border border-white/40 text-center min-h-[150px]">
+                  <div className="dashboard-card flex min-h-[150px] flex-col items-center justify-center rounded-2xl p-2 text-center sm:p-3">
                     <div className="relative mx-auto h-20 w-20 sm:h-24 sm:w-24">
                       <svg className="h-full w-full -rotate-90" viewBox="0 0 96 96" aria-hidden="true">
                         <circle cx="48" cy="48" r="38" fill="none" stroke="rgba(85,91,110,0.14)" strokeWidth="9" />
@@ -712,12 +712,12 @@ export default function DashboardScreen() {
                       </svg>
                       <span className="absolute inset-0 grid place-items-center text-sm font-extrabold text-[#252838]">{currentBatch.vaccination}%</span>
                     </div>
-                    <div className="mt-2 text-[10px] font-bold text-[#555B6E]">Vaccination</div>
+                    <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.06em] text-[#555B6E]">Vaccination</div>
                     <div className="text-[10px] text-blue-600">{Math.round(currentBatch.vaccination / 25)}/4 shots</div>
                   </div>
 
                   {/* Avg Weight */}
-                  <div className="bg-white/25 backdrop-blur-xl rounded-2xl p-2 sm:p-3 shadow-lg border border-white/40 text-center min-h-[150px]">
+                  <div className="dashboard-card flex min-h-[150px] flex-col items-center justify-center rounded-2xl p-2 text-center sm:p-3">
                     {(() => {
                       const avgWeight = currentBatch.pigCount > 0 ? currentBatch.weight / currentBatch.pigCount : 0;
                       const targetWeight = currentBatch.day <= 21 ? 30 : currentBatch.day <= 49 ? 60 : 90;
@@ -731,14 +731,14 @@ export default function DashboardScreen() {
                           </svg>
                           <span className="absolute inset-0 grid place-items-center text-sm font-extrabold text-[#252838]">{Math.round(avgWeight)} kg</span>
                         </div>
-                        <div className="mt-2 text-[10px] font-bold text-[#555B6E]">Avg Weight</div>
+                        <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.06em] text-[#555B6E]">Avg Weight</div>
                         <div className="text-[10px] text-teal-700">{Math.round(weightProgress)}% of target</div>
                       </>;
                     })()}
                   </div>
 
                   {/* Feed Level */}
-                  <div className="bg-white/25 backdrop-blur-xl rounded-2xl p-2 sm:p-3 shadow-lg border border-white/40 text-center min-h-[150px]">
+                  <div className="dashboard-card flex min-h-[150px] flex-col items-center justify-center rounded-2xl p-2 text-center sm:p-3">
                     <div className="relative mx-auto h-20 w-20 sm:h-24 sm:w-24">
                       <svg className="h-full w-full -rotate-90" viewBox="0 0 96 96" aria-hidden="true">
                         <circle cx="48" cy="48" r="38" fill="none" stroke="rgba(85,91,110,0.14)" strokeWidth="9" />
@@ -746,7 +746,7 @@ export default function DashboardScreen() {
                       </svg>
                       <span className="absolute inset-0 grid place-items-center text-sm font-extrabold text-[#252838]">{currentBatch.feed}%</span>
                     </div>
-                    <div className="mt-2 text-[10px] font-bold text-[#555B6E]">Feed Level</div>
+                    <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.06em] text-[#555B6E]">Feed Level</div>
                     <div className="truncate text-[10px] text-orange-700">{getFeedTypeName(getFeedTypeForAge(currentBatch.day))}</div>
                   </div>
                 </div>
