@@ -5,11 +5,11 @@ import {
   Home,
   TrendingUp,
   Tag,
-  Syringe,
+
   Bell,
   X,
   Plus,
-  Scale,
+
   User,
   LogOut,
   Trash2,
@@ -29,23 +29,6 @@ import { PIG_BREEDS } from '../utils/breeds.js';
 
 const DEFAULT_ESTIMATED_PRICE_PER_KG = 170;
 
-const FeedSack = ({ className = '' }) => (
-  <svg
-    viewBox="0 0 24 24"
-    aria-hidden="true"
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M8 4h8" />
-    <path d="M9 4.5c.2 1.1.8 1.8 1.8 2.2h2.4c1-.4 1.6-1.1 1.8-2.2" />
-    <path d="M7.5 7.2c-.7 1.7-1.2 4.2-1.2 7.2 0 3.1 1.6 5.2 5.7 5.2s5.7-2.1 5.7-5.2c0-3-.5-5.5-1.2-7.2" fill="currentColor" fillOpacity="0.18" />
-    <path d="M9 11h6M9.3 14h5.4M9.8 17h4.4" />
-  </svg>
-);
 
 const FieldError = ({ id, message }) => message ? (
   <p id={id} className="mt-1 flex items-center gap-1 text-xs font-medium text-red-700" role="alert">
@@ -701,93 +684,50 @@ export default function DashboardScreen() {
                   className="dashboard-progress-stack grid grid-cols-3 gap-2 sm:gap-4 mb-4"
                 >
                   {/* Vaccination */}
-                  <div className="bg-white/25 backdrop-blur-xl rounded-2xl p-3 shadow-lg border border-white/40 text-center min-h-[128px]">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-gray-800">Vaccination</span>
-                      <span className="text-xs font-bold text-blue-600">
-                        {Math.round(currentBatch.vaccination / 25)}/4 shots
-                      </span>
+                  <div className="bg-white/25 backdrop-blur-xl rounded-2xl p-2 sm:p-3 shadow-lg border border-white/40 text-center min-h-[150px]">
+                    <div className="relative mx-auto h-20 w-20 sm:h-24 sm:w-24">
+                      <svg className="h-full w-full -rotate-90" viewBox="0 0 96 96" aria-hidden="true">
+                        <circle cx="48" cy="48" r="38" fill="none" stroke="rgba(85,91,110,0.14)" strokeWidth="9" />
+                        <circle cx="48" cy="48" r="38" fill="none" stroke="#6C63FF" strokeWidth="9" strokeLinecap="round" strokeDasharray={2 * Math.PI * 38} strokeDashoffset={(2 * Math.PI * 38) - ((currentBatch.vaccination / 100) * 2 * Math.PI * 38)} />
+                      </svg>
+                      <span className="absolute inset-0 grid place-items-center text-sm font-extrabold text-[#252838]">{currentBatch.vaccination}%</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {[1, 2, 3, 4].map((shot) => (
-                        <div
-                          key={`vac-${shot}`}
-
-
-
-                        >
-                          <Syringe
-                            className={`w-5 h-5 ${
-                              currentBatch.vaccination >= shot * 25
-                                ? 'text-blue-500 fill-blue-500'
-                                : 'text-gray-800/30'
-                            } transition-colors duration-300`}
-                          />
-                        </div>
-                      ))}
-                    </div>
+                    <div className="mt-2 text-[10px] font-bold text-[#555B6E]">Vaccination</div>
+                    <div className="text-[10px] text-blue-600">{Math.round(currentBatch.vaccination / 25)}/4 shots</div>
                   </div>
 
                   {/* Avg Weight */}
-                  <div className="bg-white/25 backdrop-blur-xl rounded-2xl p-3 shadow-lg border border-white/40 text-center min-h-[128px]">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-gray-800">Avg Weight</span>
-                      <span className="text-xs font-bold text-purple-600">
-                        {Math.round(currentBatch.weight / currentBatch.pigCount)} kg/pig
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {[1, 2, 3, 4].map((level) => {
-                        const avgWeight = currentBatch.weight / currentBatch.pigCount;
-                        const targetWeight =
-                          currentBatch.day <= 21 ? 30 : currentBatch.day <= 49 ? 60 : 90;
-                        const weightProgress = Math.min(100, (avgWeight / targetWeight) * 100);
-                        return (
-                          <div
-                            key={`weight-${level}`}
-
-
-
-                          >
-                            <Scale
-                              className={`w-5 h-5 ${
-                                weightProgress >= level * 25
-                                  ? 'text-purple-500 fill-purple-500'
-                                  : 'text-gray-800/30'
-                              } transition-colors duration-300`}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
+                  <div className="bg-white/25 backdrop-blur-xl rounded-2xl p-2 sm:p-3 shadow-lg border border-white/40 text-center min-h-[150px]">
+                    {(() => {
+                      const avgWeight = currentBatch.pigCount > 0 ? currentBatch.weight / currentBatch.pigCount : 0;
+                      const targetWeight = currentBatch.day <= 21 ? 30 : currentBatch.day <= 49 ? 60 : 90;
+                      const weightProgress = Math.min(100, (avgWeight / targetWeight) * 100);
+                      const circumference = 2 * Math.PI * 38;
+                      return <>
+                        <div className="relative mx-auto h-20 w-20 sm:h-24 sm:w-24">
+                          <svg className="h-full w-full -rotate-90" viewBox="0 0 96 96" aria-hidden="true">
+                            <circle cx="48" cy="48" r="38" fill="none" stroke="rgba(85,91,110,0.14)" strokeWidth="9" />
+                            <circle cx="48" cy="48" r="38" fill="none" stroke="#00A896" strokeWidth="9" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={circumference - ((weightProgress / 100) * circumference)} />
+                          </svg>
+                          <span className="absolute inset-0 grid place-items-center text-sm font-extrabold text-[#252838]">{Math.round(avgWeight)} kg</span>
+                        </div>
+                        <div className="mt-2 text-[10px] font-bold text-[#555B6E]">Avg Weight</div>
+                        <div className="text-[10px] text-teal-700">{Math.round(weightProgress)}% of target</div>
+                      </>;
+                    })()}
                   </div>
 
                   {/* Feed Level */}
-                  <div className="bg-white/25 backdrop-blur-xl rounded-2xl p-3 shadow-lg border border-white/40 text-center min-h-[128px]">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-gray-800">
-                        Feed: {getFeedTypeName(getFeedTypeForAge(currentBatch.day))}
-                      </span>
-                      <span className="text-xs font-bold text-orange-600">{currentBatch.feed}%</span>
+                  <div className="bg-white/25 backdrop-blur-xl rounded-2xl p-2 sm:p-3 shadow-lg border border-white/40 text-center min-h-[150px]">
+                    <div className="relative mx-auto h-20 w-20 sm:h-24 sm:w-24">
+                      <svg className="h-full w-full -rotate-90" viewBox="0 0 96 96" aria-hidden="true">
+                        <circle cx="48" cy="48" r="38" fill="none" stroke="rgba(85,91,110,0.14)" strokeWidth="9" />
+                        <circle cx="48" cy="48" r="38" fill="none" stroke="#E39A39" strokeWidth="9" strokeLinecap="round" strokeDasharray={2 * Math.PI * 38} strokeDashoffset={(2 * Math.PI * 38) - ((Math.min(100, Math.max(0, currentBatch.feed)) / 100) * 2 * Math.PI * 38)} />
+                      </svg>
+                      <span className="absolute inset-0 grid place-items-center text-sm font-extrabold text-[#252838]">{currentBatch.feed}%</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {[1, 2, 3, 4].map((bag) => (
-                        <div
-                          key={`feed-${bag}`}
-
-
-
-                        >
-                          <FeedSack
-                            className={`w-5 h-5 ${
-                              currentBatch.feed >= bag * 25
-                                ? 'text-orange-500 fill-orange-500'
-                                : 'text-gray-800/30'
-                            } transition-colors duration-300`}
-                          />
-                        </div>
-                      ))}
-                    </div>
+                    <div className="mt-2 text-[10px] font-bold text-[#555B6E]">Feed Level</div>
+                    <div className="truncate text-[10px] text-orange-700">{getFeedTypeName(getFeedTypeForAge(currentBatch.day))}</div>
                   </div>
                 </div>
               </>
