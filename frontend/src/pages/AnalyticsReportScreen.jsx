@@ -147,7 +147,7 @@ export default function AnalyticsReportsScreen() {
     try {
       const batch = selectedBatch !== 'All Batches' ? batches.find((row) => row.batch_code === selectedBatch) : null;
       const batchId = batch?.batch_code || 'all';
-      const response = await fetch(`${API_BASE}/feeds/forecast?source=uploaded_historical&batch_id=${encodeURIComponent(batchId)}&horizon_days=7&window_days=28`, {
+      const response = await fetch(`${API_BASE}/feeds/forecast?source=uploaded_historical&batch_id=${encodeURIComponent(batchId)}&horizon_weeks=4`, {
         headers: getAuthHeaders(), signal,
       });
       const json = await response.json();
@@ -815,11 +815,11 @@ export default function AnalyticsReportsScreen() {
                 <div className="bg-white/40 rounded-lg p-2"><span className="text-gray-600">Historical actual</span><strong className="block">{feedForecast.historicalSummary.actualKg.toLocaleString()} kg</strong></div>
                 <div className="bg-white/40 rounded-lg p-2"><span className="text-gray-600">Historical planned</span><strong className="block">{feedForecast.historicalSummary.plannedKg.toLocaleString()} kg</strong></div>
                 <div className="bg-white/40 rounded-lg p-2"><span className="text-gray-600">Variance</span><strong className="block">{feedForecast.historicalSummary.varianceKg.toLocaleString()} kg</strong></div>
-                <div className="bg-white/40 rounded-lg p-2"><span className="text-gray-600">Projected 7-day bags</span><strong className="block">{(feedForecast.forecast || []).reduce((sum, row) => sum + row.projectedBagEquivalent, 0).toFixed(2)} bags</strong></div>
+                <div className="bg-white/40 rounded-lg p-2"><span className="text-gray-600">Projected 4-week bags</span><strong className="block">{(feedForecast.forecast || []).reduce((sum, row) => sum + row.projectedBagEquivalent, 0).toFixed(2)} bags</strong></div>
               </div>
             )}
-            <div className="flex flex-wrap gap-3 text-[10px] text-gray-600 mb-2"><span className="text-emerald-700">● Uploaded historical actual</span><span className="text-violet-700">● 7-day forecast</span></div>
-            {feedForecast?.status === 'forecasted' && <p className="text-[10px] text-gray-500 mb-2">Source: uploaded synthetic historical feed data · {feedForecast.historyDays} recent days · holdout MAE {feedForecast.evaluation?.meanAbsoluteErrorKg ?? '—'} kg/day.</p>}
+            <div className="flex flex-wrap gap-3 text-[10px] text-gray-600 mb-2"><span className="text-emerald-700">● Uploaded weekly actual</span><span className="text-violet-700">● 4-week forecast</span></div>
+            {feedForecast?.status === 'forecasted' && <p className="text-[10px] text-gray-500 mb-2">Source: uploaded synthetic weekly feed data · {feedForecast.historyWeeks} historical weeks · holdout MAE {feedForecast.evaluation?.meanAbsoluteErrorKg ?? '—'} kg/week.</p>}
             {feedForecastError && <p className="text-[10px] text-red-700 mb-2">{feedForecastError}</p>}
             <div className="bg-blue-100/60 backdrop-blur-lg border border-blue-300/50 rounded-xl p-3">
               <div className="text-xs text-blue-800 font-medium">

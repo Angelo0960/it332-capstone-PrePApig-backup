@@ -19,6 +19,7 @@ feedRouter.get('/forecast', async (req, res) => {
       ownerId: req.user.id,
       batchId: req.query.batch_id || 'all',
       horizonDays: req.query.horizon_days,
+      horizonWeeks: req.query.horizon_weeks,
       windowDays: req.query.window_days,
       source: req.query.source || 'recorded',
     });

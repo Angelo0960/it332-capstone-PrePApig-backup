@@ -20,19 +20,19 @@ The uploaded rows are explicitly synthetic. They are filtered to dates no later 
 The Analytics dashboard now requests:
 
 ```text
-GET /feeds/forecast?source=uploaded_historical&batch_id=all&horizon_days=7&window_days=28
+GET /feeds/forecast?source=uploaded_historical&batch_id=all&horizon_weeks=4
 ```
 
-It displays uploaded historical actual consumption, planned consumption, variance, projected 50 kg bag equivalents, a seven-day forecast line, forecast error, source dates, and the synthetic-data limitation. The Feed/Inventory screen continues to support the separate recorded-database forecast.
+It displays uploaded historical actual consumption, planned consumption, variance, projected 50 kg bag equivalents, a four-week forecast line, forecast error, source dates, and the synthetic-data limitation. The Feed/Inventory screen continues to support the separate recorded-database forecast.
 
 ## Forecast behavior
 
 `GET /feeds/forecast`:
 
 - Authenticated route.
-- Uses the uploaded daily CSV when `source=uploaded_historical`.
-- Uses the most recent 28 valid historical days by default.
-- Requires at least 14 distinct days.
+- Uses the uploaded weekly forecast CSV when `source=uploaded_historical`.
+- Uses the most recent 16 valid historical weeks by default.
+- Requires at least 8 historical weeks.
 - Fits a transparent linear trend.
 - Holds out the latest 20% of observations for evaluation.
 - Returns mean absolute error and a residual-based interval.
