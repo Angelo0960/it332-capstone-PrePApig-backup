@@ -62,6 +62,8 @@ export default function AnalyticsReportsScreen() {
   const [financial, setFinancial] = useState(null);
   const [financialError, setFinancialError] = useState(null);
   const [feedStock, setFeedStock] = useState([]);
+  const [feedForecast, setFeedForecast] = useState(null);
+  const [feedForecastError, setFeedForecastError] = useState(null);
   const [pigPriceLocations, setPigPriceLocations] = useState(DEFAULT_PRICE_POINTS.map((point) => point.location));
   const [pigPriceReference, setPigPriceReference] = useState(null);
   const [pricePoints, setPricePoints] = useState(DEFAULT_PRICE_POINTS);
@@ -138,6 +140,24 @@ export default function AnalyticsReportsScreen() {
       setError('Failed to load some data. Please refresh.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchFeedForecast = async (signal) => {
+    try {
+      const batch = selectedBatch !== 'All Batches' ? batches.find((row) => row.batch_code === selectedBatch) : null;
+      const batchId = batch?.batch_code || 'all';
+      const response = await fetch(`${API_BASE}/feeds/forecast?source=uploaded_historical&batch_id=${encodeURIComponent(batchId)}&horizon_days=7&window_days=28`, {
+        headers: getAuthHeaders(), signal,
+      });
+      const json = await response.json();
+      if (!response.ok || !json.success) throw new Error(json.message || 'Feed forecast unavailable');
+      setFeedForecast(json);
+      setFeedForecastError(null);
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      setFeedForecast(null);
+      setFeedForecastError(err.message || 'Uploaded feed forecast unavailable');
     }
   };
 
@@ -276,6 +296,12 @@ export default function AnalyticsReportsScreen() {
     void fetchMarketHistory();
     return () => controller.abort();
   }, [dateRange]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetchFeedForecast(controller.signal);
+    return () => controller.abort();
+  }, [selectedBatch, batches]);
 
   useEffect(() => {
     if (autoAiAnalysisRequested.current || !pigPriceReference || pigPriceLocations.length < 3) return;
@@ -441,7 +467,20 @@ export default function AnalyticsReportsScreen() {
     () => feedStock.reduce((sum, s) => sum + (s.stock_quantity || 0), 0),
     [feedStock]
   );
-  const feedConsumptionData = useMemo(() => getFeedConsumptionData(), [filteredFeedRecords]);
+  const feedConsumptionData = useMemo(() => {
+    if (!feedForecast) return getFeedConsumptionData();
+    const historical = (feedForecast.history || []).map((row) => ({
+      date: new Date(`${row.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      actual: row.quantityKg,
+    }));
+    const forecast = (feedForecast.forecast || []).map((row) => ({
+      date: new Date(`${row.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      forecast: row.predictedKg,
+      lower: row.lowerKg,
+      upper: row.upperKg,
+    }));
+    return [...historical, ...forecast];
+  }, [filteredFeedRecords, feedForecast]);
   const profitTrend = financial?.monthly || [];
   const expenseBreakdown = useMemo(() => getExpenseBreakdown(), [filteredExpenses]);
   const vaccinationSummary = useMemo(() => getVaccinationSummary(), [filteredVaccinationRecords]);
@@ -758,9 +797,30 @@ export default function AnalyticsReportsScreen() {
                     dot={{ fill: '#10B981', r: 3 }}
                     name="Actual"
                   />
+                  <Line
+                    type="monotone"
+                    dataKey="forecast"
+                    stroke="#7C3AED"
+                    strokeWidth={2}
+                    strokeDasharray="6 4"
+                    dot={{ fill: '#7C3AED', r: 3 }}
+                    name="Forecast"
+                    connectNulls={false}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
+            {feedForecast?.historicalSummary && (
+              <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
+                <div className="bg-white/40 rounded-lg p-2"><span className="text-gray-600">Historical actual</span><strong className="block">{feedForecast.historicalSummary.actualKg.toLocaleString()} kg</strong></div>
+                <div className="bg-white/40 rounded-lg p-2"><span className="text-gray-600">Historical planned</span><strong className="block">{feedForecast.historicalSummary.plannedKg.toLocaleString()} kg</strong></div>
+                <div className="bg-white/40 rounded-lg p-2"><span className="text-gray-600">Variance</span><strong className="block">{feedForecast.historicalSummary.varianceKg.toLocaleString()} kg</strong></div>
+                <div className="bg-white/40 rounded-lg p-2"><span className="text-gray-600">Projected 7-day bags</span><strong className="block">{(feedForecast.forecast || []).reduce((sum, row) => sum + row.projectedBagEquivalent, 0).toFixed(2)} bags</strong></div>
+              </div>
+            )}
+            <div className="flex flex-wrap gap-3 text-[10px] text-gray-600 mb-2"><span className="text-emerald-700">● Uploaded historical actual</span><span className="text-violet-700">● 7-day forecast</span></div>
+            {feedForecast?.status === 'forecasted' && <p className="text-[10px] text-gray-500 mb-2">Source: uploaded synthetic historical feed data · {feedForecast.historyDays} recent days · holdout MAE {feedForecast.evaluation?.meanAbsoluteErrorKg ?? '—'} kg/day.</p>}
+            {feedForecastError && <p className="text-[10px] text-red-700 mb-2">{feedForecastError}</p>}
             <div className="bg-blue-100/60 backdrop-blur-lg border border-blue-300/50 rounded-xl p-3">
               <div className="text-xs text-blue-800 font-medium">
                 {selectedBatch === 'All Batches' ? 'All batches' : selectedBatch} ·{' '}
