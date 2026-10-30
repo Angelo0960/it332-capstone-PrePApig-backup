@@ -949,21 +949,6 @@ export default function FeedsInventoryScreen() {
                     })}
                 </div>
 
-                <div className="mt-4 p-3 bg-blue-50/40 rounded-xl border border-blue-200/50">
-                  <div className="flex items-start gap-2">
-                    <div className="text-blue-600 text-sm">ℹ️</div>
-                    <div className="flex-1">
-                      <p className="text-xs text-blue-900 font-medium">
-                        Feed types auto-adjust by age:
-                      </p>
-                      <ul className="text-xs text-blue-800 mt-1 space-y-0.5 ml-2">
-                        <li>• Days 1-21: Starter Mash</li>
-                        <li>• Days 22-49: Grower Pellet</li>
-                        <li>• Days 50+: Finisher</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               {/* History */}
