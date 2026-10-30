@@ -687,14 +687,7 @@ export default function DashboardScreen() {
                       </button>
                     </div>
                     <div className="text-sm font-bold text-gray-900">Day {currentBatch.day}</div>
-                    <button
-                      onPointerDown={() => import('./BatchPigsScreen.jsx')}
-                      onClick={() => navigate(`/batch/${currentBatch.id}/pigs`)}
-                      className="absolute bottom-2 left-2 px-2 py-1 bg-blue-500 text-white text-xs rounded-lg shadow-lg hover:bg-blue-600 transition-colors flex items-center gap-1"
-                    >
-                      <Users className="w-3 h-3" />
-                      View Pigs
-                    </button>
+
                     <button
                       onClick={() => handleDeleteBatch(currentBatch.id, currentBatch.name)}
                       className="absolute top-2 right-2 w-6 h-6 rounded-full bg-red-100/80 flex items-center justify-center hover:bg-red-200 transition-all"
@@ -708,16 +701,10 @@ export default function DashboardScreen() {
                     <div className="text-2xl font-extrabold text-[#252838]">Day {currentBatch.day}</div>
                   </div>
                   <div className="bg-white/20 backdrop-blur-lg rounded-2xl shadow-lg border border-white/30 p-3">
-                    <div className="text-xs text-gray-700 mb-1 font-medium">Estimated Profit</div>
-                    <div className="text-sm font-bold text-green-600">
+                    <div className="text-xs text-gray-700 mb-1 font-medium">Estimated Price</div>
+                    <div className="text-2xl font-extrabold text-[#252838]">
                       {currentBatch?.pricePerKg > 0
-                        ? formatCurrency(
-                            calculateProfit(
-                              currentBatch.weight,
-                              currentBatch.pricePerKg,
-                              currentBatch.expenses
-                            )
-                          )
+                        ? formatCurrency(currentBatch.weight * currentBatch.pricePerKg)
                         : 'Unavailable'}
                     </div>
                   </div>
