@@ -187,6 +187,7 @@ export default function BatchPigsScreen() {
           revenue,
           buyer: saleForm.buyer || null,
           notes: saleForm.notes || null,
+          delete_batch: true,
         }),
       });
       const json = await res.json();
@@ -194,7 +195,8 @@ export default function BatchPigsScreen() {
       window.dispatchEvent(new Event('prepapig:financial-data-changed'));
       setShowSellModal(false);
       setSaleForm({ sale_date: new Date().toISOString().slice(0, 10), revenue: '', buyer: '', notes: '' });
-      alert('Batch sale recorded successfully.');
+      alert('Batch sale recorded successfully. The sold batch was removed.');
+      navigate('/');
     } catch (err) {
       alert('Error recording batch sale: ' + err.message);
     } finally {

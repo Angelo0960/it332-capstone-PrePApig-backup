@@ -31,7 +31,7 @@ export const listSales = async (req, res) => {
 
 export const saveSale = async (req, res) => {
     try {
-        const { batch_id, harvest_date, pig_count, total_weight_kg, sale_date = null, revenue = null, buyer = null, notes = null } = req.body;
+        const { batch_id, harvest_date, pig_count, total_weight_kg, sale_date = null, revenue = null, buyer = null, notes = null, delete_batch = false } = req.body;
         if (!uuid.test(batch_id) || req.params.id && !uuid.test(req.params.id)
             || !validDate(harvest_date) || !numeric(pig_count) || !Number.isSafeInteger(Number(pig_count)) || Number(pig_count) <= 0 || Number(pig_count) > 2147483647
             || !numeric(total_weight_kg) || Number(total_weight_kg) < 0.01 || Number(total_weight_kg) >= 10000000000
@@ -50,7 +50,15 @@ export const saveSale = async (req, res) => {
         const { data, error } = await query.select(fields).maybeSingle();
         if (error) throw error;
         if (!data) return res.status(404).json({ success: false, message: 'Harvest/sale not found' });
-        res.status(req.params.id ? 200 : 201).json({ success: true, data });
+        if (delete_batch === true) {
+            const { error: deleteError } = await supabase
+                .from('pig_batches')
+                .delete()
+                .eq('id', batch_id)
+                .eq('owner_id', req.user.id);
+            if (deleteError) throw deleteError;
+        }
+        res.status(req.params.id ? 200 : 201).json({ success: true, data, batch_deleted: delete_batch === true });
     } catch (error) {
         const message = String(error.message || '');
         const migrationMissing = message.includes('harvest_sales') && (message.includes('schema cache') || message.includes('does not exist') || message.toLowerCase().includes('permission denied'));

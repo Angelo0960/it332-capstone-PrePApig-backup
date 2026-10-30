@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS public.harvest_sales (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     owner_id UUID NOT NULL,
-    batch_id UUID NOT NULL REFERENCES public.pig_batches(id) ON DELETE RESTRICT,
+    batch_id UUID REFERENCES public.pig_batches(id) ON DELETE SET NULL,
     harvest_date DATE NOT NULL,
     pig_count INTEGER NOT NULL CHECK (pig_count > 0),
     total_weight_kg NUMERIC(12,2) NOT NULL CHECK (total_weight_kg > 0),
