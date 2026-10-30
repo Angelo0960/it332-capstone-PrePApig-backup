@@ -181,24 +181,45 @@ export default function AnalyticsReportsScreen() {
 
   // ---------- Fetch pig price basis for analysis ----------
   const fetchPigPriceBasis = async (signal) => {
+    const cacheKey = `pig-price-basis-v2:${getUserCacheKey()}`;
+    const cached = readCache(cacheKey, 15 * 60 * 1000);
+    const hasCachedBasis = Boolean(cached && typeof cached === 'object');
+
+    if (hasCachedBasis) {
+      setPigPriceLocations(cached.priceSourceLocations || DEFAULT_PRICE_POINTS.map((point) => point.location));
+      setPigPriceReference(cached.data || null);
+      setPricePoints(cached.pricePoints?.length ? cached.pricePoints : DEFAULT_PRICE_POINTS);
+      setPriceSources(cached.priceSources || []);
+      setPigPriceError(null);
+    }
+
     try {
       const response = await fetch(`${API_BASE}/market-prices/pigs`, { signal });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const json = await response.json();
       if (!json.success) throw new Error(json.message || 'Pig price unavailable');
-      setPigPriceLocations(json.priceSourceLocations || []);
-      setPigPriceReference(json.data || null);
-      setPricePoints(json.pricePoints?.length ? json.pricePoints : DEFAULT_PRICE_POINTS);
-      setPriceSources(json.priceSources || []);
-
+      const nextBasis = {
+        priceSourceLocations: json.priceSourceLocations || [],
+        data: json.data || null,
+        pricePoints: json.pricePoints?.length ? json.pricePoints : DEFAULT_PRICE_POINTS,
+        priceSources: json.priceSources || [],
+      };
+      setPigPriceLocations(nextBasis.priceSourceLocations);
+      setPigPriceReference(nextBasis.data);
+      setPricePoints(nextBasis.pricePoints);
+      setPriceSources(nextBasis.priceSources);
       setPigPriceError(null);
+      writeCache(cacheKey, nextBasis);
     } catch (err) {
       if (err.name === 'AbortError') return;
       console.error('Error loading pig price basis:', err);
-      setPigPriceLocations(DEFAULT_PRICE_POINTS.map((point) => point.location));
-      setPigPriceReference(null);
-      setPricePoints(DEFAULT_PRICE_POINTS);
-      setPigPriceError('Price sources unavailable');
+      if (!hasCachedBasis) {
+        setPigPriceLocations(DEFAULT_PRICE_POINTS.map((point) => point.location));
+        setPigPriceReference(null);
+        setPricePoints(DEFAULT_PRICE_POINTS);
+        setPriceSources([]);
+      }
+      setPigPriceError(hasCachedBasis ? 'Using cached prices; live refresh unavailable' : 'Price sources unavailable');
     }
   };
 
