@@ -12,7 +12,7 @@ export default function BottomNav({ active = '', className = '' }) {
   const navigate = useNavigate();
 
   return (
-    <div className={`fixed bottom-0 left-0 right-0 bg-white/20 backdrop-blur-xl border-t border-white/30 px-3 py-3 bottom-nav-safe shadow-2xl z-50 ${className}`}>
+    <div className={`app-bottom-nav fixed bottom-0 left-0 right-0 bg-white/20 backdrop-blur-xl border-t border-white/30 px-3 py-3 bottom-nav-safe shadow-2xl z-50 ${className}`}>
       <div className="flex items-center justify-around md:justify-center md:gap-8 lg:gap-16">
         {navItems.map((item) => {
           const isActive = active === item.label;

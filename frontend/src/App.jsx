@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Home, Package, Syringe, TrendingUp, Settings, LogOut } from 'lucide-react';
 import LoginScreen from './pages/LoginPage.jsx';
 const DashboardScreen = lazy(() => import('./pages/DashboardScreen.jsx'));
 const FeedsInventoryScreen = lazy(() => import('./pages/FeedsInventoryScreen.jsx'));
@@ -11,6 +12,48 @@ import { registerFcmToken, API_BASE, getAuthHeaders, preloadInitialData } from '
 import './App.css';
 
 const tabKeys = ['/dashboard', '/feeds', '/reports', '/vaccination'];
+
+function DesktopSidebar() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isActive = (paths) => paths.some((path) => location.pathname === path || location.pathname.startsWith(`${path}/`));
+  const items = [
+    { paths: ['/dashboard'], label: 'Overview', icon: Home, path: '/dashboard' },
+    { paths: ['/feeds'], label: 'Feed inventory', icon: Package, path: '/feeds' },
+    { paths: ['/vaccination'], label: 'Vaccinations', icon: Syringe, path: '/vaccination' },
+    { paths: ['/reports'], label: 'Farm reports', icon: TrendingUp, path: '/reports' },
+  ];
+  return (
+    <aside className="desktop-app-sidebar" aria-label="Farm navigation">
+      <div className="desktop-sidebar-brand">
+        <div className="desktop-sidebar-logo">🐖</div>
+        <div><strong>Prep<span>AP</span>ig</strong><small>FARM OS</small></div>
+      </div>
+      <p className="desktop-sidebar-label">Workspace</p>
+      <nav className="desktop-sidebar-nav">
+        {items.map(({ paths, label, icon: Icon, path }) => (
+          <button key={path} className={isActive(paths) ? 'active' : ''} onClick={() => navigate(path)}>
+            <Icon size={19} /> {label} {isActive(paths) && <span>•</span>}
+          </button>
+        ))}
+      </nav>
+      <div className="desktop-sidebar-footer">
+        <button className={isActive(['/settings']) ? 'active' : ''} onClick={() => navigate('/settings')}><Settings size={19} /> Settings</button>
+        <button className="desktop-sidebar-user" onClick={() => navigate('/settings')}>
+          <span className="desktop-sidebar-avatar">AP</span>
+          <span><strong>Farm manager</strong><small>Account settings</small></span>
+          <LogOut size={17} />
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+function DesktopShell({ children }) {
+  const location = useLocation();
+  const showSidebar = location.pathname !== '/';
+  return <div className="desktop-app-shell">{showSidebar && <DesktopSidebar />}<main className="desktop-app-content">{children}</main></div>;
+}
 
 function PersistentTabs() {
   const location = useLocation();
@@ -197,6 +240,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <DesktopShell>
       <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
       <Routes>
         {['mortality', 'treatments', 'expenses', 'settings'].map((section) => <Route key={section} path={`/${section}`} element={<ProtectedRoute><FarmManagementScreen key={section} section={section} /></ProtectedRoute>} />)}
@@ -232,6 +276,7 @@ function App() {
         />
       </Routes>
       </Suspense>
+      </DesktopShell>
     </BrowserRouter>
   );
 }
