@@ -156,17 +156,18 @@ export default function AnalyticsReportsScreen() {
   };
 
   const fetchFeedForecast = async (signal) => {
+    let hasCachedForecast = false;
     try {
       const batch = selectedBatch !== 'All Batches' ? batches.find((row) => row.batch_code === selectedBatch) : null;
       const batchId = batch?.batch_code || 'all';
       const cacheKey = `feed-ai-analysis-v2:${getUserCacheKey()}:${batchId}:1`;
       const cached = readCache(cacheKey, Number.POSITIVE_INFINITY);
+      hasCachedForecast = Boolean(cached && typeof cached === 'object');
       if (cached && typeof cached === 'object') {
         setFeedForecast(cached);
         setFeedForecastAi(cached.aiAnalysis || null);
         setFeedForecastAiError(cached.aiAnalysisError || null);
         setFeedForecastError(null);
-        return;
       }
       const response = await fetch(`${API_BASE}/feeds/forecast?source=uploaded_historical&batch_id=${encodeURIComponent(batchId)}&horizon_weeks=1&include_ai=true`, {
         headers: getAuthHeaders(), signal,
@@ -180,8 +181,10 @@ export default function AnalyticsReportsScreen() {
       writeCache(cacheKey, json);
     } catch (err) {
       if (err.name === 'AbortError') return;
-      setFeedForecast(null);
-      setFeedForecastError(err.message || 'Uploaded feed forecast unavailable');
+      if (!hasCachedForecast) {
+        setFeedForecast(null);
+        setFeedForecastError(err.message || 'Uploaded feed forecast unavailable');
+      }
     }
   };
 
@@ -240,8 +243,6 @@ export default function AnalyticsReportsScreen() {
         setPricePoints(cachedAnalysis.pricePoints);
       }
       setAiAnalysisError(null);
-      setAiAnalysisLoading(false);
-      return;
     }
 
     aiAbortController.current?.abort();
@@ -563,8 +564,8 @@ export default function AnalyticsReportsScreen() {
     if (cached) {
       setExpenseAiAnalysis(cached);
       setExpenseAiError(null);
-      return undefined;
     }
+    const hasCachedExpenseAnalysis = Boolean(cached);
     const controller = new AbortController();
     setExpenseAiLoading(true);
     setExpenseAiError(null);
@@ -580,8 +581,10 @@ export default function AnalyticsReportsScreen() {
       writeCache(cacheKey, json);
     }).catch((err) => {
       if (err.name !== 'AbortError') {
-        setExpenseAiAnalysis(null);
-        setExpenseAiError(err.message || 'Expense AI analysis unavailable');
+        if (!hasCachedExpenseAnalysis) {
+          setExpenseAiAnalysis(null);
+          setExpenseAiError(err.message || 'Expense AI analysis unavailable');
+        }
       }
     }).finally(() => setExpenseAiLoading(false));
     return () => controller.abort();
