@@ -59,19 +59,22 @@ BEGIN
     INTO v_sale;
 
     IF p_delete_batch THEN
-        DELETE FROM public.pig_batches
+        -- Retain the batch as a historical record. Active-batch queries exclude Sold.
+        UPDATE public.pig_batches
+        SET status = 'Sold'
         WHERE id = v_batch_id
           AND owner_id = p_owner_id;
 
         IF NOT FOUND THEN
-            RAISE EXCEPTION 'Batch could not be deleted';
+            RAISE EXCEPTION 'Batch could not be marked as sold';
         END IF;
     END IF;
 
     RETURN jsonb_build_object(
         'sale', v_sale,
-        'batch', CASE WHEN p_delete_batch THEN NULL ELSE v_batch END,
-        'batch_deleted', p_delete_batch
+        'batch', v_batch,
+        'batch_deleted', false,
+        'batch_closed', p_delete_batch
     );
 END;
 $$;

@@ -980,7 +980,7 @@ export default function AnalyticsReportsScreen() {
               <p className="text-xs text-gray-600">Sales minus recorded expenses by transaction date. Unrecorded costs are excluded. Zero sales means no sales recorded for this period.</p>
               {financialError && <p className="text-xs text-red-700">{financialError}</p>}
             </div>
-            <p className="text-xs text-gray-600 mb-3">Estimates below use current standing weight of active batches and current prices, not historical revenue. Feed valuation is shown for reference and excluded from recorded profit. Vaccine cost is unavailable without recorded dose costs. Costs entered in expenses may be incomplete.</p>
+            <p className="text-xs text-gray-600 mb-3">Estimates below use current standing weight and explicitly selected or recorded prices, not historical revenue. Feed and vaccine usage costs use transaction-time snapshots when available. Manual expenses may be incomplete.</p>
             <div className="space-y-2 mb-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-700">Estimated standing pig value (current)</span>
@@ -1001,12 +1001,12 @@ export default function AnalyticsReportsScreen() {
               <div className="border-t border-white/30 pt-2">
                 <div className="text-xs text-gray-600 mb-2">Expenses:</div>
                 <div className="flex items-center justify-between text-sm mb-1">
-                  <span className="text-gray-700 ml-2">Feeds (current-price estimate)</span>
+                  <span className="text-gray-700 ml-2">Feeds (transaction-time cost)</span>
                   <span className="text-gray-900">{formatCurrency(totalFeedCost)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm mb-1">
-                  <span className="text-gray-700 ml-2">Vaccine cost (dose costs unavailable)</span>
-                  <span className="text-gray-900">Unavailable</span>
+                  <span className="text-gray-700 ml-2">Vaccines (transaction-time cost)</span>
+                  <span className="text-gray-900">{formatCurrency(totalVaccineCost)}</span>
                 </div>
                 {expenseBreakdown.length > 0 && (
                   <div className="flex items-center justify-between text-sm mb-1">

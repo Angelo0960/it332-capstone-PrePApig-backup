@@ -124,22 +124,27 @@ export const createVaccination = async (req, res) => {
 // VIEW ALL
 export const getAllVaccinations = async (req, res) => {
     try {
-        const { limit, offset } = pagination(req.query);
-        let query = supabase
+        const all = req.query.all === 'true';
+        const makeQuery = () => supabase
             .from('vaccination_records')
             .select('id,batch_id,vaccine_name,vaccination_date,next_due_date,administered_by,dosage,notes,status,price_per_dose_at_usage,created_at')
             .eq('owner_id', req.user.id)
             .gte('vaccination_date', req.query.from || '1900-01-01')
             .lte('vaccination_date', req.query.to || '2999-12-31')
-            .order('vaccination_date', { ascending: false });
-        query = query.order('id', { ascending: false }).range(offset, offset + limit - 1);
-        const { data, error } = await query;
-
-        if (error) throw error;
+            .order('vaccination_date', { ascending: false })
+            .order('id', { ascending: false });
+        const data = all
+            ? await collectPages(makeQuery)
+            : await (async () => {
+                const { limit, offset } = pagination(req.query);
+                const result = await makeQuery().range(offset, offset + limit - 1);
+                if (result.error) throw result.error;
+                return result.data || [];
+            })();
 
         res.status(200).json({
             success: true,
-            pagination: { limit, offset },
+            ...(all ? {} : { pagination: pagination(req.query) }),
             count: data.length,
             data
         });
@@ -288,37 +293,25 @@ export const updateVaccineStock = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Vaccine name and an update value are required' });
         }
 
-        const { data: existing, error: existingError } = await supabase
-            .from('vaccine_stocks')
-            .select('stock_quantity,expiry_date,price_per_dose,notes')
-            .eq('owner_id', req.user.id)
-            .eq('vaccine_name', vaccine_name)
-            .maybeSingle();
-        if (existingError) throw existingError;
-
         const addedQuantity = stock_quantity === undefined ? 0 : Number(stock_quantity);
         if (!Number.isFinite(addedQuantity) || addedQuantity < 0) {
             return res.status(400).json({ success: false, message: 'Stock quantity must be non-negative' });
         }
 
-        const { data, error } = await supabase
-            .from('vaccine_stocks')
-            .upsert({
-                owner_id: req.user.id,
-                vaccine_name,
-                stock_quantity: Number(existing?.stock_quantity || 0) + addedQuantity,
-                expiry_date: expiry_date === undefined ? existing?.expiry_date : expiry_date,
-                price_per_dose: price_per_dose === undefined ? (existing?.price_per_dose ?? null) : price_per_dose,
-                notes: notes === undefined ? existing?.notes : notes,
-                updated_at: new Date()
-            }, { onConflict: 'owner_id,vaccine_name' })
-            .select();
+        const { data: stockRow, error } = await supabase.rpc('add_vaccine_stock', {
+            p_owner_id: req.user.id,
+            p_vaccine_name: vaccine_name,
+            p_quantity: addedQuantity,
+            p_expiry_date: expiry_date || null,
+            p_price_per_dose: price_per_dose === undefined ? null : price_per_dose,
+            p_notes: notes === undefined ? null : notes,
+        });
 
         if (error) throw error;
 
         res.status(200).json({
             success: true,
-            data
+            data: stockRow ? [stockRow] : [],
         });
 
     } catch (error) {

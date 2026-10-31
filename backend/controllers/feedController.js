@@ -123,22 +123,27 @@ export const createFeedRecord = async (req, res) => {
 // VIEW ALL
 export const getAllFeedRecords = async (req, res) => {
     try {
-        const { limit, offset } = pagination(req.query);
-        let query = supabase
+        const all = req.query.all === 'true';
+        const makeQuery = () => supabase
             .from('feed_records')
             .select('id,batch_id,feed_type,quantity_kg,feeding_date,feeding_time,notes,unit_price_at_usage,created_at')
             .eq('owner_id', req.user.id)
             .gte('feeding_date', req.query.from || '1900-01-01')
             .lte('feeding_date', req.query.to || '2999-12-31')
-            .order('feeding_date', { ascending: false });
-        query = query.order('id', { ascending: false }).range(offset, offset + limit - 1);
-        const { data, error } = await query;
-
-        if (error) throw error;
+            .order('feeding_date', { ascending: false })
+            .order('id', { ascending: false });
+        const data = all
+            ? await collectPages(makeQuery)
+            : await (async () => {
+                const { limit, offset } = pagination(req.query);
+                const result = await makeQuery().range(offset, offset + limit - 1);
+                if (result.error) throw result.error;
+                return result.data || [];
+            })();
 
         res.status(200).json({
             success: true,
-            pagination: { limit, offset },
+            ...(all ? {} : { pagination: pagination(req.query) }),
             count: data.length,
             data
         });
@@ -211,63 +216,19 @@ export const getFeedByBatch = async (req, res) => {
 };
 
 // UPDATE
-export const updateFeedRecord = async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        const { data, error } = await supabase
-            .from('feed_records')
-            .update({
-                feed_type: req.body.feed_type,
-                quantity_kg: req.body.quantity_kg,
-                feeding_date: req.body.feeding_date,
-                feeding_time: req.body.feeding_time,
-                notes: req.body.notes,
-            })
-            .eq('id', id)
-            .eq('owner_id', req.user.id)
-            .select();
-
-        if (error) throw error;
-
-        res.status(200).json({
-            success: true,
-            message: 'Feed record updated successfully',
-            data
-        });
-
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
-    }
+export const updateFeedRecord = async (_req, res) => {
+    res.status(409).json({
+        success: false,
+        message: 'Feed usage records are immutable because recording usage changes inventory, pig weights, and FCR. Create a correcting usage record instead.',
+    });
 };
 
 // DELETE
-export const deleteFeedRecord = async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        const { error } = await supabase
-            .from('feed_records')
-            .delete()
-            .eq('id', id)
-            .eq('owner_id', req.user.id);
-
-        if (error) throw error;
-
-        res.status(200).json({
-            success: true,
-            message: 'Feed record deleted successfully'
-        });
-
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
-    }
+export const deleteFeedRecord = async (_req, res) => {
+    res.status(409).json({
+        success: false,
+        message: 'Feed usage records are immutable because deleting usage would require reversing inventory, pig weights, and FCR transactionally.',
+    });
 };
 
 // SUMMARY
@@ -346,37 +307,25 @@ export const updateFeedStock = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Feed type and an update value are required' });
         }
 
-        const { data: existing, error: existingError } = await supabase
-            .from('feed_stocks')
-            .select('stock_quantity,unit_price,last_updated,notes')
-            .eq('owner_id', req.user.id)
-            .eq('feed_type', feed_type)
-            .maybeSingle();
-        if (existingError) throw existingError;
-
         const addedQuantity = stock_quantity === undefined ? 0 : Number(stock_quantity);
         if (!Number.isFinite(addedQuantity) || addedQuantity < 0) {
             return res.status(400).json({ success: false, message: 'Stock quantity must be non-negative' });
         }
 
-        const { data, error } = await supabase
-            .from('feed_stocks')
-            .upsert({
-                owner_id: req.user.id,
-                feed_type,
-                stock_quantity: Number(existing?.stock_quantity || 0) + addedQuantity,
-                unit_price: unit_price === undefined ? (existing?.unit_price ?? null) : unit_price,
-                last_updated: last_updated || existing?.last_updated || new Date().toISOString().split('T')[0],
-                notes: notes === undefined ? existing?.notes : notes,
-                updated_at: new Date()
-            }, { onConflict: 'owner_id,feed_type' })
-            .select();
+        const { data: stockRow, error } = await supabase.rpc('add_feed_stock', {
+            p_owner_id: req.user.id,
+            p_feed_type: feed_type,
+            p_quantity: addedQuantity,
+            p_unit_price: unit_price === undefined ? null : unit_price,
+            p_last_updated: last_updated || null,
+            p_notes: notes === undefined ? null : notes,
+        });
 
         if (error) throw error;
 
         res.status(200).json({
             success: true,
-            data
+            data: stockRow ? [stockRow] : [],
         });
     } catch (error) {
         console.error('Error updating feed stock:', error);

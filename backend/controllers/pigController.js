@@ -13,10 +13,10 @@ const syncBatchAverageWeight = async (batchId, ownerId) => {
     const averageWeight = pigs?.length ? Math.round((totalWeight / pigs.length) * 100) / 100 : 0;
     const { data, error } = await supabase
         .from('pig_batches')
-        .update({ current_weight: averageWeight })
+        .update({ current_weight: averageWeight, pig_count: pigs?.length || 0 })
         .eq('id', batchId)
         .eq('owner_id', ownerId)
-        .select('id,current_weight')
+        .select('id,current_weight,pig_count')
         .single();
     if (error) throw error;
     return data;
@@ -196,18 +196,32 @@ export const updateBatch = async (req, res) => {
             status
         } = req.body;
 
+        const { data: pigs, error: pigsError } = await supabase
+            .from('pigs')
+            .select('id')
+            .eq('batch_id', id)
+            .eq('owner_id', req.user.id);
+        if (pigsError) throw pigsError;
+        const actualPigCount = pigs?.length || 0;
+        if (pig_count !== undefined && Number(pig_count) !== actualPigCount) {
+            return res.status(409).json({
+                success: false,
+                message: `Pig count must match the ${actualPigCount} individual pigs in this batch. Add or remove individual pigs instead.`,
+            });
+        }
+
         const { data, error } = await supabase
             .from('pig_batches')
             .update({
                 batch_code,
-                pig_count,
                 breed,
                 start_weight,
                 current_weight,
                 sale_price_per_kg: sale_price_per_kg,
                 age_on_acquisition,
                 date_acquired,
-                status
+                status,
+                pig_count: actualPigCount,
             })
             .eq('id', id)
             .eq('owner_id', req.user.id)

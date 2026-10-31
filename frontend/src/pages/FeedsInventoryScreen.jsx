@@ -116,11 +116,11 @@ export default function FeedsInventoryScreen() {
       setBatches(cached);
     }
     try {
-      const res = await fetch(`${API_BASE}/pigs/all?limit=100`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/pigs/all?all=true`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success && json.data.length > 0) {
-        const mapped = json.data.map((batch) => {
+        const mapped = json.data.filter((batch) => !batch.status || String(batch.status).toLowerCase() === 'active').map((batch) => {
           let day = 0;
           if (batch.date_acquired) {
             const acquired = new Date(batch.date_acquired);
@@ -161,7 +161,7 @@ export default function FeedsInventoryScreen() {
       setLoading(false);
     }
     try {
-      let url = `${API_BASE}/feeds/all?limit=100`;
+      let url = `${API_BASE}/feeds/all?all=true`;
       if (selectedBatch !== 'all') {
         url = `${API_BASE}/feeds/batch/${selectedBatch}`;
       }
@@ -242,7 +242,7 @@ export default function FeedsInventoryScreen() {
       const json = await res.json();
       if (!json.success) throw new Error(json.message || 'Failed to load feed overview');
       const overview = json.data || {};
-      const mappedBatches = (overview.batches || []).map((batch) => {
+      const mappedBatches = (overview.batches || []).filter((batch) => !batch.status || String(batch.status).toLowerCase() === 'active').map((batch) => {
         const sourceDate = batch.date_acquired || batch.created_at;
         const day = sourceDate
           ? (Number(batch.age_on_acquisition) || 0) + Math.max(0, Math.floor((new Date() - new Date(sourceDate)) / (1000 * 60 * 60 * 24)))
@@ -468,13 +468,15 @@ export default function FeedsInventoryScreen() {
   };
 
   const calculateBatchFeedExpense = (batchId) => {
-    const filtered =
-      batchId === 'all' ? feedRecords : feedRecords.filter((r) => r.batch_id === batchId);
+    const filtered = batchId === 'all'
+      ? feedRecords
+      : feedRecords.filter((r) => r.batch_id === batchId);
     let total = 0;
     for (const rec of filtered) {
-      const rawPrice = feedStocks.find((stock) => stock.feed_type === rec.feed_type)?.unit_price;
-      if (rawPrice == null || rawPrice === '' || !Number.isFinite(Number(rawPrice)) || rec.quantity_kg == null || !Number.isFinite(Number(rec.quantity_kg))) return null;
-      total += Number(rec.quantity_kg) * Number(rawPrice);
+      const priceAtUsage = Number(rec.unit_price_at_usage);
+      const quantity = Number(rec.quantity_kg);
+      if (!Number.isFinite(priceAtUsage) || priceAtUsage < 0 || !Number.isFinite(quantity) || quantity < 0) return null;
+      total += quantity * priceAtUsage;
     }
     return total;
   };

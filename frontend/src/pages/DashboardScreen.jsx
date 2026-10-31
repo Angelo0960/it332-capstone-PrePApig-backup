@@ -316,7 +316,8 @@ export default function DashboardScreen() {
       if (!res.ok) throw new Error('Failed to fetch batches');
       const json = await res.json();
       if (json.success) {
-        const mapBatches = (financialByBatch = new Map()) => json.data.map((batch) => {
+        const activeRows = (json.data || []).filter((batch) => !batch.status || String(batch.status).toLowerCase() === 'active');
+        const mapBatches = (financialByBatch = new Map()) => activeRows.map((batch) => {
           const ageAtAcquisition = Number(batch.age_on_acquisition) || 0;
           const day = getCurrentBatchDay(batch);
           const name = batch.batch_code || `Batch ${batch.id}`;

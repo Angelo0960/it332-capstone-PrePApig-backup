@@ -98,11 +98,11 @@ export default function VaccinationScreen() {
       setBatches(cached);
     }
     try {
-      const res = await fetch(`${API_BASE}/pigs/all?limit=100`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/pigs/all?all=true`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success && json.data.length > 0) {
-        const mapped = json.data.map((batch) => {
+        const mapped = json.data.filter((batch) => !batch.status || String(batch.status).toLowerCase() === 'active').map((batch) => {
           let day = 0;
           if (batch.date_acquired) {
             const acquired = new Date(batch.date_acquired);
@@ -149,7 +149,7 @@ export default function VaccinationScreen() {
       setLoading(false);
     }
     try {
-      let url = `${API_BASE}/vaccinations/all?limit=100`;
+      let url = `${API_BASE}/vaccinations/all?all=true`;
       if (selectedBatch !== 'all') {
         url = `${API_BASE}/vaccinations/batch/${selectedBatch}`;
       }
@@ -212,7 +212,7 @@ export default function VaccinationScreen() {
       const json = await res.json();
       if (!json.success) throw new Error(json.message || 'Failed to load vaccination overview');
       const overview = json.data || {};
-      const mappedBatches = (overview.batches || []).map((batch) => {
+      const mappedBatches = (overview.batches || []).filter((batch) => !batch.status || String(batch.status).toLowerCase() === 'active').map((batch) => {
         const sourceDate = batch.date_acquired || batch.created_at;
         const day = sourceDate
           ? (Number(batch.age_on_acquisition) || 0) + Math.max(0, Math.floor((new Date() - new Date(sourceDate)) / (1000 * 60 * 60 * 24)))
@@ -408,16 +408,15 @@ export default function VaccinationScreen() {
   };
 
   const calculateBatchVaccinationExpense = (batchId) => {
-    const filtered =
-      batchId === 'all'
-        ? vaccinationRecords
-        : vaccinationRecords.filter((r) => r.batch_id === batchId);
+    const filtered = batchId === 'all'
+      ? vaccinationRecords
+      : vaccinationRecords.filter((r) => r.batch_id === batchId);
     let total = 0;
     for (const rec of filtered) {
       const dosage = Number(rec.dosage);
-      const price = getVaccinePrice(rec.vaccine_name);
-      if (price == null || rec.dosage == null || rec.dosage === '' || !Number.isFinite(dosage)) return null;
-      total += dosage * price;
+      const priceAtUsage = Number(rec.price_per_dose_at_usage);
+      if (!Number.isFinite(priceAtUsage) || priceAtUsage < 0 || !Number.isFinite(dosage) || dosage < 0) return null;
+      total += dosage * priceAtUsage;
     }
     return total;
   };

@@ -203,7 +203,7 @@ export default function BatchPigsScreen() {
       window.dispatchEvent(new Event('prepapig:financial-data-changed'));
       setShowSellModal(false);
       setSaleForm({ sale_date: new Date().toISOString().slice(0, 10), revenue: '', buyer: '', notes: '' });
-      alert('Batch sale recorded successfully. The sold batch was removed.');
+      alert('Batch sale recorded successfully. The batch was retained as Sold history.');
       navigate('/');
     } catch (err) {
       alert('Error recording batch sale: ' + err.message);

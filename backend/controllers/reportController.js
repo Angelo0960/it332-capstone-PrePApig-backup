@@ -8,8 +8,8 @@ const AnalyticsResponse = analyticsProto.lookupType('prepapig.analytics.Analytic
 
 const analyticsFields = {
     batches: 'id,breed,age_on_acquisition,batch_code,pig_count,start_weight,current_weight,sale_price_per_kg,date_acquired,status,created_at',
-    feeds: 'id,batch_id,feed_type,quantity_kg,feeding_date,feeding_time,notes,created_at',
-    vaccinations: 'id,batch_id,vaccine_name,vaccination_date,next_due_date,administered_by,dosage,notes,status,created_at',
+    feeds: 'id,batch_id,feed_type,quantity_kg,feeding_date,feeding_time,notes,unit_price_at_usage,created_at',
+    vaccinations: 'id,batch_id,vaccine_name,vaccination_date,next_due_date,administered_by,dosage,notes,status,price_per_dose_at_usage,created_at',
     expenses: 'id,batch_id,expense_type,amount,expense_date,description,created_at',
 };
 

@@ -27,6 +27,7 @@ DECLARE
     v_fcr_source text;
     v_fcr_confidence text;
     v_phase text;
+    v_batch_status text;
     v_feed_row jsonb;
     v_batch_row jsonb;
     v_stock_row jsonb;
@@ -47,19 +48,23 @@ BEGIN
 
     SELECT current_weight, COALESCE(weight_history, '[]'::jsonb), current_fcr,
            fcr_source, fcr_confidence,
-           CASE
+ status,
+ CASE
              WHEN date_acquired IS NULL THEN 'Starter'
              WHEN floor((v_feeding_date - date_acquired) / 7.0) + 1 <= 4 THEN 'Starter'
              WHEN floor((v_feeding_date - date_acquired) / 7.0) + 1 <= 10 THEN 'Grower'
              WHEN floor((v_feeding_date - date_acquired) / 7.0) + 1 <= 15 THEN 'Finisher 1'
              ELSE 'Finisher 2'
            END
-    INTO v_previous_weight, v_history, v_fcr, v_fcr_source, v_fcr_confidence, v_phase
+    INTO v_previous_weight, v_history, v_fcr, v_fcr_source, v_fcr_confidence, v_batch_status, v_phase
     FROM public.pig_batches
     WHERE id = v_batch_id AND owner_id = p_owner_id
     FOR UPDATE;
 
     IF NOT FOUND THEN RAISE EXCEPTION 'Batch not found'; END IF;
+    IF COALESCE(v_batch_status, 'Active') <> 'Active' THEN
+        RAISE EXCEPTION 'Only active batches can receive feed usage';
+    END IF;
 
     SELECT stock_quantity, unit_price
     INTO v_stock_quantity, v_unit_price
@@ -154,7 +159,11 @@ BEGIN
     IF v_dosage < 0 THEN RAISE EXCEPTION 'Dosage cannot be negative'; END IF;
 
     IF NOT EXISTS (
-        SELECT 1 FROM public.pig_batches WHERE id = v_batch_id AND owner_id = p_owner_id
+        SELECT 1
+        FROM public.pig_batches
+        WHERE id = v_batch_id
+          AND owner_id = p_owner_id
+          AND COALESCE(status, 'Active') = 'Active'
     ) THEN
         RAISE EXCEPTION 'Batch not found';
     END IF;

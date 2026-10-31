@@ -78,7 +78,8 @@ export const saveSale = async (req, res) => {
         res.status(req.params.id ? 200 : 201).json({
             success: true,
             data,
-            batch_deleted: !req.params.id && delete_batch === true,
+            batch_deleted: false,
+            batch_closed: !req.params.id && delete_batch === true,
         });
     } catch (error) {
         const message = String(error.message || '');
