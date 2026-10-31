@@ -51,6 +51,8 @@ export const createFeedRecord = async (req, res) => {
             fcr_source: result?.fcr_source || null,
             phase: result?.phase || null,
             pig_count: Number(result?.pig_count || 0),
+            feed_stock: result?.feed_stock || null,
+            remaining_stock_quantity: result?.remaining_stock_quantity == null ? null : Number(result.remaining_stock_quantity),
         });
 
         // Notifications are intentionally processed after the response so marking done stays fast.
@@ -104,12 +106,16 @@ export const createFeedRecord = async (req, res) => {
 
     } catch (error) {
         console.error('Error in createFeedRecord:', error);
-        const permissionDenied = error.message?.toLowerCase().includes('permission denied for function create_feed_record_with_weight_gain');
-        res.status(permissionDenied ? 503 : 500).json({
+        const message = String(error.message || '');
+        const permissionDenied = message.toLowerCase().includes('permission denied for function create_feed_record_with_weight_gain');
+        const stockConflict = /insufficient feed stock|feed stock not found/i.test(message);
+        res.status(permissionDenied ? 503 : stockConflict ? 409 : 500).json({
             success: false,
             message: permissionDenied
-                ? 'Feed RPC permission is not configured. Run backend/config/migrations/20261029_repair_feed_weight_rpc_grant.sql in Supabase, then retry.'
-                : error.message
+                ? 'Feed RPC permission is not configured. Run backend/config/migrations/20261029_repair_feed_weight_rpc_grant.sql and backend/config/migrations/20261031_deduct_feed_stock_with_usage.sql in Supabase, then retry.'
+                : stockConflict
+                    ? message
+                    : message || 'Unable to record feed usage',
         });
     }
 };
