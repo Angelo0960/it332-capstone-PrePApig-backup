@@ -839,11 +839,11 @@ export default function AnalyticsReportsScreen() {
                     ? `${highestLivePrice.location} has the strongest verified price point at ${formatPricePerKg(highestLivePrice.pricePhpPerKg)}.`
                     : 'A verified live market recommendation is not available yet.'}
                 </h4>
-                <p className="mt-3 text-justify text-sm leading-relaxed text-gray-700">
+                <p className="mt-3 max-w-2xl text-left text-sm leading-7 text-gray-700">
                   {aiAnalysis.suggestion || aiAnalysis.analysis || pricingActionSuggestion}
                 </p>
                 {aiAnalysis.analysis && aiAnalysis.suggestion && (
-                  <p className="mt-3 text-justify text-sm leading-relaxed text-gray-600">{aiAnalysis.analysis}</p>
+                  <p className="mt-3 max-w-2xl text-left text-sm leading-7 text-gray-600">{aiAnalysis.analysis}</p>
                 )}
                 {highestLivePrice && selectedPriceLocation && selectedPriceLocation !== highestLivePrice.location && (
                   <p className="mt-3 text-sm font-semibold leading-relaxed text-violet-600">
@@ -941,8 +941,8 @@ export default function AnalyticsReportsScreen() {
             {feedForecastAi && (
               <div className="bg-violet-100/60 border border-violet-300/50 rounded-xl p-3 mb-3">
                 <div className="flex items-center justify-between gap-2 mb-1"><span className="text-xs font-semibold text-violet-900">AI Forecast Analysis</span><span className="text-[10px] uppercase text-violet-700">{feedForecastAi.riskLevel || 'unknown'} risk</span></div>
-                <p className="text-justify text-xs text-violet-950 mb-2">{feedForecastAi.analysis}</p>
-                <p className="text-justify text-xs text-violet-950"><strong>Suggestion:</strong> {feedForecastAi.suggestion}</p>
+                <p className="text-left text-sm leading-6 text-violet-950 mb-2">{feedForecastAi.analysis}</p>
+                <p className="text-left text-sm leading-6 text-violet-950"><strong>Suggestion:</strong> {feedForecastAi.suggestion}</p>
                 {feedForecastAi.stockContext && <div className="grid grid-cols-3 gap-2 mt-2 text-[10px] text-violet-900"><span>Stock: <strong>{feedForecastAi.stockContext.totalStockKg} kg</strong></span><span>1-week need: <strong>{feedForecastAi.stockContext.forecastKg} kg</strong></span><span>Coverage: <strong>{feedForecastAi.stockContext.coverageWeeks == null ? '—' : `${feedForecastAi.stockContext.coverageWeeks} wk`}</strong></span></div>}
                 {feedForecastAi.stockContext?.projectedShortfallKg > 0 && <p className="text-[10px] text-red-700 mt-2">Projected stock shortfall: {feedForecastAi.stockContext.projectedShortfallKg} kg.</p>}
                 {feedForecastAi.actions?.length > 0 && <ul className="list-disc pl-4 mt-2 text-[10px] text-violet-900">{feedForecastAi.actions.map((action) => <li key={action}>{action}</li>)}</ul>}
@@ -1068,8 +1068,8 @@ export default function AnalyticsReportsScreen() {
               {expenseAiError && <p className="text-xs text-red-700">{expenseAiError}</p>}
               {!expenseAiLoading && !expenseAiError && expenseAiAnalysis && (
                 <>
-                  <p className="text-justify text-xs leading-relaxed text-violet-950">{expenseAiAnalysis.analysis}</p>
-                  <p className="text-justify text-xs leading-relaxed text-violet-950 mt-2"><strong>Suggestion:</strong> {expenseAiAnalysis.suggestion}</p>
+                  <p className="text-left text-sm leading-6 text-violet-950">{expenseAiAnalysis.analysis}</p>
+                  <p className="text-left text-sm leading-6 text-violet-950 mt-3"><strong>Suggestion:</strong> {expenseAiAnalysis.suggestion}</p>
                   {expenseAiAnalysis.actions?.length > 0 && <ul className="list-disc pl-4 mt-2 text-[10px] text-violet-900">{expenseAiAnalysis.actions.map((action) => <li key={action}>{action}</li>)}</ul>}
                   {expenseAiAnalysis.limitations?.length > 0 && <p className="text-[10px] text-violet-700 mt-2">{expenseAiAnalysis.limitations.join(' ')}</p>}
                 </>
