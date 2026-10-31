@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Package, Syringe, TrendingUp, Settings, LogOut } from 'lucide-react';
-import LoginScreen from './pages/LoginPage.jsx';
+import LoginScreen from './pages/LoginScreen.jsx';
 const DashboardScreen = lazy(() => import('./pages/DashboardScreen.jsx'));
 const FeedsInventoryScreen = lazy(() => import('./pages/FeedsInventoryScreen.jsx'));
 const AnalyticsReportsScreen = lazy(() => import('./pages/AnalyticsReportScreen.jsx'));
