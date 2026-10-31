@@ -223,8 +223,8 @@ export default function DashboardScreen() {
 
   // Helper functions for feed scheduling
   const getFeedTypeForAge = (day) => {
-    if (day <= 21) return 'starter';
-    if (day <= 49) return 'grower';
+    if (day <= 70) return 'starter';
+    if (day <= 105) return 'grower';
     return 'finisher';
   };
 
@@ -239,8 +239,8 @@ export default function DashboardScreen() {
   };
 
   const getDaysUntilFeedChange = (day) => {
-    if (day <= 21) return 22 - day;
-    if (day <= 49) return 50 - day;
+    if (day < 71) return 71 - day;
+    if (day < 106) return 106 - day;
     return null;
   };
 
