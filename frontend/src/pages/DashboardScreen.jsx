@@ -26,11 +26,23 @@ import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
 import { API_BASE, getAuthHeaders } from '../api.js';
 import { formatCurrency } from '../utils/formatters.js';
-import { getUserCacheKey } from '../utils/cache.js';
+import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 import { PIG_BREEDS } from '../utils/breeds.js';
 // ────────────────────────────────────────────────────────────────
 
 const DEFAULT_ESTIMATED_PRICE_PER_KG = 170;
+
+const getVaccinationMetrics = (records, batchId) => {
+  const completedVaccines = new Set(
+    (records || [])
+      .filter((record) => String(record.batch_id) === String(batchId))
+      .filter((record) => !record.status || String(record.status).toLowerCase() === 'completed')
+      .map((record) => String(record.vaccine_name || '').trim())
+      .filter(Boolean)
+  );
+  const shots = Math.min(4, completedVaccines.size);
+  return { shots, percentage: shots * 25 };
+};
 
 
 const FieldError = ({ id, message }) => message ? (
@@ -140,6 +152,9 @@ export default function DashboardScreen() {
   const [editPigCount, setEditPigCount] = useState('');
 
   const [notifications, setNotifications] = useState([]);
+  const [vaccinationRecords, setVaccinationRecords] = useState(() => (
+    readCache(`vaccination-records:${getUserCacheKey()}:all`) || []
+  ));
 
   const [newBatch, setNewBatch] = useState({
     pig_count: '',
@@ -322,7 +337,7 @@ export default function DashboardScreen() {
           const day = getCurrentBatchDay(batch);
           const name = batch.batch_code || `Batch ${batch.id}`;
           const growth = Math.min(100, Math.floor(day / 0.5));
-          const vaccination = Math.min(100, Math.floor((day / 50) * 100));
+          const vaccinationMetrics = getVaccinationMetrics(vaccinationRecords, batch.id);
           const health = 80;
           const feed = getFeedLevelPercentage(day);
           const savedPrice = Number(localStorage.getItem(`prepapig:${getUserCacheKey()}:selected-price-per-kg`));
@@ -342,7 +357,8 @@ export default function DashboardScreen() {
             date_acquired: batch.date_acquired,
             day,
             growth,
-            vaccination,
+            vaccination: vaccinationMetrics.percentage,
+            vaccinationShots: vaccinationMetrics.shots,
             health,
             feed,
             weight: batch.current_weight || batch.start_weight || 0,
@@ -458,10 +474,34 @@ export default function DashboardScreen() {
   // ---------- Load data ----------
   useEffect(() => {
     fetchBatches();
+    const fetchVaccinationRecords = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/vaccinations/all?all=true`, { headers: getAuthHeaders() });
+        if (!response.ok) return;
+        const json = await response.json();
+        if (!json.success || !Array.isArray(json.data)) return;
+        setVaccinationRecords(json.data);
+        writeCache(`vaccination-records:${getUserCacheKey()}:all`, json.data);
+      } catch {
+        // Cached vaccination records remain usable when the refresh is unavailable.
+      }
+    };
+    void fetchVaccinationRecords();
     return () => {
       if (batchRenderFrame.current) cancelAnimationFrame(batchRenderFrame.current);
     };
   }, []);
+
+  useEffect(() => {
+    setBatches((current) => current.map((batch) => {
+      const vaccinationMetrics = getVaccinationMetrics(vaccinationRecords, batch.id);
+      return {
+        ...batch,
+        vaccination: vaccinationMetrics.percentage,
+        vaccinationShots: vaccinationMetrics.shots,
+      };
+    }));
+  }, [vaccinationRecords]);
 
   useEffect(() => {
     const refreshFinancials = () => fetchBatches();
@@ -774,7 +814,7 @@ export default function DashboardScreen() {
                       <span className="absolute inset-0 grid place-items-center text-sm font-extrabold text-[#252838]">{currentBatch.vaccination}%</span>
                     </div>
                     <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.06em] text-[#555B6E]">Vaccination</div>
-                    <div className="text-[10px] text-blue-600">{Math.round(currentBatch.vaccination / 25)}/4 shots</div>
+                    <div className="text-[10px] text-blue-600">{currentBatch.vaccinationShots ?? Math.round(currentBatch.vaccination / 25)}/4 shots</div>
                   </div>
 
                   {/* Avg Weight */}
