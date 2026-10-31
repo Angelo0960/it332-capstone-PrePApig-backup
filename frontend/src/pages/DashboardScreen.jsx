@@ -74,6 +74,19 @@ const getDateAcquiredFromAge = (ageDays) => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
 
+const getCurrentBatchDay = (batch) => {
+  if (!batch) return 0;
+  const acquiredValue = batch.date_acquired || batch.dateAcquired;
+  if (!acquiredValue) return Number(batch.day) || 0;
+  const [year, month, day] = String(acquiredValue).slice(0, 10).split('-').map(Number);
+  if (![year, month, day].every(Number.isFinite)) return Number(batch.day) || 0;
+  const acquired = new Date(year, month - 1, day);
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return (Number(batch.age_on_acquisition ?? batch.ageOnAcquisition) || 0)
+    + Math.max(0, Math.floor((todayStart - acquired) / (1000 * 60 * 60 * 24)));
+};
+
 // Calculate profit in pesos
 const calculateProfit = (weight, pricePerKg, expenses) => {
   if (expenses === undefined || expenses === null) return null;
@@ -115,6 +128,7 @@ export default function DashboardScreen() {
   const [batchFieldErrors, setBatchFieldErrors] = useState({});
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
+  const [ageTick, setAgeTick] = useState(0);
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
   const batchRenderFrame = useRef(null);
@@ -137,6 +151,14 @@ export default function DashboardScreen() {
   });
 
   const currentBatch = batches[currentBatchIndex];
+  const currentBatchDay = getCurrentBatchDay(currentBatch);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setAgeTick(Date.now()), 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  void ageTick;
 
   const handleTouchStart = (event) => {
     touchStartX.current = event.touches[0]?.clientX ?? null;
@@ -295,10 +317,8 @@ export default function DashboardScreen() {
       const json = await res.json();
       if (json.success) {
         const mapBatches = (financialByBatch = new Map()) => json.data.map((batch) => {
-          const acquired = new Date(batch.date_acquired);
-          const now = new Date();
           const ageAtAcquisition = Number(batch.age_on_acquisition) || 0;
-          const day = ageAtAcquisition + Math.max(0, Math.floor((now - acquired) / (1000 * 60 * 60 * 24)));
+          const day = getCurrentBatchDay(batch);
           const name = batch.batch_code || `Batch ${batch.id}`;
           const growth = Math.min(100, Math.floor(day / 0.5));
           const vaccination = Math.min(100, Math.floor((day / 50) * 100));
@@ -318,6 +338,7 @@ export default function DashboardScreen() {
             batch_code: batch.batch_code,
             pigCount: batch.pig_count || 0,
             ageOnAcquisition: ageAtAcquisition,
+            date_acquired: batch.date_acquired,
             day,
             growth,
             vaccination,
@@ -720,7 +741,7 @@ export default function DashboardScreen() {
 
                   <div className="dashboard-card col-span-1 min-w-0 overflow-hidden flex min-h-[88px] flex-col justify-center rounded-2xl p-3 text-left">
                     <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#555B6E]">Pig Age</div>
-                    <div className="text-2xl font-extrabold text-[#252838]">Day {currentBatch.day}</div>
+                    <div className="text-2xl font-extrabold text-[#252838]">Day {currentBatchDay}</div>
                   </div>
                   <div className="dashboard-card col-span-1 min-w-0 overflow-hidden flex min-h-[88px] flex-col justify-center rounded-2xl p-3 text-left">
                     <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#555B6E]">Estimated Price</div>
@@ -760,7 +781,7 @@ export default function DashboardScreen() {
                     {(() => {
                       // pig_batches.current_weight stores the batch's current average pig weight.
                       const avgWeight = Number(currentBatch.weight) || 0;
-                      const targetWeight = currentBatch.day <= 21 ? 30 : currentBatch.day <= 49 ? 60 : 90;
+                      const targetWeight = currentBatchDay <= 21 ? 30 : currentBatchDay <= 49 ? 60 : 90;
                       const weightProgress = Math.min(100, (avgWeight / targetWeight) * 100);
                       const circumference = 2 * Math.PI * 38;
                       return <>
@@ -782,12 +803,12 @@ export default function DashboardScreen() {
                     <div className="relative mx-auto h-20 w-20 sm:h-24 sm:w-24">
                       <svg className="h-full w-full -rotate-90" viewBox="0 0 96 96" aria-hidden="true">
                         <circle cx="48" cy="48" r="38" fill="none" stroke="rgba(85,91,110,0.14)" strokeWidth="9" />
-                        <circle cx="48" cy="48" r="38" fill="none" stroke="#E39A39" strokeWidth="9" strokeLinecap="round" strokeDasharray={2 * Math.PI * 38} strokeDashoffset={(2 * Math.PI * 38) - ((Math.min(100, Math.max(0, currentBatch.feed)) / 100) * 2 * Math.PI * 38)} />
+                        <circle cx="48" cy="48" r="38" fill="none" stroke="#E39A39" strokeWidth="9" strokeLinecap="round" strokeDasharray={2 * Math.PI * 38} strokeDashoffset={(2 * Math.PI * 38) - ((Math.min(100, Math.max(0, getFeedLevelPercentage(currentBatchDay))) / 100) * 2 * Math.PI * 38)} />
                       </svg>
-                      <span className="absolute inset-0 grid place-items-center text-sm font-extrabold text-[#252838]">{currentBatch.feed}%</span>
+                      <span className="absolute inset-0 grid place-items-center text-sm font-extrabold text-[#252838]">{getFeedLevelPercentage(currentBatchDay)}%</span>
                     </div>
                     <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.06em] text-[#555B6E]">Feed Level</div>
-                    <div className="truncate text-[10px] text-orange-700">{getFeedTypeName(getFeedTypeForAge(currentBatch.day))}</div>
+                    <div className="truncate text-[10px] text-orange-700">{getFeedTypeName(getFeedTypeForAge(currentBatchDay))}</div>
                   </div>
                 </div>
               </>
