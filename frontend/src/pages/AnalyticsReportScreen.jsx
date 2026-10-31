@@ -94,8 +94,9 @@ export default function AnalyticsReportsScreen() {
   const [selectedBatch, setSelectedBatch] = useState('All Batches');
   const [showDateDropdown, setShowDateDropdown] = useState(false);
   const [showBatchDropdown, setShowBatchDropdown] = useState(false);
-
-  // --- Report modal state ---
+  const selectedBatchLabel = selectedBatch === 'All Batches'
+    ? selectedBatch
+    : `Batch ${batches.find((batch) => batch.batch_code === selectedBatch)?.id || selectedBatch}`;
   const aiAbortController = useRef(null);
   const autoAiAnalysisRequested = useRef(false);
 
@@ -698,7 +699,7 @@ export default function AnalyticsReportsScreen() {
                 onClick={() => setShowBatchDropdown(!showBatchDropdown)}
                 className="w-full px-4 py-2 bg-white/30 backdrop-blur-lg border border-white/40 rounded-xl text-sm font-semibold text-gray-900 flex items-center justify-between shadow-lg"
               >
-                {selectedBatch} <ChevronDown className="w-4 h-4" />
+                {selectedBatchLabel} <ChevronDown className="w-4 h-4" />
               </button>
               {showBatchDropdown && (
                 <div className="absolute top-full mt-2 w-full bg-white/90 backdrop-blur-xl border border-white/40 rounded-xl shadow-2xl overflow-hidden z-20">
@@ -711,7 +712,7 @@ export default function AnalyticsReportsScreen() {
                       }}
                       className="w-full px-4 py-2 text-left text-sm text-gray-900 hover:bg-green-100/50 transition-colors"
                     >
-                      {option}
+                      {option === 'All Batches' ? option : `Batch ${batches.find((batch) => batch.batch_code === option)?.id || option}`}
                     </button>
                   ))}
                 </div>

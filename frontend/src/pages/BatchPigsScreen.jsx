@@ -42,7 +42,7 @@ export default function BatchPigsScreen() {
       if (Array.isArray(cached)) {
         setPigs(cached);
         if (cachedBatch) {
-          setBatchName(cachedBatch.batch_code || 'Batch');
+          setBatchName(cachedBatch?.id ? `Batch ${cachedBatch.id}` : 'Batch');
           const cachedPrice = Number(cachedBatch.sale_price_per_kg);
           if (cachedPrice > 0) setLiveWeightPrice(cachedPrice);
         }
@@ -63,7 +63,7 @@ export default function BatchPigsScreen() {
       if (!json.success) throw new Error(json.message);
       const nextPigs = json.data || [];
       setPigs(nextPigs);
-      setBatchName(json.batch?.batch_code || 'Batch');
+      setBatchName(json.batch?.id ? `Batch ${json.batch.id}` : 'Batch');
       const selectedPrice = Number(localStorage.getItem(`prepapig:${getUserCacheKey()}:selected-price-per-kg`));
       const batchPrice = Number(json.batch?.sale_price_per_kg);
       setLiveWeightPrice(selectedPrice > 0 ? selectedPrice : batchPrice > 0 ? batchPrice : DEFAULT_LIVEWEIGHT_PRICE_PER_KG);

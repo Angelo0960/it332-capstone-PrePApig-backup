@@ -48,7 +48,7 @@ export default function HarvestSales({ batches, onChanged }) {
     <p className="text-xs text-gray-600 my-2">Record total harvested weight and actual sale proceeds. An unsold harvest has no revenue. Records do not change batch counts or standing weights; update those separately after harvest.</p>
     {error && <p role="alert" className="text-xs text-red-700">{error}</p>}
     {open && <form onSubmit={save} className="space-y-2 mb-3">
-      <label className="block text-xs">Batch<select required className={inputClass} value={form.batch_id} onChange={(e) => setForm({ ...form, batch_id: e.target.value })}><option value="">Select batch</option>{batches.map((row) => <option key={row.id} value={row.id}>{row.batch_code}</option>)}</select></label>
+      <label className="block text-xs">Batch<select required className={inputClass} value={form.batch_id} onChange={(e) => setForm({ ...form, batch_id: e.target.value })}><option value="">Select batch</option>{batches.map((row) => <option key={row.id} value={row.id}>{`Batch ${row.id}`}</option>)}</select></label>
       {[
         ['harvest_date', 'Harvest date', 'date', true], ['pig_count', 'Pigs harvested', 'number', true],
         ['total_weight_kg', 'Total harvested weight (kg)', 'number', true], ['sale_date', 'Sale date (leave blank if unsold)', 'date', false],
@@ -60,7 +60,7 @@ export default function HarvestSales({ batches, onChanged }) {
       {historyLoading && <p className="text-xs text-gray-600">Loading harvest history...</p>}
       {records.length === 0 && !historyLoading && !error && <p className="text-xs text-gray-600">No harvests or sales recorded.</p>}
       {records.map((row) => <div key={row.id} className="text-xs bg-white/40 rounded-lg p-2 flex justify-between gap-2">
-        <div>{batches.find((batch) => batch.id === row.batch_id)?.batch_code || 'Batch'} | {row.harvest_date} | {row.pig_count} pigs | {row.total_weight_kg} kg<br />{row.sale_date ? `Sold ${row.sale_date}: ${formatCurrency(row.revenue)}` : 'Unsold harvest'}</div>
+        <div>{batches.find((batch) => batch.id === row.batch_id)?.id ? `Batch ${row.batch_id}` : 'Batch'} | {row.harvest_date} | {row.pig_count} pigs | {row.total_weight_kg} kg<br />{row.sale_date ? `Sold ${row.sale_date}: ${formatCurrency(row.revenue)}` : 'Unsold harvest'}</div>
         <button type="button" disabled={busy} className="text-green-800 font-semibold" onClick={() => { setEditing(row.id); setForm(Object.fromEntries(Object.keys(empty).map((key) => [key, row[key] ?? '']))); setOpen(true); }}>Edit</button>
       </div>)}
     </div>
