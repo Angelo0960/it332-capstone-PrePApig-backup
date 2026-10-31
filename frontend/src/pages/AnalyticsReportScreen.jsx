@@ -423,19 +423,26 @@ export default function AnalyticsReportsScreen() {
   // ---------- Currency helper ----------
 
 
-  // ---------- Current-price feed valuation (estimate only) ----------
+  // Usage records use immutable transaction-time prices. Legacy rows without a snapshot are not revalued.
   const getFeedCost = () => {
     let total = 0;
     filteredFeedRecords.forEach((rec) => {
-      const qty = parseFloat(rec.quantity_kg) || 0;
-      const price = feedPriceMap.get(rec.feed_type) || 0;
-      total += qty * price;
+      const qty = Number(rec.quantity_kg);
+      const priceAtUsage = Number(rec.unit_price_at_usage);
+      if (Number.isFinite(qty) && qty >= 0 && Number.isFinite(priceAtUsage) && priceAtUsage >= 0) {
+        total += qty * priceAtUsage;
+      }
     });
     return Math.round(total * 100) / 100;
   };
-
-  const feedPriceMap = useMemo(() => new Map(feedStock.map((stock) => [stock.feed_type, Number(stock.unit_price) || 0])), [feedStock]);
-  const totalFeedCost = useMemo(() => getFeedCost(), [filteredFeedRecords, feedStock]);
+  const totalFeedCost = useMemo(() => getFeedCost(), [filteredFeedRecords]);
+  const totalVaccineCost = useMemo(() => filteredVaccinationRecords.reduce((total, record) => {
+    const dosage = Number(record.dosage);
+    const priceAtUsage = Number(record.price_per_dose_at_usage);
+    return Number.isFinite(dosage) && dosage >= 0 && Number.isFinite(priceAtUsage) && priceAtUsage >= 0
+      ? total + dosage * priceAtUsage
+      : total;
+  }, 0), [filteredVaccinationRecords]);
   const selectedBatches = selectedBatch === 'All Batches'
     ? batches.filter((b) => b.status?.toLowerCase() === 'active')
     : batches.filter((b) => b.batch_code === selectedBatch && b.status?.toLowerCase() === 'active');
@@ -738,7 +745,7 @@ export default function AnalyticsReportsScreen() {
                 {financial ? formatCurrency(financial.recordedExpenses) : 'Unavailable'}
               </div>
               <div className="text-xs text-gray-600">
-                Feed: {formatCurrency(totalFeedCost)} · Vaccine: Unavailable
+                Feed: {formatCurrency(totalFeedCost)} · Vaccine: {formatCurrency(totalVaccineCost)}
               </div>
             </div>
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">

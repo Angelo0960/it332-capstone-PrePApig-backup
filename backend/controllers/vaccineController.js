@@ -29,48 +29,9 @@ export const createVaccination = async (req, res) => {
             status
         } = req.body;
 
-        const { data: batch, error: batchError } = await supabase
-            .from('pig_batches')
-            .select('id')
-            .eq('id', batch_id)
-            .eq('owner_id', req.user.id)
-            .single();
-        if (batchError || !batch) {
-            return res.status(404).json({ success: false, message: 'Batch not found' });
-        }
-
-        // Deduct stock before creating the record. If the record insert fails,
-        // restore the previous quantity so the two operations stay consistent.
-        const dosageNum = Number(dosage) || 0;
-        let previousStock = null;
-        let stockUpdated = false;
-        if (dosageNum > 0) {
-            const { data: stockData, error: stockError } = await supabase
-                .from('vaccine_stocks')
-                .select('stock_quantity')
-                .eq('vaccine_name', vaccine_name)
-                .eq('owner_id', req.user.id)
-                .maybeSingle();
-            if (stockError) throw stockError;
-            if (stockData) {
-                previousStock = Number(stockData.stock_quantity) || 0;
-                const { error: updateError } = await supabase
-                    .from('vaccine_stocks')
-                    .update({
-                        stock_quantity: Math.max(0, previousStock - dosageNum),
-                        updated_at: new Date()
-                    })
-                    .eq('vaccine_name', vaccine_name)
-                    .eq('owner_id', req.user.id);
-                if (updateError) throw updateError;
-                stockUpdated = true;
-            }
-        }
-
-        const { data, error } = await supabase
-            .from('vaccination_records')
-            .insert([{
-                owner_id: req.user.id,
+        const { data: result, error } = await supabase.rpc('create_vaccination_with_stock', {
+            p_owner_id: req.user.id,
+            p_vaccination: {
                 batch_id,
                 vaccine_name,
                 vaccination_date,
@@ -78,24 +39,19 @@ export const createVaccination = async (req, res) => {
                 administered_by,
                 dosage,
                 notes,
-                status
-            }])
-            .select();
+                status,
+            },
+        });
 
-        if (error) {
-            if (stockUpdated) {
-                await supabase
-                    .from('vaccine_stocks')
-                    .update({ stock_quantity: previousStock, updated_at: new Date() })
-                    .eq('vaccine_name', vaccine_name)
-                    .eq('owner_id', req.user.id);
-            }
-            throw error;
-        }
+        if (error) throw error;
 
         res.status(201).json({
             success: true,
-            data
+            data: result?.record ? [result.record] : [],
+            vaccine_stock: result?.vaccine_stock || null,
+            remaining_stock_quantity: result?.remaining_stock_quantity == null
+                ? null
+                : Number(result.remaining_stock_quantity),
         });
 
         // Notifications are intentionally processed after the response so marking done stays fast.
@@ -149,12 +105,16 @@ export const createVaccination = async (req, res) => {
 
     } catch (error) {
         console.error('Error in createVaccination:', error);
-        const message = error.message?.includes('vaccine_stocks.owner_id')
+        const rawMessage = String(error.message || '');
+        const stockConflict = /insufficient vaccine stock|vaccine stock not found/i.test(rawMessage);
+        const message = rawMessage.includes('vaccine_stocks.owner_id')
             ? 'Database migration required: run backend/config/migrations/20261010_vaccine_stock_owner.sql in Supabase.'
-            : error.message?.includes("'owner_id' column")
+            : rawMessage.includes("'owner_id' column")
                 ? 'Database migration required: run backend/config/migrations/20261009_owner_columns.sql in Supabase.'
-                : error.message;
-        res.status(500).json({
+                : stockConflict
+                    ? rawMessage
+                    : rawMessage || 'Unable to record vaccination';
+        res.status(stockConflict ? 409 : 500).json({
             success: false,
             message
         });
@@ -167,7 +127,7 @@ export const getAllVaccinations = async (req, res) => {
         const { limit, offset } = pagination(req.query);
         let query = supabase
             .from('vaccination_records')
-            .select('id,batch_id,vaccine_name,vaccination_date,next_due_date,administered_by,dosage,notes,status,created_at')
+            .select('id,batch_id,vaccine_name,vaccination_date,next_due_date,administered_by,dosage,notes,status,price_per_dose_at_usage,created_at')
             .eq('owner_id', req.user.id)
             .gte('vaccination_date', req.query.from || '1900-01-01')
             .lte('vaccination_date', req.query.to || '2999-12-31')
@@ -227,7 +187,7 @@ export const getVaccinationsByBatch = async (req, res) => {
 
         let query = supabase
             .from('vaccination_records')
-            .select('id,batch_id,vaccine_name,vaccination_date,next_due_date,administered_by,dosage,notes,status,created_at')
+            .select('id,batch_id,vaccine_name,vaccination_date,next_due_date,administered_by,dosage,notes,status,price_per_dose_at_usage,created_at')
             .eq('batch_id', batchId)
             .eq('owner_id', req.user.id)
             .order('vaccination_date', { ascending: false });
@@ -379,7 +339,7 @@ export const getVaccinationOverview = async (req, res) => {
     try {
         const [batches, records, stock] = await Promise.all([
             supabase.from('pig_batches').select('id,batch_code,pig_count,breed,age_on_acquisition,start_weight,current_weight,date_acquired,status,created_at').eq('owner_id', req.user.id).order('created_at', { ascending: false }).range(0, 24),
-            supabase.from('vaccination_records').select('id,batch_id,vaccine_name,vaccination_date,next_due_date,administered_by,dosage,notes,status,created_at').eq('owner_id', req.user.id).order('vaccination_date', { ascending: false }).range(0, 24),
+            supabase.from('vaccination_records').select('id,batch_id,vaccine_name,vaccination_date,next_due_date,administered_by,dosage,notes,status,price_per_dose_at_usage,created_at').eq('owner_id', req.user.id).order('vaccination_date', { ascending: false }).range(0, 24),
             supabase.from('vaccine_stocks').select('id,vaccine_name,stock_quantity,expiry_date,price_per_dose,notes,updated_at').eq('owner_id', req.user.id).order('vaccine_name'),
         ]);
         const failed = [batches, records, stock].find((result) => result.error);

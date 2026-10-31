@@ -126,7 +126,7 @@ export const getAllFeedRecords = async (req, res) => {
         const { limit, offset } = pagination(req.query);
         let query = supabase
             .from('feed_records')
-            .select('id,batch_id,feed_type,quantity_kg,feeding_date,feeding_time,notes,created_at')
+            .select('id,batch_id,feed_type,quantity_kg,feeding_date,feeding_time,notes,unit_price_at_usage,created_at')
             .eq('owner_id', req.user.id)
             .gte('feeding_date', req.query.from || '1900-01-01')
             .lte('feeding_date', req.query.to || '2999-12-31')
@@ -186,7 +186,7 @@ export const getFeedByBatch = async (req, res) => {
 
         let query = supabase
             .from('feed_records')
-            .select('id,batch_id,feed_type,quantity_kg,feeding_date,feeding_time,notes,created_at')
+            .select('id,batch_id,feed_type,quantity_kg,feeding_date,feeding_time,notes,unit_price_at_usage,created_at')
             .eq('batch_id', batchId)
             .eq('owner_id', req.user.id)
             .order('feeding_date', { ascending: false });
@@ -391,7 +391,7 @@ export const getFeedOverview = async (req, res) => {
     try {
         const [batches, records, stock, expenses] = await Promise.all([
             supabase.from('pig_batches').select('id,batch_code,pig_count,breed,age_on_acquisition,date_acquired,created_at').eq('owner_id', req.user.id).order('created_at', { ascending: false }).range(0, 24),
-            supabase.from('feed_records').select('id,batch_id,feed_type,quantity_kg,feeding_date,feeding_time,notes,created_at').eq('owner_id', req.user.id).order('feeding_date', { ascending: false }).range(0, 24),
+            supabase.from('feed_records').select('id,batch_id,feed_type,quantity_kg,feeding_date,feeding_time,notes,unit_price_at_usage,created_at').eq('owner_id', req.user.id).order('feeding_date', { ascending: false }).range(0, 24),
             supabase.from('feed_stocks').select('id,feed_type,stock_quantity,unit_price,last_updated,notes,updated_at').eq('owner_id', req.user.id).order('feed_type'),
             supabase.from('expenses').select('id,batch_id,expense_type,amount,expense_date,description,created_at').eq('owner_id', req.user.id).order('expense_date', { ascending: false }).range(0, 99),
         ]);

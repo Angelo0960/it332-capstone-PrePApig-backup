@@ -106,26 +106,22 @@ export const getBatchFinancialSummary = async (req, res) => {
         const batchIds = (batches || []).map((batch) => batch.id);
         if (batchIds.length === 0) return res.json({ success: true, data: [] });
 
-        const [expensesResult, feedsResult, vaccinationsResult, feedStockResult, vaccineStockResult] = await Promise.all([
+        const [expensesResult, feedsResult, vaccinationsResult] = await Promise.all([
             supabase.from('expenses').select('batch_id,amount').eq('owner_id', req.user.id).in('batch_id', batchIds),
-            supabase.from('feed_records').select('batch_id,feed_type,quantity_kg').eq('owner_id', req.user.id).in('batch_id', batchIds),
-            supabase.from('vaccination_records').select('batch_id,vaccine_name,dosage').eq('owner_id', req.user.id).in('batch_id', batchIds),
-            supabase.from('feed_stocks').select('feed_type,unit_price').eq('owner_id', req.user.id),
-            supabase.from('vaccine_stocks').select('vaccine_name,price_per_dose').eq('owner_id', req.user.id),
+            supabase.from('feed_records').select('batch_id,quantity_kg,unit_price_at_usage').eq('owner_id', req.user.id).in('batch_id', batchIds),
+            supabase.from('vaccination_records').select('batch_id,dosage,price_per_dose_at_usage').eq('owner_id', req.user.id).in('batch_id', batchIds),
         ]);
-        const failed = [expensesResult, feedsResult, vaccinationsResult, feedStockResult, vaccineStockResult]
+        const failed = [expensesResult, feedsResult, vaccinationsResult]
             .find((result) => result.error);
         if (failed) throw failed.error;
 
         const price = (value) => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : null;
-        const feedPrices = new Map((feedStockResult.data || []).map((stock) => [stock.feed_type, price(stock.unit_price)]));
-        const vaccinePrices = new Map((vaccineStockResult.data || []).map((stock) => [stock.vaccine_name, price(stock.price_per_dose)]));
         const totals = new Map(batchIds.map((id) => [id, 0]));
         const unavailable = new Map(batchIds.map((id) => [id, new Set()]));
         for (const expense of expensesResult.data || []) totals.set(expense.batch_id, totals.get(expense.batch_id) + Number(expense.amount));
-        const addCosts = (records, prices, nameField, quantityField, category) => {
+        const addSnapshotCosts = (records, snapshotField, quantityField, category) => {
             for (const record of records || []) {
-                const unitPrice = prices.get(record[nameField]);
+                const unitPrice = price(record[snapshotField]);
                 const quantity = price(record[quantityField]);
                 if (unitPrice == null || quantity == null) {
                     unavailable.get(record.batch_id).add(category);
@@ -134,8 +130,8 @@ export const getBatchFinancialSummary = async (req, res) => {
                 }
             }
         };
-        addCosts(feedsResult.data, feedPrices, 'feed_type', 'quantity_kg', 'feed');
-        addCosts(vaccinationsResult.data, vaccinePrices, 'vaccine_name', 'dosage', 'vaccine');
+        addSnapshotCosts(feedsResult.data, 'unit_price_at_usage', 'quantity_kg', 'feed');
+        addSnapshotCosts(vaccinationsResult.data, 'price_per_dose_at_usage', 'dosage', 'vaccine');
 
         res.json({
             success: true,
