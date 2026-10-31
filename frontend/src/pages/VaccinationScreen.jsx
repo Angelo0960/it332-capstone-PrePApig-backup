@@ -17,6 +17,7 @@ import BottomNav from '../components/BottomNav';
 import { API_BASE, getAuthHeaders } from '../api.js';
 import { buildVaccinationDonePayload } from '../utils/markDonePayloads.js';
 import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
+import { buildBatchDisplayNames } from '../utils/batchNames.js';
 import { formatLocalDate } from '../utils/dates.js';
 
 // Standard vaccination schedule by age
@@ -102,6 +103,7 @@ export default function VaccinationScreen() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success && json.data.length > 0) {
+        const displayNames = buildBatchDisplayNames(json.data);
         const mapped = json.data.filter((batch) => !batch.status || String(batch.status).toLowerCase() === 'active').map((batch) => {
           let day = 0;
           if (batch.date_acquired) {
@@ -115,7 +117,7 @@ export default function VaccinationScreen() {
           }
           return {
             id: batch.id,
-            name: `Batch ${batch.id}`,
+            name: displayNames.get(String(batch.id)) || 'Batch',
             day: day,
             pigCount: batch.pig_count || 0,
             breed: batch.breed,
@@ -212,6 +214,7 @@ export default function VaccinationScreen() {
       const json = await res.json();
       if (!json.success) throw new Error(json.message || 'Failed to load vaccination overview');
       const overview = json.data || {};
+      const displayNames = buildBatchDisplayNames(overview.batches || []);
       const mappedBatches = (overview.batches || []).filter((batch) => !batch.status || String(batch.status).toLowerCase() === 'active').map((batch) => {
         const sourceDate = batch.date_acquired || batch.created_at;
         const day = sourceDate
@@ -219,7 +222,7 @@ export default function VaccinationScreen() {
           : 0;
         return {
           id: batch.id,
-          name: `Batch ${batch.id}`,
+          name: displayNames.get(String(batch.id)) || 'Batch',
           day,
           pigCount: batch.pig_count || 0,
           breed: batch.breed,

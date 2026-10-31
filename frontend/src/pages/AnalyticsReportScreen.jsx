@@ -39,6 +39,7 @@ import BottomNav from '../components/BottomNav';
 import { API_BASE, getAuthHeaders } from '../api.js';
 import { formatCurrency, formatPricePerKg } from '../utils/formatters.js';
 import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
+import { buildBatchDisplayNames } from '../utils/batchNames.js';
 // ────────────────────────────────────────────────────────────────
 
 const DEFAULT_PRICE_POINTS = [
@@ -94,9 +95,10 @@ export default function AnalyticsReportsScreen() {
   const [selectedBatch, setSelectedBatch] = useState('All Batches');
   const [showDateDropdown, setShowDateDropdown] = useState(false);
   const [showBatchDropdown, setShowBatchDropdown] = useState(false);
+  const batchDisplayNames = buildBatchDisplayNames(batches);
   const selectedBatchLabel = selectedBatch === 'All Batches'
     ? selectedBatch
-    : `Batch ${batches.find((batch) => batch.batch_code === selectedBatch)?.id || selectedBatch}`;
+    : batchDisplayNames.get(String(batches.find((batch) => batch.batch_code === selectedBatch)?.id)) || 'Batch';
   const aiAbortController = useRef(null);
   const autoAiAnalysisRequested = useRef(false);
 
@@ -713,7 +715,7 @@ export default function AnalyticsReportsScreen() {
                       }}
                       className="w-full px-4 py-2 text-left text-sm text-gray-900 hover:bg-green-100/50 transition-colors"
                     >
-                      {option === 'All Batches' ? option : `Batch ${batches.find((batch) => batch.batch_code === option)?.id || option}`}
+                      {option === 'All Batches' ? option : batchDisplayNames.get(String(batches.find((batch) => batch.batch_code === option)?.id)) || 'Batch'}
                     </button>
                   ))}
                 </div>

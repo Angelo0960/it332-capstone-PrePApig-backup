@@ -21,6 +21,7 @@ import { API_BASE, getAuthHeaders } from '../api.js';
 import { buildFeedDonePayload } from '../utils/markDonePayloads.js';
 import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 import { formatLocalDate, formatLocalTime } from '../utils/dates.js';
+import { buildBatchDisplayNames } from '../utils/batchNames.js';
 // ────────────────────────────────────────────────────────────────
 
 // Helpers
@@ -120,6 +121,7 @@ export default function FeedsInventoryScreen() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success && json.data.length > 0) {
+        const displayNames = buildBatchDisplayNames(json.data);
         const mapped = json.data.filter((batch) => !batch.status || String(batch.status).toLowerCase() === 'active').map((batch) => {
           let day = 0;
           if (batch.date_acquired) {
@@ -133,7 +135,7 @@ export default function FeedsInventoryScreen() {
           }
           return {
             id: batch.id,
-            name: `Batch ${batch.id}`,
+            name: displayNames.get(String(batch.id)) || 'Batch',
             day: day,
             pigCount: batch.pig_count || 0,
           };
@@ -242,12 +244,13 @@ export default function FeedsInventoryScreen() {
       const json = await res.json();
       if (!json.success) throw new Error(json.message || 'Failed to load feed overview');
       const overview = json.data || {};
+      const displayNames = buildBatchDisplayNames(overview.batches || []);
       const mappedBatches = (overview.batches || []).filter((batch) => !batch.status || String(batch.status).toLowerCase() === 'active').map((batch) => {
         const sourceDate = batch.date_acquired || batch.created_at;
         const day = sourceDate
           ? (Number(batch.age_on_acquisition) || 0) + Math.max(0, Math.floor((new Date() - new Date(sourceDate)) / (1000 * 60 * 60 * 24)))
           : 0;
-        return { id: batch.id, name: `Batch ${batch.id}`, day, pigCount: batch.pig_count || 0, breed: batch.breed || 'Unknown', age_on_acquisition: batch.age_on_acquisition || 0 };
+        return { id: batch.id, name: displayNames.get(String(batch.id)) || 'Batch', day, pigCount: batch.pig_count || 0, breed: batch.breed || 'Unknown', age_on_acquisition: batch.age_on_acquisition || 0 };
       });
       setBatches(mappedBatches);
       setFeedRecords(overview.records || []);
