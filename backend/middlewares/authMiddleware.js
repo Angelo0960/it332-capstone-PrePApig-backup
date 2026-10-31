@@ -34,17 +34,16 @@ export const authMiddleware = async (req, res, next) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
         if (decoded.jti) {
-            const { data: session, error } = await supabase
-                .from('session_tokens')
-                .select('user_id,expires_at,revoked_at')
-                .eq('jti', decoded.jti)
-                .maybeSingle();
+            const { data: validSession, error } = await supabase.rpc('validate_session_token', {
+                p_jti: decoded.jti,
+                p_user_id: decoded.id,
+            });
 
             if (error) {
                 return res.status(503).json({ success: false, message: 'Session validation is unavailable' });
             }
 
-            if (!session || session.user_id !== decoded.id || session.revoked_at || new Date(session.expires_at).getTime() <= Date.now()) {
+            if (validSession !== true) {
                 return res.status(401).json({ success: false, message: 'Session has expired or been revoked' });
             }
         }

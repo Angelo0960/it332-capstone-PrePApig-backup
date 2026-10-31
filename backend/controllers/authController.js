@@ -59,13 +59,11 @@ import supabase from '../config/supabase.js';
         { expiresIn: '1d' }
       );
 
-      const { error: sessionError } = await supabase
-        .from('session_tokens')
-        .insert({
-          jti,
-          user_id: data.user.id,
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        });
+      const { error: sessionError } = await supabase.rpc('create_session_token', {
+        p_jti: jti,
+        p_user_id: data.user.id,
+        p_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      });
       if (sessionError) throw sessionError;
 
       res.status(200).json({
@@ -94,12 +92,10 @@ import supabase from '../config/supabase.js';
         const decoded = jwt.decode(token);
         revokeToken(token, decoded?.exp ? decoded.exp * 1000 : undefined);
         if (decoded?.jti) {
-          const { error: revokeError } = await supabase
-            .from('session_tokens')
-            .update({ revoked_at: new Date().toISOString() })
-            .eq('jti', decoded.jti)
-            .eq('user_id', req.user.id)
-            .is('revoked_at', null);
+          const { error: revokeError } = await supabase.rpc('revoke_session_token', {
+            p_jti: decoded.jti,
+            p_user_id: req.user.id,
+          });
           if (revokeError) throw revokeError;
         }
       }
