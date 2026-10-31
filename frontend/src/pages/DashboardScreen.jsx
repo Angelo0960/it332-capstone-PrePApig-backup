@@ -97,9 +97,8 @@ const getCachedDashboardBatches = () => {
     return [];
   }
 };
-const getDateAcquiredFromAge = (ageDays) => {
+const getTodayDate = () => {
   const date = new Date();
-  date.setDate(date.getDate() - Math.max(0, Number.parseInt(ageDays, 10) || 0));
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
 
@@ -591,7 +590,7 @@ export default function DashboardScreen() {
   const handleAddBatch = async () => {
     if (Object.keys(validateBatchFields()).length > 0) return;
 
-    const dateAcquired = newBatch.date_acquired || getDateAcquiredFromAge(newBatch.age_on_acquisition);
+    const dateAcquired = newBatch.date_acquired || getTodayDate();
 
     const batchCode = generateBatchCode();
 
@@ -1085,7 +1084,7 @@ export default function DashboardScreen() {
                         setNewBatch((current) => ({
                           ...current,
                           age_on_acquisition: age,
-                          date_acquired: age === '' ? '' : getDateAcquiredFromAge(age),
+                          date_acquired: age === '' ? '' : getTodayDate(),
                         }));
                         setBatchFieldErrors((current) => ({ ...current, age_on_acquisition: '' }));
                       }}
@@ -1136,7 +1135,7 @@ export default function DashboardScreen() {
                     className="w-full px-4 py-3 rounded-xl bg-white/55 backdrop-blur-lg border border-white/70 text-gray-950 font-semibold focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
                   />
                   <p id="date-acquired-help" className="text-xs text-gray-700 mt-2">
-                    Automatically calculated from pig age.
+                    Defaults to today; the entered age is preserved as the age at acquisition.
                   </p>
                 </div>
 
