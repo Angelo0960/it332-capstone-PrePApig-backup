@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle2, Lock, User } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Lock, User } from 'lucide-react';
 import { api } from '../api.js';
 import pigImage from '../assets/2e388bda-a6fa-4911-bcea-0e3aaa26ed7f-removebg-preview.webp';
 import backgroundImage from '../assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.webp';
@@ -91,9 +91,9 @@ export function LoginScreen({ onLogin }) {
 
 function LoginForm({ farmerId, password, error, loading, onFarmerIdChange, onPasswordChange, onSubmit }) {
   return <div className="mt-8 space-y-5">
-    <div className="relative"><User className="absolute left-5 top-1/2 size-6 -translate-y-1/2 text-[#FF2F72]" /><input id="farmerId" value={farmerId} onChange={(event) => onFarmerIdChange(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && onSubmit()} placeholder="Farmer ID" autoComplete="username" className="w-full rounded-[22px] border border-white/45 bg-white/10 py-4 pl-14 pr-5 text-base text-white outline-none backdrop-blur-lg placeholder:text-white/40 focus:border-white/70 focus:ring-2 focus:ring-[#FF2F72]/25" /></div>
-    <div className="relative"><Lock className="absolute left-5 top-1/2 size-6 -translate-y-1/2 text-[#FF2F72]" /><input id="accessKey" type="password" value={password} onChange={(event) => onPasswordChange(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && onSubmit()} placeholder="Access Key ••••••" autoComplete="current-password" className="w-full rounded-[22px] border border-white/45 bg-white/10 py-4 pl-14 pr-5 text-base text-white outline-none backdrop-blur-lg placeholder:text-white/40 focus:border-white/70 focus:ring-2 focus:ring-[#FF2F72]/25" /></div>
-    {error && <p className="text-center text-xs font-semibold text-[#FFD1DF]">{error}</p>}
+    <div className="relative"><User className="absolute left-5 top-1/2 size-6 -translate-y-1/2 text-[#FF2F72]" /><input id="farmerId" value={farmerId} onChange={(event) => onFarmerIdChange(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && onSubmit()} placeholder="Farmer ID" autoComplete="username" aria-invalid={Boolean(error)} aria-describedby={error ? 'login-error' : undefined} className={`w-full rounded-[22px] border bg-white/10 py-4 pl-14 pr-5 text-base text-white outline-none backdrop-blur-lg placeholder:text-white/40 focus:border-white/70 focus:ring-2 focus:ring-[#FF2F72]/25 ${error ? 'border-[#FFD1DF]/90' : 'border-white/45'}`} /></div>
+    <div className="relative"><Lock className="absolute left-5 top-1/2 size-6 -translate-y-1/2 text-[#FF2F72]" /><input id="accessKey" type="password" value={password} onChange={(event) => onPasswordChange(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && onSubmit()} placeholder="Access Key ••••••" autoComplete="current-password" aria-invalid={Boolean(error)} aria-describedby={error ? 'login-error' : undefined} className={`w-full rounded-[22px] border bg-white/10 py-4 pl-14 pr-5 text-base text-white outline-none backdrop-blur-lg placeholder:text-white/40 focus:border-white/70 focus:ring-2 focus:ring-[#FF2F72]/25 ${error ? 'border-[#FFD1DF]/90' : 'border-white/45'}`} /></div>
+    {error && <div id="login-error" role="alert" aria-live="polite" className="flex items-start gap-2 rounded-2xl border border-[#FFD1DF]/55 bg-[#7F1D3D]/35 px-4 py-3 text-xs font-semibold text-[#FFE4EC]"><AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span>{error}</span></div>}
     <button onClick={onSubmit} disabled={loading} className="w-full rounded-[22px] bg-[#F5125D] py-4 text-lg font-extrabold uppercase tracking-[0.08em] text-white shadow-[0_10px_0_#AD1457] transition hover:-translate-y-0.5 active:translate-y-1 active:shadow-[0_5px_0_#AD1457] disabled:cursor-wait disabled:opacity-70">{loading ? 'Signing In…' : 'Start Tracking'}</button>
   </div>;
 }
