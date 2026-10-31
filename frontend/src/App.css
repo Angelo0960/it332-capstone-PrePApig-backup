@@ -381,6 +381,101 @@ textarea {
   }
 }
 
+@media (max-width: 1023px) {
+  .feeds-desktop-content {
+    display: block;
+    padding: 0 1rem;
+  }
+
+  .feeds-desktop-content > .px-4:first-child {
+    padding: 0;
+    margin-bottom: 0.75rem;
+  }
+
+  .feeds-desktop-content > .px-4:first-child > .flex.flex-nowrap {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    overflow: visible;
+    padding-bottom: 0;
+  }
+
+  .feeds-desktop-content .feeds-summary-card {
+    width: auto !important;
+    min-width: 0;
+    min-height: 8.5rem;
+    padding: 0.9rem !important;
+    border-radius: 1.25rem !important;
+    background: rgba(255, 255, 255, 0.28);
+    box-shadow: 0 10px 24px rgba(31, 64, 49, 0.12);
+  }
+
+  .feeds-desktop-content .feeds-summary-card:first-child {
+    grid-column: 1 / -1;
+    min-height: 9.5rem;
+  }
+
+  .feeds-desktop-content .feeds-summary-card .feeds-hero-number {
+    font-size: clamp(1.75rem, 8vw, 2.25rem);
+  }
+
+  .feeds-main-content {
+    padding: 0 0 calc(6rem + env(safe-area-inset-bottom)) !important;
+    overflow: visible !important;
+  }
+
+  .feeds-main-content > .space-y-4 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .feeds-main-content > .space-y-4 > .feeds-stock-card,
+  .feeds-main-content > .space-y-4 > .feeds-action-buttons,
+  .feeds-main-content > .space-y-4 > .feeds-chart-card,
+  .feeds-main-content > .space-y-4 > .feeds-schedule-card,
+  .feeds-main-content > .space-y-4 > .feeds-history-card {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+
+  .feeds-main-content .feeds-stock-card,
+  .feeds-main-content .feeds-chart-card,
+  .feeds-main-content .feeds-schedule-card,
+  .feeds-main-content .feeds-history-card {
+    border-radius: 1.25rem !important;
+    background: rgba(255, 255, 255, 0.28);
+    box-shadow: 0 10px 24px rgba(31, 64, 49, 0.12);
+  }
+
+  .feeds-main-content .feeds-action-buttons {
+    gap: 0.75rem;
+  }
+
+  .feeds-main-content .feeds-action-buttons button {
+    min-width: 0;
+    padding-inline: 0.65rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+  }
+}
+
+@media (max-width: 380px) {
+  .feeds-desktop-content {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .feeds-desktop-content > .px-4:first-child > .flex.flex-nowrap,
+  .feeds-main-content > .space-y-4 {
+    gap: 0.55rem;
+  }
+
+  .feeds-desktop-content .feeds-summary-card {
+    padding: 0.75rem !important;
+  }
+}
+
 @media (min-width: 1024px) {
   .desktop-app-sidebar {
     position: absolute;
