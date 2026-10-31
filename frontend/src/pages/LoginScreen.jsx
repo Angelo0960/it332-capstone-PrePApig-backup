@@ -59,8 +59,8 @@ export function LoginScreen({ onLogin }) {
         <section className="flex items-center justify-center px-8 py-12 xl:px-12">
           <div className="relative mt-10 w-full max-w-[400px]">
             <img src={pigImage} alt="Smiling PrepAPig mascot" className="pointer-events-none absolute left-1/2 top-0 z-0 h-[300px] w-[300px] -translate-x-1/2 -translate-y-[55%] object-contain drop-shadow-[0_16px_22px_rgba(20,50,48,0.26)]" />
-            <div className="relative z-10 rounded-[36px] border border-white/45 bg-white/20 px-8 pb-7 pt-9 shadow-[0_28px_70px_rgba(13,48,43,0.18)] backdrop-blur-2xl">
-              <div className="text-center"><div className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-white/80"><CheckCircle2 className="size-5 text-[#4DE2B6]" />Farm Management Portal</div><h2 className="font-['Erica_One'] text-[28px] text-white drop-shadow-md">Welcome Back</h2><p className="mt-2 text-sm text-white/65">Sign in to your farm dashboard</p></div>
+            <div className="relative z-10 rounded-[36px] border border-white/45 bg-white/25 px-8 pb-7 pt-9 shadow-[0_28px_70px_rgba(13,48,43,0.18)] backdrop-blur-2xl">
+              <div className="text-center"><div className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-white/90"><CheckCircle2 className="size-5 text-[#4DE2B6]" />Farm Management Portal</div><h2 className="font-['Erica_One'] text-[28px] text-white drop-shadow-md">Welcome Back</h2><p className="mt-2 text-sm text-white/65">Sign in to your farm dashboard</p></div>
               <LoginForm farmerId={farmerId} password={password} error={error} loading={loading} onFarmerIdChange={updateFarmerId} onPasswordChange={updatePassword} onSubmit={handleLogin} />
               <p className="mt-5 text-center text-xs text-white/60">Demo: enter any Farmer ID &amp; Access Key to continue</p><p className="mt-6 text-center text-xs text-white/45">PrepAPig © 2025 · Pig Farm Intelligence Platform</p>
             </div>
