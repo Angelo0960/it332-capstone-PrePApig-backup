@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { collectPages, pagination } from '../services/pagination.js';
 import supabase from '../config/supabase.js';
 
@@ -40,17 +41,32 @@ export const createBatch = async (req, res) => {
 
         const owner_id = req.user.id;
 
-        // The RPC inserts the batch and its pigs in one database transaction.
-        // A missing migration fails closed; never fall back to separate writes.
-        const { data: newBatch, error: batchError } = await supabase.rpc('create_batch_with_pigs', {
-            p_owner_id: owner_id,
-            p_batch: {
-                batch_code, pig_count, breed, start_weight, current_weight,
-                sale_price_per_kg: sale_price_per_kg ?? null,
-                age_on_acquisition: age_on_acquisition ?? 0,
-                date_acquired, status,
-            },
-        });
+        // Batch codes are generated in the UI for readability, but stale cached
+        // lists can reuse a code. Retry only unique-code conflicts with a
+        // server-generated fallback so the transaction remains atomic.
+        const baseBatch = {
+            batch_code, pig_count, breed, start_weight, current_weight,
+            sale_price_per_kg: sale_price_per_kg ?? null,
+            age_on_acquisition: age_on_acquisition ?? 0,
+            date_acquired, status,
+        };
+        let newBatch;
+        let batchError;
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+            const payload = attempt === 0
+                ? baseBatch
+                : { ...baseBatch, batch_code: `BATCH-${Date.now()}-${randomUUID().slice(0, 8)}` };
+            const result = await supabase.rpc('create_batch_with_pigs', {
+                p_owner_id: owner_id,
+                p_batch: payload,
+            });
+            newBatch = result.data;
+            batchError = result.error;
+            if (!batchError) break;
+            const isBatchCodeConflict = batchError.code === '23505'
+                && String(batchError.message || '').includes('batch_code');
+            if (!isBatchCodeConflict) break;
+        }
         if (batchError) throw batchError;
 
         res.status(201).json({
