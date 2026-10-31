@@ -6,6 +6,7 @@ import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
 import { API_BASE, getAuthHeaders } from '../api.js';
 import { getUserCacheKey } from '../utils/cache.js';
+import { buildBatchDisplayNames } from '../utils/batchNames.js';
 // ────────────────────────────────────────────────────────────────
 
 const DEFAULT_LIVEWEIGHT_PRICE_PER_KG = 170;
@@ -42,7 +43,7 @@ export default function BatchPigsScreen() {
       if (Array.isArray(cached)) {
         setPigs(cached);
         if (cachedBatch) {
-          setBatchName(cachedBatch?.id ? `Batch ${cachedBatch.id}` : 'Batch');
+          setBatchName(cachedBatch.displayName || 'Batch');
           const cachedPrice = Number(cachedBatch.sale_price_per_kg);
           if (cachedPrice > 0) setLiveWeightPrice(cachedPrice);
         }
@@ -55,20 +56,24 @@ export default function BatchPigsScreen() {
 
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/pigs/batch/${batchId}/pigs`, {
-        headers: getAuthHeaders(),
-      });
+      const [res, batchesRes] = await Promise.all([
+        fetch(`${API_BASE}/pigs/batch/${batchId}/pigs`, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE}/pigs/all?all=true`, { headers: getAuthHeaders() }),
+      ]);
       if (!res.ok) throw new Error('Failed to fetch pigs');
       const json = await res.json();
       if (!json.success) throw new Error(json.message);
       const nextPigs = json.data || [];
+      const batchesJson = batchesRes.ok ? await batchesRes.json() : null;
+      const displayNames = buildBatchDisplayNames(batchesJson?.success ? batchesJson.data || [] : []);
+      const displayName = displayNames.get(String(json.batch?.id || batchId)) || 'Batch';
       setPigs(nextPigs);
-      setBatchName(json.batch?.id ? `Batch ${json.batch.id}` : 'Batch');
+      setBatchName(displayName);
       const selectedPrice = Number(localStorage.getItem(`prepapig:${getUserCacheKey()}:selected-price-per-kg`));
       const batchPrice = Number(json.batch?.sale_price_per_kg);
       setLiveWeightPrice(selectedPrice > 0 ? selectedPrice : batchPrice > 0 ? batchPrice : DEFAULT_LIVEWEIGHT_PRICE_PER_KG);
       localStorage.setItem(cacheKey, JSON.stringify(nextPigs));
-      localStorage.setItem(batchCacheKey, JSON.stringify(json.batch || null));
+      localStorage.setItem(batchCacheKey, JSON.stringify({ ...(json.batch || {}), displayName }));
     } catch (err) {
       if (!renderedCache) setError(err.message);
     } finally {
@@ -220,8 +225,9 @@ export default function BatchPigsScreen() {
   return (
     <div className="dashboard-theme mobile-screen-shell w-full relative overflow-hidden flex flex-col">
       <div className="absolute inset-0">
-        <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover" />
+        <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover saturate-[0.65] brightness-[0.9] blur-[2px]" />
       </div>
+      <div className="absolute inset-0 bg-gradient-to-br from-[#F4F7F5]/80 via-[#EDF3EF]/72 to-[#DCE9E1]/76" />
 
       <div className="relative z-10 flex flex-col flex-1 min-h-0">
         {/* Header */}
