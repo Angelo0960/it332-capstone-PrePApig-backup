@@ -911,12 +911,13 @@ export default function FeedsInventoryScreen() {
 
                           {!isDone && (
                             <button
+                              disabled={isPending}
                               onClick={() => {
                                 handleDirectMarkAsDone(batch.id, feedName, dailyAmount);
                               }}
-                              className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-semibold py-2 rounded-lg shadow-lg active:scale-95 transition-all"
+                              className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-semibold py-2 rounded-lg shadow-lg active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                             >
-                              Mark as Done
+                              {isPending ? 'Saving...' : 'Mark as Done'}
                             </button>
                           )}
                         </div>

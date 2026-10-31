@@ -189,6 +189,7 @@ function App() {
   }, [isLoggedIn]);
 
   useEffect(() => {
+    let unsubscribeMessage = null;
     const setup = async () => {
       const token = localStorage.getItem('token');
       if (!token || token === 'null' || token === 'undefined') return;
@@ -214,14 +215,17 @@ function App() {
           console.error('Failed to register token:', err);
         }
       }
-      onMessageListener();
+      if (!cancelled) unsubscribeMessage = onMessageListener();
     };
 
+    let cancelled = false;
     const idleId = window.requestIdleCallback
       ? window.requestIdleCallback(setup, { timeout: 10000 })
       : window.setTimeout(setup, 10000);
 
     return () => {
+      cancelled = true;
+      if (typeof unsubscribeMessage === 'function') unsubscribeMessage();
       if (window.cancelIdleCallback && typeof idleId === 'number') {
         window.cancelIdleCallback(idleId);
       } else {

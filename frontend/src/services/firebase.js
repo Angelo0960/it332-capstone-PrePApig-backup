@@ -48,8 +48,7 @@ export const generateToken = async ({ requestPermission = false } = {}) => {
 };
 
 export const onMessageListener = () => {
-  return new Promise((resolve) => {
-    onMessage(messaging, (payload) => {
+  return onMessage(messaging, (payload) => {
       console.log("📨 Foreground message payload:", payload);
 
       const title = payload.notification?.title || payload.data?.title || "PrepAPig Notification";
@@ -58,7 +57,6 @@ export const onMessageListener = () => {
 
       if (Notification.permission !== "granted") {
         console.warn("⚠️ Permission not granted.");
-        resolve(payload);
         return;
       }
 
@@ -94,7 +92,5 @@ export const onMessageListener = () => {
           }
         });
       }
-      resolve(payload);
-    });
   });
 };
