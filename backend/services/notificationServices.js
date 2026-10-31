@@ -150,6 +150,100 @@ export const sendDailyFeedReminders = async () => {
     }
 };
 
+// ----- Feed-stage change reminders (five days before the change) -----
+export const sendFeedChangeReminders = async () => {
+    const { date: today } = getDateTimeInTimezone();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const todayUtc = new Date(`${today}T00:00:00Z`);
+    const stageChanges = [
+        { day: 29, from: 'pre-starter', to: 'Starter Mash' },
+        { day: 71, from: 'Starter Mash', to: 'Grower Pellet' },
+        { day: 106, from: 'Grower Pellet', to: 'Finisher' },
+    ];
+
+    const { data: batches, error } = await supabase
+        .from('pig_batches')
+        .select('id,batch_code,owner_id,age_on_acquisition,date_acquired,created_at,status');
+
+    if (error) throw error;
+
+    const activeBatches = (batches || []).filter((batch) => !batch.status || String(batch.status).toLowerCase() === 'active');
+    const batchesByOwner = new Map();
+    for (const batch of batches || []) {
+        if (!batchesByOwner.has(batch.owner_id)) batchesByOwner.set(batch.owner_id, []);
+        batchesByOwner.get(batch.owner_id).push(batch);
+    }
+    const displayNames = new Map();
+    for (const ownerBatches of batchesByOwner.values()) {
+        ownerBatches.sort((left, right) => {
+            const leftDate = left.created_at || left.date_acquired || '';
+            const rightDate = right.created_at || right.date_acquired || '';
+            return String(leftDate).localeCompare(String(rightDate)) || String(left.id).localeCompare(String(right.id));
+        });
+        ownerBatches.forEach((batch, index) => displayNames.set(String(batch.id), `Batch-${String(index + 1).padStart(2, '0')}`));
+    }
+
+    const upcoming = [];
+    for (const batch of activeBatches) {
+        const sourceDate = batch.date_acquired || batch.created_at;
+        if (!sourceDate || !batch.owner_id) continue;
+        const sourceDateOnly = String(sourceDate).slice(0, 10);
+        const acquiredUtc = new Date(`${sourceDateOnly}T00:00:00Z`);
+        if (Number.isNaN(acquiredUtc.getTime())) continue;
+        const age = (Number(batch.age_on_acquisition) || 0) + Math.max(0, Math.floor((todayUtc - acquiredUtc) / dayMs));
+        const change = stageChanges.find((item) => item.day - age >= 0 && item.day - age <= 5);
+        if (change) upcoming.push({ batch, change, daysUntil: change.day - age });
+    }
+
+    for (const { batch, change, daysUntil } of upcoming) {
+        const preferences = await preferencesFor(batch.owner_id);
+        if (!preferences.feed_reminders) continue;
+        const dedupeKey = `feed_stage_change:${batch.id}:${change.day}`;
+        const { data: existing, error: existingError } = await supabase
+            .from('notifications')
+            .select('id')
+            .eq('user_id', batch.owner_id)
+            .eq('dedupe_key', dedupeKey)
+            .maybeSingle();
+        if (existingError) throw existingError;
+        if (existing) continue;
+
+        const title = '🐖 Feed Type Change Reminder';
+        const batchName = displayNames.get(String(batch.id)) || 'Your pig batch';
+        const body = daysUntil === 0
+            ? `${batchName} changes from ${change.from} to ${change.to} today.`
+            : `${batchName} will change from ${change.from} to ${change.to} in ${daysUntil} day${daysUntil === 1 ? '' : 's'} (Day ${change.day}).`;
+        const { error: insertError } = await supabase.from('notifications').insert({
+            title,
+            message: body,
+            type: 'feed_stage_change',
+            user_id: batch.owner_id,
+            dedupe_key: dedupeKey,
+        });
+        if (insertError) throw insertError;
+
+        if (!preferences.push_enabled) continue;
+        const { data: devices, error: tokenError } = await supabase
+            .from('user_devices')
+            .select('fcm_token')
+            .eq('user_id', batch.owner_id);
+        if (tokenError) {
+            console.error(`❌ Error fetching tokens for user ${batch.owner_id}:`, tokenError);
+            continue;
+        }
+        const tokens = [...new Set((devices || []).map((device) => device.fcm_token).filter(Boolean))];
+        await Promise.allSettled(tokens.map((token) => admin.messaging().send({
+            token,
+            data: { type: 'feed_stage_change', title, body, batchId: String(batch.id), changeDay: String(change.day) },
+        }).catch(async (sendError) => {
+            if (sendError.code === 'messaging/invalid-registration-token' || sendError.code === 'messaging/registration-token-not-registered') {
+                await supabase.from('user_devices').delete().eq('fcm_token', token);
+            }
+            console.error(JSON.stringify({ event: 'feed_stage_change_delivery_failed', ownerId: batch.owner_id, code: sendError.code || 'unknown' }));
+        })));
+    }
+};
+
 // ----- Vaccination reminders (due + overdue) -----
 export const sendVaccinationReminders = async () => {
     const { date: today } = getDateTimeInTimezone();

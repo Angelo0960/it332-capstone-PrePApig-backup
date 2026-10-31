@@ -715,6 +715,7 @@ export default function DashboardScreen() {
       case 'vaccination_overdue':
         return { icon: '⚠️', bg: 'bg-red-100/80' };
       case 'feed_reminder':
+      case 'feed_stage_change':
         return { icon: '🐖', bg: 'bg-green-100/80' };
       case 'feed':
         return { icon: '🐖', bg: 'bg-green-100/80' };
