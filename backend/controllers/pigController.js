@@ -1,4 +1,4 @@
-import { pagination } from '../services/pagination.js';
+import { collectPages, pagination } from '../services/pagination.js';
 import supabase from '../config/supabase.js';
 
 const syncBatchAverageWeight = async (batchId, ownerId) => {
@@ -69,20 +69,25 @@ export const createBatch = async (req, res) => {
 
 export const getAllBatches = async (req, res) => {
     try {
-        const { limit, offset } = pagination(req.query);
-        let query = supabase
+        const makeQuery = () => supabase
             .from('pig_batches')
             .select('id,batch_code,pig_count,breed,start_weight,current_weight,sale_price_per_kg,age_on_acquisition,date_acquired,status,created_at')
             .eq('owner_id', req.user.id)
             .order('created_at', { ascending: false });
-        query = query.order('id', { ascending: false }).range(offset, offset + limit - 1);
-        const { data: batches, error } = await query;
 
-        if (error) throw error;
+        const all = req.query.all === 'true';
+        const batches = all
+            ? await collectPages(makeQuery)
+            : await (async () => {
+                const { limit, offset } = pagination(req.query);
+                const { data, error } = await makeQuery().order('id', { ascending: false }).range(offset, offset + limit - 1);
+                if (error) throw error;
+                return data || [];
+            })();
 
         res.status(200).json({
             success: true,
-            pagination: { limit, offset },
+            ...(all ? {} : { pagination: pagination(req.query) }),
             count: batches.length,
             data: batches
         });

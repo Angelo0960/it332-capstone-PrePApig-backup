@@ -269,7 +269,6 @@ export default function FeedsInventoryScreen() {
   }, []);
 
   useEffect(() => {
-    if (selectedBatch === 'all') return;
     fetchFeedRecords();
   }, [selectedBatch]);
 

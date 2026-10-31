@@ -312,7 +312,7 @@ export default function DashboardScreen() {
     try {
       // Render the core batch data as soon as it arrives. Financial details are
       // supplementary and must not block the dashboard shell.
-      const res = await fetch(`${API_BASE}/pigs/all?limit=20`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/pigs/all?all=true`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed to fetch batches');
       const json = await res.json();
       if (json.success) {

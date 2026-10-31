@@ -248,7 +248,6 @@ export default function VaccinationScreen() {
   }, []);
 
   useEffect(() => {
-    if (selectedBatch === 'all') return;
     fetchVaccinations();
   }, [selectedBatch]);
 

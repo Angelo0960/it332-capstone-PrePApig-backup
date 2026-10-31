@@ -43,29 +43,51 @@ export const saveSale = async (req, res) => {
         const { data: batch, error: batchError } = await supabase.from('pig_batches').select('id').eq('owner_id', req.user.id).eq('id', batch_id).maybeSingle();
         if (batchError) throw batchError;
         if (!batch) return res.status(404).json({ success: false, message: 'Batch not found' });
-        const record = { batch_id, harvest_date, pig_count: Number(pig_count), total_weight_kg: Number(total_weight_kg), sale_date, revenue: revenue === null ? null : Number(revenue), buyer, notes };
-        const query = req.params.id
-            ? supabase.from('harvest_sales').update(record).eq('owner_id', req.user.id).eq('id', req.params.id)
-            : supabase.from('harvest_sales').insert({ ...record, owner_id: req.user.id });
-        const { data, error } = await query.select(fields).maybeSingle();
-        if (error) throw error;
-        if (!data) return res.status(404).json({ success: false, message: 'Harvest/sale not found' });
-        if (delete_batch === true) {
-            const { error: deleteError } = await supabase
-                .from('pig_batches')
-                .delete()
-                .eq('id', batch_id)
-                .eq('owner_id', req.user.id);
-            if (deleteError) throw deleteError;
+        const record = {
+            batch_id,
+            harvest_date,
+            pig_count: Number(pig_count),
+            total_weight_kg: Number(total_weight_kg),
+            sale_date,
+            revenue: revenue === null ? null : Number(revenue),
+            buyer,
+            notes,
+        };
+        let data;
+        if (!req.params.id) {
+            const { data: result, error } = await supabase.rpc('create_harvest_sale_and_delete_batch', {
+                p_owner_id: req.user.id,
+                p_sale: record,
+                p_delete_batch: delete_batch === true,
+            });
+            if (error) throw error;
+            data = result?.sale || null;
+        } else {
+            const { data: updated, error } = await supabase
+                .from('harvest_sales')
+                .update(record)
+                .eq('owner_id', req.user.id)
+                .eq('id', req.params.id)
+                .select(fields)
+                .maybeSingle();
+            if (error) throw error;
+            data = updated;
         }
-        res.status(req.params.id ? 200 : 201).json({ success: true, data, batch_deleted: delete_batch === true });
+
+        if (!data) return res.status(404).json({ success: false, message: 'Harvest/sale not found' });
+        res.status(req.params.id ? 200 : 201).json({
+            success: true,
+            data,
+            batch_deleted: !req.params.id && delete_batch === true,
+        });
     } catch (error) {
         const message = String(error.message || '');
         const migrationMissing = message.includes('harvest_sales') && (message.includes('schema cache') || message.includes('does not exist') || message.toLowerCase().includes('permission denied'));
+        const transactionMigrationMissing = message.includes('create_harvest_sale_and_delete_batch') && (message.includes('schema cache') || message.toLowerCase().includes('permission denied'));
         res.status(500).json({
             success: false,
-            message: migrationMissing
-                ? 'Harvest sales permissions are not configured. Run backend/config/migrations/20261013_financial_reliability.sql and backend/config/migrations/20261030_repair_harvest_sales_permissions.sql in Supabase SQL Editor, then retry.'
+            message: migrationMissing || transactionMigrationMissing
+                ? 'Transactional sale migration is not configured. Run backend/config/migrations/20261013_financial_reliability.sql, backend/config/migrations/20261030_repair_harvest_sales_permissions.sql, and backend/config/migrations/20261031_transactional_sale_and_batch_delete.sql in Supabase SQL Editor, then retry.'
                 : message,
         });
     }
