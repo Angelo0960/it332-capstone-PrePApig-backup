@@ -237,6 +237,7 @@ export default function AnalyticsReportsScreen() {
 
     const cacheKey = `price-ai-analysis-v5:${getUserCacheKey()}:${locations.join('|')}`;
     const cachedAnalysis = readCache(cacheKey, Number.POSITIVE_INFINITY);
+    const hasCachedPriceAnalysis = Boolean(cachedAnalysis && !bypassCache);
     if (cachedAnalysis && !bypassCache) {
       setAiAnalysis(cachedAnalysis);
       if (Array.isArray(cachedAnalysis.pricePoints) && cachedAnalysis.pricePoints.length > 0) {
@@ -276,6 +277,10 @@ export default function AnalyticsReportsScreen() {
       writeCache(cacheKey, json);
     } catch (err) {
       if (err.name === 'AbortError') return;
+      if (hasCachedPriceAnalysis) {
+        setAiAnalysisError('Using the previous live hog price analysis; a fresh update was unavailable.');
+        return;
+      }
       const fallbackPoints = (pricePoints.length > 0 ? pricePoints : DEFAULT_PRICE_POINTS)
         .filter((point) => locations.includes(point.location) || !locations.length);
       setAiAnalysis({
