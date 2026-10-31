@@ -829,8 +829,8 @@ export default function AnalyticsReportsScreen() {
             {marketRefreshError && <div className="mt-2 text-xs text-red-600">{marketRefreshError}</div>}
             {aiAnalysisError && <div className="mt-2 text-xs text-red-600">{aiAnalysisError}</div>}
             {aiAnalysis && (
-              <div className="mt-4 rounded-[1.5rem] border border-violet-200/80 bg-gradient-to-br from-violet-50/95 via-indigo-50/90 to-white/75 p-5 shadow-[0_12px_28px_rgba(108,99,255,0.12)]">
-                <div className="mb-3 flex items-center gap-2 text-sm font-bold leading-tight text-violet-600">
+              <div className="mt-4 rounded-[1.5rem] border border-[#D8D4FF] bg-white/90 p-5 shadow-[0_12px_28px_rgba(108,99,255,0.12)]">
+                <div className="mb-3 flex items-center gap-2 text-sm font-bold leading-tight text-[#4C43C7]">
                   <Sparkles size={16} />
                   <span>PrepAPig AI<br />recommendation</span>
                 </div>
@@ -846,7 +846,7 @@ export default function AnalyticsReportsScreen() {
                   <p className="mt-3 max-w-2xl text-left text-sm leading-7 text-gray-600">{aiAnalysis.analysis}</p>
                 )}
                 {highestLivePrice && selectedPriceLocation && selectedPriceLocation !== highestLivePrice.location && (
-                  <p className="mt-3 text-sm font-semibold leading-relaxed text-violet-600">
+                  <p className="mt-3 text-sm font-semibold leading-relaxed text-[#4C43C7]">
                     {selectedPriceLocation} is currently selected. Compare it with the recommended market before selling.
                   </p>
                 )}
@@ -939,14 +939,14 @@ export default function AnalyticsReportsScreen() {
             {feedForecastError && <p className="text-[10px] text-red-700 mb-2">{feedForecastError}</p>}
 
             {feedForecastAi && (
-              <div className="bg-violet-100/60 border border-violet-300/50 rounded-xl p-3 mb-3">
-                <div className="flex items-center justify-between gap-2 mb-1"><span className="text-xs font-semibold text-violet-900">AI Forecast Analysis</span><span className="text-[10px] uppercase text-violet-700">{feedForecastAi.riskLevel || 'unknown'} risk</span></div>
-                <p className="text-left text-sm leading-6 text-violet-950 mb-2">{feedForecastAi.analysis}</p>
-                <p className="text-left text-sm leading-6 text-violet-950"><strong>Suggestion:</strong> {feedForecastAi.suggestion}</p>
-                {feedForecastAi.stockContext && <div className="grid grid-cols-3 gap-2 mt-2 text-[10px] text-violet-900"><span>Stock: <strong>{feedForecastAi.stockContext.totalStockKg} kg</strong></span><span>1-week need: <strong>{feedForecastAi.stockContext.forecastKg} kg</strong></span><span>Coverage: <strong>{feedForecastAi.stockContext.coverageWeeks == null ? '—' : `${feedForecastAi.stockContext.coverageWeeks} wk`}</strong></span></div>}
+              <div className="bg-white/90 border border-[#D8D4FF] rounded-xl p-4 mb-3 shadow-sm">
+                <div className="flex items-center justify-between gap-2 mb-2"><span className="text-sm font-bold text-[#4C43C7]">AI Forecast Analysis</span><span className="text-[10px] uppercase font-bold text-[#5D55E9]">{feedForecastAi.riskLevel || 'unknown'} risk</span></div>
+                <p className="text-left text-sm leading-6 text-[#252838] mb-3">{feedForecastAi.analysis}</p>
+                <p className="text-left text-sm leading-6 text-[#252838]"><strong className="text-[#4C43C7]">Suggestion:</strong> {feedForecastAi.suggestion}</p>
+                {feedForecastAi.stockContext && <div className="grid grid-cols-3 gap-2 mt-3 text-[10px] text-[#555B6E]"><span>Stock: <strong>{feedForecastAi.stockContext.totalStockKg} kg</strong></span><span>1-week need: <strong>{feedForecastAi.stockContext.forecastKg} kg</strong></span><span>Coverage: <strong>{feedForecastAi.stockContext.coverageWeeks == null ? '—' : `${feedForecastAi.stockContext.coverageWeeks} wk`}</strong></span></div>}
                 {feedForecastAi.stockContext?.projectedShortfallKg > 0 && <p className="text-[10px] text-red-700 mt-2">Projected stock shortfall: {feedForecastAi.stockContext.projectedShortfallKg} kg.</p>}
-                {feedForecastAi.actions?.length > 0 && <ul className="list-disc pl-4 mt-2 text-[10px] text-violet-900">{feedForecastAi.actions.map((action) => <li key={action}>{action}</li>)}</ul>}
-                <p className="text-[10px] text-violet-700 mt-2">AI interpretation only; it does not replace recorded feed, inventory, expense, financial, or FCR calculations.</p>
+                {feedForecastAi.actions?.length > 0 && <ul className="list-disc pl-4 mt-3 text-[10px] text-[#555B6E]">{feedForecastAi.actions.map((action) => <li key={action}>{action}</li>)}</ul>}
+                <p className="text-[10px] text-[#6B7280] mt-3">AI interpretation only; it does not replace recorded feed, inventory, expense, financial, or FCR calculations.</p>
               </div>
             )}
             {feedForecastAiError && <p className="text-[10px] text-amber-800 mb-2">AI suggestion unavailable: {feedForecastAiError}</p>}
@@ -1062,20 +1062,20 @@ export default function AnalyticsReportsScreen() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-3 mb-3">
-              <div className="flex items-center gap-2 text-sm font-semibold text-violet-900 mb-2"><Sparkles size={14} /> AI Expense Analysis</div>
-              {expenseAiLoading && <p className="text-xs text-violet-700">Analyzing recorded expense categories...</p>}
+            <div className="rounded-xl border border-[#D8D4FF] bg-white/90 p-4 mb-3 shadow-sm">
+              <div className="flex items-center gap-2 text-sm font-bold text-[#4C43C7] mb-2"><Sparkles size={14} /> AI Expense Analysis</div>
+              {expenseAiLoading && <p className="text-sm text-[#555B6E]">Analyzing recorded expense categories...</p>}
               {expenseAiError && <p className="text-xs text-red-700">{expenseAiError}</p>}
               {!expenseAiLoading && !expenseAiError && expenseAiAnalysis && (
                 <>
-                  <p className="text-left text-sm leading-6 text-violet-950">{expenseAiAnalysis.analysis}</p>
-                  <p className="text-left text-sm leading-6 text-violet-950 mt-3"><strong>Suggestion:</strong> {expenseAiAnalysis.suggestion}</p>
-                  {expenseAiAnalysis.actions?.length > 0 && <ul className="list-disc pl-4 mt-2 text-[10px] text-violet-900">{expenseAiAnalysis.actions.map((action) => <li key={action}>{action}</li>)}</ul>}
-                  {expenseAiAnalysis.limitations?.length > 0 && <p className="text-[10px] text-violet-700 mt-2">{expenseAiAnalysis.limitations.join(' ')}</p>}
+                  <p className="text-left text-sm leading-6 text-[#252838]">{expenseAiAnalysis.analysis}</p>
+                  <p className="text-left text-sm leading-6 text-[#252838] mt-3"><strong className="text-[#4C43C7]">Suggestion:</strong> {expenseAiAnalysis.suggestion}</p>
+                  {expenseAiAnalysis.actions?.length > 0 && <ul className="list-disc pl-4 mt-3 text-[10px] text-[#555B6E]">{expenseAiAnalysis.actions.map((action) => <li key={action}>{action}</li>)}</ul>}
+                  {expenseAiAnalysis.limitations?.length > 0 && <p className="text-[10px] text-[#6B7280] mt-3">{expenseAiAnalysis.limitations.join(' ')}</p>}
                 </>
               )}
-              {!expenseAiLoading && !expenseAiError && !expenseAiAnalysis && <p className="text-xs text-violet-700">No recorded expenses are available for this filter.</p>}
-              <p className="text-[10px] text-violet-700 mt-2">AI interpretation is advisory and uses recorded expense categories only; it does not create or modify expense records.</p>
+              {!expenseAiLoading && !expenseAiError && !expenseAiAnalysis && <p className="text-sm text-[#555B6E]">No recorded expenses are available for this filter.</p>}
+              <p className="text-[10px] text-[#6B7280] mt-3">AI interpretation is advisory and uses recorded expense categories only; it does not create or modify expense records.</p>
             </div>
 
             {/* Profit Trend */}
