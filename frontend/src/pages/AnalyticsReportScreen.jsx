@@ -24,6 +24,9 @@ import {
   ResponsiveContainer,
   Tooltip,
   CartesianGrid,
+  Legend,
+  ReferenceLine,
+  ErrorBar,
   BarChart,
   Bar,
   PieChart,
@@ -515,15 +518,19 @@ export default function AnalyticsReportsScreen() {
     const historical = (feedForecast.history || []).map((row) => ({
       date: new Date(`${row.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       actual: row.quantityKg,
+      period: 'Recorded',
     }));
     const forecast = (feedForecast.forecast || []).map((row) => ({
       date: new Date(`${row.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       forecast: row.predictedKg,
       lower: row.lowerKg,
       upper: row.upperKg,
+      errorRange: [Math.max(0, row.upperKg - row.predictedKg), Math.max(0, row.predictedKg - row.lowerKg)],
+      period: 'Forecast',
     }));
     return [...historical, ...forecast];
   }, [filteredFeedRecords, feedForecast]);
+  const forecastStartDate = feedConsumptionData.find((point) => point.period === 'Forecast')?.date;
   const profitTrend = financial?.monthly || [];
   const expenseBreakdown = useMemo(() => getExpenseBreakdown(), [filteredExpenses]);
   const vaccinationSummary = useMemo(() => getVaccinationSummary(), [filteredVaccinationRecords]);
@@ -905,36 +912,40 @@ export default function AnalyticsReportsScreen() {
             )}
           </div>
 
-          {/* Feed Consumption */}
           <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg mb-4">
-            <h3 className="font-semibold text-gray-900 mb-3">Feed Consumption</h3>
-            <div className="bg-white/40 rounded-xl p-3 mb-3">
-              <ResponsiveContainer width="100%" height={150}>
-                <LineChart data={feedConsumptionData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis dataKey="date" tick={{ fontSize: 9 }} stroke="#6B7280" />
-                  <YAxis tick={{ fontSize: 10 }} stroke="#6B7280" />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="actual"
-                    stroke="#10B981"
-                    strokeWidth={3}
-                    dot={{ fill: '#10B981', r: 3 }}
-                    name="Actual"
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="font-semibold text-gray-900">Feed Consumption Forecast</h3>
+                <p className="mt-1 text-[10px] text-[#555B6E]">Recorded usage compared with the next-week estimate</p>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] font-semibold">
+                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-700">● Recorded</span>
+                <span className="rounded-full bg-violet-100 px-2.5 py-1 text-violet-700">● Forecast</span>
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/60 bg-white/55 p-3">
+              <ResponsiveContainer width="100%" height={190}>
+                <LineChart data={feedConsumptionData} margin={{ top: 8, right: 12, left: -12, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="4 4" stroke="#D9DCE7" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#555B6E' }} stroke="#A7ADBE" tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: '#555B6E' }} stroke="#A7ADBE" tickLine={false} axisLine={false} width={34} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: 12, border: '1px solid #D8D4FF', boxShadow: '0 8px 20px rgba(37,40,56,0.12)', fontSize: 12 }}
+                    labelStyle={{ color: '#252838', fontWeight: 700 }}
+                    formatter={(value, name) => [`${value} kg`, name === 'actual' ? 'Recorded' : 'Forecast']}
                   />
-                  <Line
-                    type="monotone"
-                    dataKey="forecast"
-                    stroke="#7C3AED"
-                    strokeWidth={2}
-                    strokeDasharray="6 4"
-                    dot={{ fill: '#7C3AED', r: 3 }}
-                    name="Forecast"
-                    connectNulls={false}
-                  />
+                  <Legend verticalAlign="top" align="right" height={26} iconType="circle" wrapperStyle={{ fontSize: 10, color: '#555B6E' }} formatter={(value) => value === 'actual' ? 'Recorded' : 'Forecast'} />
+                  {forecastStartDate && <ReferenceLine x={forecastStartDate} stroke="#8B5CF6" strokeDasharray="5 5" strokeWidth={1.5} label={{ value: 'Forecast starts', position: 'insideTopRight', fill: '#6D28D9', fontSize: 10 }} />}
+                  <Line type="monotone" dataKey="actual" stroke="#059669" strokeWidth={3} dot={{ fill: '#059669', stroke: '#FFFFFF', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }} name="actual" connectNulls={false} />
+                  <Line type="monotone" dataKey="forecast" stroke="#7C3AED" strokeWidth={3} strokeDasharray="7 5" dot={{ fill: '#7C3AED', stroke: '#FFFFFF', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }} name="forecast" connectNulls={false}>
+                    <ErrorBar dataKey="errorRange" width={4} strokeWidth={1.5} stroke="#A78BFA" />
+                  </Line>
                 </LineChart>
               </ResponsiveContainer>
+            </div>
+            <div className="mt-2 flex items-center justify-between text-[10px] text-[#6B7280]">
+              <span>Dashed styling and error bars show the forecast range.</span>
+              <span>Unit: kg</span>
             </div>
             {feedForecastError && <p className="text-[10px] text-red-700 mb-2">{feedForecastError}</p>}
 
