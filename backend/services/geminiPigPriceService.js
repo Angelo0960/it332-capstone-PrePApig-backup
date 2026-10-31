@@ -69,6 +69,8 @@ export const generatePigPriceAnalysis = async ({
 
   const uniqueLocations = [...new Set(locations)].slice(0, 10);
   const prompt = [
+    'Write for a pig farmer, not a technical analyst. Use simple everyday language, short sentences, and explain any unavoidable market or money term immediately.',
+    'Do not use technical model terms, statistical jargon, abbreviations, or unexplained phrases. Clearly separate what the data shows from what the farmer should do next.',
     'You are analyzing pig selling-price options for a farmer near Calaca, Batangas, Philippines.',
     `Search each of these exact Filipino queries separately: ${JSON.stringify(LIVE_WEIGHT_SEARCH_QUERIES)}.`,
     `Find current public pig liveweight or farmgate price points for these locations: ${uniqueLocations.join(', ')}. Use at least 3 different nearby locations when sources are available.`,

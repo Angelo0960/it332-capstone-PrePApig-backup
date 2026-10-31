@@ -15,6 +15,8 @@ export const generateExpenseAnalysis = async ({ summary, fetchImpl = fetch, apiK
   const configuredKey = String(apiKey || '').trim();
   if (!configuredKey) throw new Error('Gemini API key is not configured. Set GEMINI_API_KEY in the backend environment.');
   const prompt = [
+    'Write for a pig farmer using simple everyday language. Use short sentences and explain any unavoidable expense or financial term immediately.',
+    'Do not use technical model terms, statistical jargon, abbreviations, or unexplained phrases. Clearly say what the farmer should do next.',
     'You are a farm-cost planning advisor reviewing recorded pig-farm expenses.',
     'Use only the supplied recorded expense totals and categories. Do not invent costs, revenue, prices, causes, or operational facts.',
     'Explain which expense categories contribute most, identify concentration or unusually large categories only when supported by the supplied percentages, and suggest practical cost-control or recordkeeping actions.',

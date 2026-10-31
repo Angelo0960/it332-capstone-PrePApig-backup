@@ -33,6 +33,8 @@ export const generateFeedForecastAnalysis = async ({ forecast, feedStocks = [], 
   const configuredKey = String(apiKey || '').trim();
   if (!configuredKey) throw new Error('Gemini API key is not configured. Set GEMINI_API_KEY in the backend environment.');
   const prompt = [
+    'Write for a busy pig farmer, not a software engineer. Use simple everyday words, short sentences, and explain any unavoidable farming or financial term immediately.',
+    'Do not use technical model terms, statistical jargon, abbreviations, or unexplained phrases. Focus on what the farmer should understand and do next.',
     'You are an agricultural feed-planning advisor reviewing a weekly feed-consumption forecast for a pig farm.',
     'Use only the supplied historical and forecast values. Do not invent measurements, prices, causes, or farm conditions.',
     'Treat the uploaded historical feed data as the active dataset for this analysis. Do not replace its values with invented measurements.',
