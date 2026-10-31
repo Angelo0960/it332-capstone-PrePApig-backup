@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CheckCircle2, Lock, User } from 'lucide-react';
 import { api } from '../api.js';
 import pigImage from '../assets/2e388bda-a6fa-4911-bcea-0e3aaa26ed7f-removebg-preview.webp';
@@ -15,6 +15,22 @@ export function LoginScreen({ onLogin }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const preload = () => {
+      void import('./DashboardScreen.jsx');
+    };
+    const idleId = window.requestIdleCallback
+      ? window.requestIdleCallback(preload, { timeout: 1200 })
+      : window.setTimeout(preload, 800);
+    return () => {
+      if (window.cancelIdleCallback && typeof idleId === 'number') {
+        window.cancelIdleCallback(idleId);
+      } else {
+        window.clearTimeout(idleId);
+      }
+    };
+  }, []);
 
   const handleLogin = async () => {
     if (!farmerId || !password) {

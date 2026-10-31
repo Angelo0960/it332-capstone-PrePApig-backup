@@ -175,8 +175,8 @@ function App() {
       });
     };
     const idleId = window.requestIdleCallback
-      ? window.requestIdleCallback(prefetch, { timeout: 2000 })
-      : window.setTimeout(prefetch, 1200);
+      ? window.requestIdleCallback(prefetch, { timeout: 8000 })
+      : window.setTimeout(prefetch, 5000);
 
     return () => {
       cancelled = true;
