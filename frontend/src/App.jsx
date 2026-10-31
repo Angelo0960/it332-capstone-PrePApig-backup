@@ -52,7 +52,7 @@ function DesktopSidebar() {
 function DesktopShell({ children }) {
   const location = useLocation();
   const showSidebar = location.pathname !== '/';
-  return <div className="desktop-app-shell">{showSidebar && <DesktopSidebar />}<main className="desktop-app-content">{children}</main></div>;
+  return <div className="desktop-app-shell">{showSidebar && <DesktopSidebar />}<main className={showSidebar ? 'desktop-app-content' : 'desktop-login-content'}>{children}</main></div>;
 }
 
 function PersistentTabs() {

@@ -28,6 +28,11 @@ body {
   display: none;
 }
 
+.desktop-login-content {
+  min-height: 100dvh;
+  margin-left: 0;
+}
+
 .desktop-app-content {
   min-height: 100dvh;
 }
