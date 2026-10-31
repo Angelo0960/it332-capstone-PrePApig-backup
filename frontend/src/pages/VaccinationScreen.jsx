@@ -115,7 +115,7 @@ export default function VaccinationScreen() {
           }
           return {
             id: batch.id,
-            name: batch.batch_code || `Batch ${batch.id}`,
+            name: `Batch ${batch.id}`,
             day: day,
             pigCount: batch.pig_count || 0,
             breed: batch.breed,
@@ -219,7 +219,7 @@ export default function VaccinationScreen() {
           : 0;
         return {
           id: batch.id,
-          name: batch.batch_code || `Batch ${batch.id}`,
+          name: `Batch ${batch.id}`,
           day,
           pigCount: batch.pig_count || 0,
           breed: batch.breed,

@@ -50,7 +50,7 @@ const mapOverviewBatches = (batches = []) => batches.map((batch) => {
     : 0;
   return {
     id: batch.id,
-    name: batch.batch_code || `Batch ${batch.id}`,
+    name: `Batch ${batch.id}`,
     batch_code: batch.batch_code,
     day,
     pigCount: batch.pig_count || 0,

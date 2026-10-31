@@ -84,7 +84,9 @@ const prefetchIndividualPigs = (batchId) => {
 const getCachedDashboardBatches = () => {
   try {
     const cached = JSON.parse(localStorage.getItem(`prepapig:batches:${getUserCacheKey()}`) || 'null');
-    return Array.isArray(cached) ? cached : [];
+    return Array.isArray(cached)
+      ? cached.map((batch) => ({ ...batch, name: batch.id ? `Batch ${batch.id}` : batch.name }))
+      : [];
   } catch {
     return [];
   }
@@ -344,7 +346,7 @@ export default function DashboardScreen() {
         const mapBatches = (financialByBatch = new Map()) => activeRows.map((batch) => {
           const ageAtAcquisition = Number(batch.age_on_acquisition) || 0;
           const day = getCurrentBatchDay(batch);
-          const name = batch.batch_code || `Batch ${batch.id}`;
+          const name = `Batch ${batch.id}`;
           const growth = Math.min(100, Math.floor(day / 0.5));
           const vaccinationMetrics = getVaccinationMetrics(vaccinationRecords, batch.id);
           const health = 80;
@@ -613,7 +615,7 @@ export default function DashboardScreen() {
           const recordedPrice = Number(createdBatch.sale_price_per_kg);
           const dashboardBatch = {
             id: createdBatch.id,
-            name: createdBatch.batch_code || `Batch ${createdBatch.id}`,
+            name: `Batch ${createdBatch.id}`,
             batch_code: createdBatch.batch_code,
             pigCount: createdBatch.pig_count || 0,
             ageOnAcquisition: Number(createdBatch.age_on_acquisition) || 0,
