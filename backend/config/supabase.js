@@ -34,4 +34,13 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
+const supabaseAuthKey = process.env.SUPABASE_ANON_KEY;
+if (!supabaseAuthKey) {
+  throw new Error('SUPABASE_ANON_KEY must be configured for Supabase password authentication');
+}
+
+export const supabaseAuth = createClient(supabaseUrl, supabaseAuthKey, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
+
 export default supabase;

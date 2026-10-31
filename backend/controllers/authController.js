@@ -1,5 +1,5 @@
   import { randomUUID } from 'node:crypto';
-import supabase from '../config/supabase.js';
+import supabase, { supabaseAuth } from '../config/supabase.js';
   import jwt from 'jsonwebtoken';
   import { revokeToken } from '../middlewares/authMiddleware.js';
 
@@ -40,7 +40,7 @@ import supabase from '../config/supabase.js';
 
     // ── Normal Supabase login ──
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabaseAuth.auth.signInWithPassword({
         email,
         password
       });
@@ -99,7 +99,7 @@ import supabase from '../config/supabase.js';
           if (revokeError) throw revokeError;
         }
       }
-      const { error } = await supabase.auth.signOut();
+      const { error } = await supabaseAuth.auth.signOut();
       if (error) {
         return res.status(400).json({
           success: false,
