@@ -35,6 +35,8 @@ export const api = {
   },
 };
 
+import { buildBatchDisplayNames } from './utils/batchNames.js';
+
 const getInitialAnalyticsRange = () => {
   const end = new Date();
   const start = new Date(end);
@@ -42,7 +44,9 @@ const getInitialAnalyticsRange = () => {
   return `from=${start.toISOString().slice(0, 10)}&to=${end.toISOString().slice(0, 10)}`;
 };
 
-const mapOverviewBatches = (batches = []) => batches.map((batch) => {
+const mapOverviewBatches = (batches = []) => {
+  const displayNames = buildBatchDisplayNames(batches);
+  return batches.map((batch) => {
   const sourceDate = batch.date_acquired || batch.created_at;
   const day = sourceDate
     ? (Number(batch.age_on_acquisition) || 0)
@@ -50,7 +54,7 @@ const mapOverviewBatches = (batches = []) => batches.map((batch) => {
     : 0;
   return {
     id: batch.id,
-    name: `Batch ${batch.id}`,
+    name: displayNames.get(String(batch.id)) || 'Batch',
     batch_code: batch.batch_code,
     day,
     pigCount: batch.pig_count || 0,
@@ -63,7 +67,8 @@ const mapOverviewBatches = (batches = []) => batches.map((batch) => {
     status: batch.status,
     age_on_acquisition: batch.age_on_acquisition || 0,
   };
-});
+  });
+};
 
 // Warm the authenticated screen caches while the application shell loads.
 // Each screen still performs its own stale-while-revalidate request when mounted.

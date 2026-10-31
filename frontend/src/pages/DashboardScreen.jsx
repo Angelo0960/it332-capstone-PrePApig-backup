@@ -30,6 +30,7 @@ import { API_BASE, getAuthHeaders } from '../api.js';
 import { formatCurrency } from '../utils/formatters.js';
 import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 import { PIG_BREEDS } from '../utils/breeds.js';
+import { buildBatchDisplayNames } from '../utils/batchNames.js';
 // ────────────────────────────────────────────────────────────────
 
 const DEFAULT_ESTIMATED_PRICE_PER_KG = 170;
@@ -84,9 +85,14 @@ const prefetchIndividualPigs = (batchId) => {
 const getCachedDashboardBatches = () => {
   try {
     const cached = JSON.parse(localStorage.getItem(`prepapig:batches:${getUserCacheKey()}`) || 'null');
-    return Array.isArray(cached)
-      ? cached.map((batch) => ({ ...batch, name: batch.id ? `Batch ${batch.id}` : batch.name }))
-      : [];
+    if (Array.isArray(cached)) {
+      const displayNames = buildBatchDisplayNames(cached);
+      return cached.map((batch) => ({
+        ...batch,
+        name: displayNames.get(String(batch.id)) || 'Batch',
+      }));
+    }
+    return [];
   } catch {
     return [];
   }
@@ -343,10 +349,11 @@ export default function DashboardScreen() {
       const json = await res.json();
       if (json.success) {
         const activeRows = (json.data || []).filter((batch) => !batch.status || String(batch.status).toLowerCase() === 'active');
+        const batchDisplayNames = buildBatchDisplayNames(json.data || []);
         const mapBatches = (financialByBatch = new Map()) => activeRows.map((batch) => {
           const ageAtAcquisition = Number(batch.age_on_acquisition) || 0;
           const day = getCurrentBatchDay(batch);
-          const name = `Batch ${batch.id}`;
+          const name = batchDisplayNames.get(String(batch.id)) || 'Batch';
           const growth = Math.min(100, Math.floor(day / 0.5));
           const vaccinationMetrics = getVaccinationMetrics(vaccinationRecords, batch.id);
           const health = 80;
@@ -616,7 +623,7 @@ export default function DashboardScreen() {
           const recordedPrice = Number(createdBatch.sale_price_per_kg);
           const dashboardBatch = {
             id: createdBatch.id,
-            name: `Batch ${createdBatch.id}`,
+            name: `Batch-${String(batches.length + 1).padStart(2, '0')}`,
             batch_code: createdBatch.batch_code,
             pigCount: createdBatch.pig_count || 0,
             breed: createdBatch.breed || 'Unknown',
