@@ -25,6 +25,7 @@ export default function BatchPigsScreen() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showSellModal, setShowSellModal] = useState(false);
   const [isSelling, setIsSelling] = useState(false);
+  const [isUpdatingPig, setIsUpdatingPig] = useState(false);
   const [editingPig, setEditingPig] = useState(null);
 
   // Form states
@@ -132,6 +133,7 @@ export default function BatchPigsScreen() {
       alert('Weight is required');
       return;
     }
+    setIsUpdatingPig(true);
     try {
       const res = await fetch(`${API_BASE}/pigs/pig/${editingPig.id}`, {
         method: 'PUT',
@@ -145,7 +147,19 @@ export default function BatchPigsScreen() {
       if (!res.ok) throw new Error('Failed to update pig');
       const json = await res.json();
       if (json.success) {
-        await fetchPigs();
+        const updatedPig = json.data;
+        setPigs((current) => {
+          const nextPigs = current.map((pig) => (
+            String(pig.id) === String(updatedPig.id) ? updatedPig : pig
+          ));
+          localStorage.setItem(`prepapig:pigs:${getUserCacheKey()}:${batchId}`, JSON.stringify(nextPigs));
+          return nextPigs;
+        });
+        if (json.batch) {
+          const batchCacheKey = `prepapig:pig-batch:${getUserCacheKey()}:${batchId}`;
+          const cachedBatch = JSON.parse(localStorage.getItem(batchCacheKey) || '{}');
+          localStorage.setItem(batchCacheKey, JSON.stringify({ ...cachedBatch, ...json.batch, displayName: batchName }));
+        }
         setShowEditModal(false);
         setEditingPig(null);
         setEditPig({ weight: '', health_status: '', notes: '' });
@@ -154,6 +168,8 @@ export default function BatchPigsScreen() {
       }
     } catch (err) {
       alert('Error updating pig: ' + err.message);
+    } finally {
+      setIsUpdatingPig(false);
     }
   };
 
@@ -449,9 +465,10 @@ export default function BatchPigsScreen() {
               </div>
               <button
                 onClick={handleUpdatePig}
+                disabled={isUpdatingPig}
                 className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform"
               >
-                Update
+                {isUpdatingPig ? 'Saving...' : 'Update'}
               </button>
             </div>
           </div>
