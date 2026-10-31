@@ -36,7 +36,7 @@ const getVaccinationMetrics = (records, batchId) => {
   const completedVaccines = new Set(
     (records || [])
       .filter((record) => String(record.batch_id) === String(batchId))
-      .filter((record) => !record.status || String(record.status).toLowerCase() === 'completed')
+      .filter((record) => String(record.status || '').toLowerCase() === 'completed')
       .map((record) => String(record.vaccine_name || '').trim())
       .filter(Boolean)
   );
