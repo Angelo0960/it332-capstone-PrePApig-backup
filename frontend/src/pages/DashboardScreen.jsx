@@ -606,11 +606,40 @@ export default function DashboardScreen() {
         throw new Error(json.message || json.details || `Failed to create batch (${res.status})`);
       }
       if (json.success) {
+        const createdBatch = json.data;
+        if (createdBatch?.id) {
+          const createdDay = getCurrentBatchDay(createdBatch);
+          const savedPrice = Number(localStorage.getItem(`prepapig:${getUserCacheKey()}:selected-price-per-kg`));
+          const recordedPrice = Number(createdBatch.sale_price_per_kg);
+          const dashboardBatch = {
+            id: createdBatch.id,
+            name: createdBatch.batch_code || `Batch ${createdBatch.id}`,
+            batch_code: createdBatch.batch_code,
+            pigCount: createdBatch.pig_count || 0,
+            ageOnAcquisition: Number(createdBatch.age_on_acquisition) || 0,
+            date_acquired: createdBatch.date_acquired,
+            day: createdDay,
+            growth: Math.min(100, Math.floor(createdDay / 0.5)),
+            vaccination: 0,
+            vaccinationShots: 0,
+            health: 80,
+            feed: getFeedLevelPercentage(createdDay),
+            weight: createdBatch.current_weight || createdBatch.start_weight || 0,
+            recordedPricePerKg: recordedPrice > 0 ? recordedPrice : null,
+            pricePerKg: recordedPrice > 0 ? recordedPrice : savedPrice > 0 ? savedPrice : DEFAULT_ESTIMATED_PRICE_PER_KG,
+            expenses: null,
+          };
+          setBatches((current) => {
+            const next = [dashboardBatch, ...current.filter((batch) => String(batch.id) !== String(dashboardBatch.id))];
+            localStorage.setItem(`prepapig:batches:${user?.id || 'current'}`, JSON.stringify(next));
+            return next;
+          });
+          setCurrentBatchIndex(0);
+        }
         setShowAddBatch(false);
         setShowBreedOptions(false);
         setBatchFieldErrors({});
         setNewBatch({ pig_count: '', breed: '', age_on_acquisition: '', start_weight: '', date_acquired: '', status: 'Active' });
-        void fetchBatches();
       } else {
         throw new Error(json.message || 'Unknown error');
       }
