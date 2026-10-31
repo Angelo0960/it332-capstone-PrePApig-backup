@@ -21,6 +21,8 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import pigImage from '../../src/assets/Gemini_Generated_Image_92oun292oun292ou-removebg-preview (1).webp';
+import durocPigImage from '../assets/duroc.webp';
+import pietrainPigImage from '../assets/pietrain.webp';
 import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.webp';
 import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
@@ -31,6 +33,13 @@ import { PIG_BREEDS } from '../utils/breeds.js';
 // ────────────────────────────────────────────────────────────────
 
 const DEFAULT_ESTIMATED_PRICE_PER_KG = 170;
+
+const getPigImageForBreed = (breed) => {
+  const normalizedBreed = String(breed || '').trim().toLowerCase();
+  if (normalizedBreed === 'duroc') return durocPigImage;
+  if (normalizedBreed === 'pietrain') return pietrainPigImage;
+  return pigImage;
+};
 
 const getVaccinationMetrics = (records, batchId) => {
   const completedVaccines = new Set(
@@ -769,7 +778,7 @@ export default function DashboardScreen() {
                     <Users className="w-4 h-4" /> View individual pigs
                   </button>
                 </div>
-                <img src={pigImage} alt="Pig character" className="absolute -bottom-8 -right-10 h-[112%] w-[68%] object-contain drop-shadow-[0_18px_16px_rgba(72,74,90,0.18)]" />
+                <img src={getPigImageForBreed(currentBatch?.breed)} alt="Pig character" className="absolute -bottom-8 -right-10 h-[112%] w-[68%] object-contain drop-shadow-[0_18px_16px_rgba(72,74,90,0.18)]" />
                 <div className="absolute bottom-5 left-5 flex gap-2">
                   <button onClick={() => setCurrentBatchIndex((index) => (index - 1 + batches.length) % batches.length)} aria-label="Previous batch" className="grid h-9 w-9 place-items-center rounded-xl bg-white/35 text-[#555B6E] shadow-sm">‹</button>
                   <button onClick={() => setCurrentBatchIndex((index) => (index + 1) % batches.length)} aria-label="Next batch" className="grid h-9 w-9 place-items-center rounded-xl bg-white/35 text-[#555B6E] shadow-sm">›</button>
@@ -871,7 +880,7 @@ export default function DashboardScreen() {
                     className="relative w-64 h-48 md:w-80 md:h-60 lg:w-96 lg:h-72 cursor-grab active:cursor-grabbing"
                   >
                     <img
-                      src={pigImage}
+                      src={getPigImageForBreed(currentBatch?.breed)}
                       alt="Pig Character"
                       className="w-full h-full object-cover pointer-events-none pig-head-tilt"
 

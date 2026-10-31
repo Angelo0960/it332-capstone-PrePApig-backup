@@ -3,6 +3,7 @@ export const PIG_BREEDS = [
   'Large White',
   'Landrace',
   'Duroc',
+  'Pietrain',
   'Duroc Jersey',
   'F1 Hybrids',
 ];
