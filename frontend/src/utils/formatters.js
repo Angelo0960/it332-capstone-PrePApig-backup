@@ -1,11 +1,12 @@
-export const formatCurrency = (amount, currency = 'PHP') => {
+export const formatCurrency = (amount) => {
   if (amount === null || amount === undefined || amount === '') return 'Unavailable';
   const numericAmount = Number(amount);
   if (!Number.isFinite(numericAmount)) return 'Unavailable';
 
   return new Intl.NumberFormat('en-PH', {
     style: 'currency',
-    currency,
+    currency: 'PHP',
+    currencyDisplay: 'symbol',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(numericAmount);
