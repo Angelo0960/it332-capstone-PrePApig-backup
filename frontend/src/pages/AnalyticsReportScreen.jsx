@@ -191,7 +191,9 @@ export default function AnalyticsReportsScreen() {
   // ---------- Fetch pig price basis for analysis ----------
   const fetchPigPriceBasis = async (signal) => {
     const cacheKey = `pig-price-basis-v2:${getUserCacheKey()}`;
-    const cached = readCache(cacheKey, 15 * 60 * 1000);
+    // Render the last successful price basis immediately, then refresh it in the background.
+    // The live request below still runs on every mount/date-range refresh.
+    const cached = readCache(cacheKey, Number.POSITIVE_INFINITY);
     const hasCachedBasis = Boolean(cached && typeof cached === 'object');
 
     if (hasCachedBasis) {
