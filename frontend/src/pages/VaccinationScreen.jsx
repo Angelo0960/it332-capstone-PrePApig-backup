@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Calendar,
   Check,
+  Plus,
 } from 'lucide-react';
 import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.webp';
 import BottomNav from '../components/BottomNav';
@@ -65,7 +66,6 @@ export default function VaccinationScreen() {
   const [showRecordVaccination, setShowRecordVaccination] = useState(false);
   const [showRestockVaccine, setShowRestockVaccine] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState('all');
-  const [showBatchMenu, setShowBatchMenu] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -450,26 +450,37 @@ export default function VaccinationScreen() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/dashboard')}
-              className="md:hidden w-8 h-8 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all"
+              className="md:hidden w-9 h-9 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all"
             >
-              <ArrowLeft className="w-4 h-4 text-gray-700" />
+              <ArrowLeft className="w-5 h-5 text-gray-700" />
             </button>
-            <h1 className="text-xl font-bold text-gray-900">Vaccination Manager</h1>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900 lg:text-2xl">Vaccination Manager</h1>
+              <p className="hidden text-sm text-gray-600 lg:block">Monitor and manage vaccines across all batches</p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-
-            <div className="relative">
+          <div className="vaccination-header-actions flex items-center gap-2">
+            <button onClick={() => setShowRecordVaccination(true)} className="hidden lg:inline-flex items-center gap-2 rounded-2xl bg-[#ff2f72] px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#ff2f72]/25">
+              <Plus className="w-4 h-4" /> Record Vaccination
+            </button>
+            <button onClick={() => setShowRestockVaccine(true)} className="hidden lg:inline-flex items-center gap-2 rounded-2xl bg-white/65 px-4 py-2.5 text-xs font-bold text-emerald-700 border border-white/70 shadow-lg">
+              <Plus className="w-4 h-4" /> Purchase Vaccine
+            </button>
+            <button className="relative w-9 h-9 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_6px_rgba(255,255,255,0.7)] transition-all">
               {isOnline ? (
-                <Cloud className="w-5 h-5 text-green-600" />
+                <>
+                  <Cloud className="w-5 h-5 text-green-600" />
+                  <Check className="w-3 h-3 text-green-600 absolute top-0 right-0" />
+                </>
               ) : (
-                <CloudOff className="w-5 h-5 text-gray-400" />
+                <CloudOff className="w-5 h-5 text-gray-500" />
               )}
               {pendingSync > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[9px] font-bold flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center">
                   {pendingSync}
                 </span>
               )}
-            </div>
+            </button>
           </div>
         </div>
 

@@ -643,16 +643,9 @@ textarea {
     min-height: 86px;
   }
 
-  .vaccination-action-buttons {
-    grid-column: 1 / span 6;
-    grid-row: 2;
-    display: grid;
-    margin: 0;
-  }
-
   .vaccination-schedule-card {
     grid-column: 1 / span 6;
-    grid-row: 3;
+    grid-row: 2;
     min-height: 230px;
     margin: 0;
     border-radius: 1.5rem !important;
@@ -671,6 +664,10 @@ textarea {
 
   .vaccination-action-buttons button:last-child {
     color: #047857;
+  }
+
+  .vaccination-action-buttons {
+    display: none;
   }
 
   .vaccination-batch-selector > div {
