@@ -599,15 +599,15 @@ export default function VaccinationScreen() {
               <div className="vaccination-action-buttons grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
                 <button
                   onClick={() => setShowRecordVaccination(true)}
-                  className="bg-gradient-to-r from-green-500 to-green-600 text-white font-bold py-3 rounded-xl shadow-lg active:scale-95 transition-transform"
+                  className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold py-3 rounded-xl shadow-[6px_6px_12px_rgba(16,185,129,0.3),-6px_-6px_12px_rgba(255,255,255,0.5)] active:shadow-[inset_3px_3px_6px_rgba(5,150,105,0.4),inset_-3px_-3px_6px_rgba(110,231,183,0.4)] transition-all"
                 >
                   Record Vaccination
                 </button>
                 <button
                   onClick={() => setShowRestockVaccine(true)}
-                  className="bg-white/30 backdrop-blur-lg border border-white/40 text-green-700 font-bold py-3 rounded-xl shadow-lg active:scale-95 transition-transform"
+                  className="bg-white/30 backdrop-blur-lg border border-white/40 text-emerald-700 font-bold py-3 rounded-xl shadow-[6px_6px_12px_rgba(0,0,0,0.1),-6px_-6px_12px_rgba(255,255,255,0.8)] active:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.1),inset_-3px_-3px_6px_rgba(255,255,255,0.8)] transition-all"
                 >
-                  Restock Vaccine
+                  Purchase Vaccine
                 </button>
               </div>
 
