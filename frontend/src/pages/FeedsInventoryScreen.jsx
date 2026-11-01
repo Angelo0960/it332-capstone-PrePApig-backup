@@ -46,7 +46,7 @@ const getDaysUntilFeedChange = (day) => {
   return null;
 };
 
-const getDailyFeedPerPig = (day) => {
+const getDailyFeedForBatch = (day) => {
   if (day <= 7) return 0.3;
   if (day <= 14) return 0.5;
   if (day <= 21) return 0.8;
@@ -860,7 +860,7 @@ export default function FeedsInventoryScreen() {
                     .map((batch, index) => {
                       const feedType = getFeedTypeForAge(batch.day);
                       const feedName = getFeedTypeName(feedType);
-                      const dailyAmount = Math.round(getDailyFeedPerPig(batch.day) * batch.pigCount);
+                      const dailyAmount = getDailyFeedForBatch(batch.day);
                       const daysUntilChange = getDaysUntilFeedChange(batch.day);
 
                       // Check if a feeding for today already exists for this batch
