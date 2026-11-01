@@ -790,7 +790,7 @@ export default function AnalyticsReportsScreen() {
                 type="button"
                 onClick={refreshMarketPrices}
                 disabled={marketRefreshLoading || aiAnalysisLoading}
-                className="inline-flex items-center gap-1 rounded-xl bg-violet-600 px-3 py-2 text-[10px] font-bold text-white shadow-md transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center gap-1 rounded-xl bg-pink-600 px-3 py-2 text-[10px] font-bold text-white shadow-md transition hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <RefreshCw size={13} className={marketRefreshLoading ? 'animate-spin' : ''} />
                 {marketRefreshLoading ? 'Refreshing' : 'Refresh prices'}
@@ -807,7 +807,7 @@ export default function AnalyticsReportsScreen() {
                     onClick={() => point.pricePhpPerKg != null && setSelectedPriceLocation(point.location)}
                     className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-all ${
                       isSelected
-                        ? 'border-violet-300 bg-violet-50/80 ring-2 ring-violet-200'
+                        ? 'border-pink-300 bg-pink-50/80 ring-2 ring-pink-200'
                         : 'border-white/70 bg-white/65 hover:bg-white/85'
                     }`}
                   >
@@ -841,8 +841,8 @@ export default function AnalyticsReportsScreen() {
             {marketRefreshError && <div className="mt-2 text-xs text-red-600">{marketRefreshError}</div>}
             {aiAnalysisError && <div className="mt-2 text-xs text-red-600">{aiAnalysisError}</div>}
             {aiAnalysis && (
-              <div className="mt-4 rounded-[1.5rem] border border-[#D8D4FF] bg-white/90 p-5 shadow-[0_12px_28px_rgba(108,99,255,0.12)]">
-                <div className="mb-3 flex items-center gap-2 text-sm font-bold leading-tight text-[#4C43C7]">
+              <div className="mt-4 rounded-[1.5rem] border border-[#ffd1df] bg-white/90 p-5 shadow-[0_12px_28px_rgba(255, 47, 114, 0.12)]">
+                <div className="mb-3 flex items-center gap-2 text-sm font-bold leading-tight text-[#ad1457]">
                   <Sparkles size={16} />
                   <span>PrepAPig AI<br />recommendation</span>
                 </div>
@@ -858,7 +858,7 @@ export default function AnalyticsReportsScreen() {
                   <p className="mt-3 max-w-2xl text-left text-sm leading-7 text-gray-600">{aiAnalysis.analysis}</p>
                 )}
                 {highestLivePrice && selectedPriceLocation && selectedPriceLocation !== highestLivePrice.location && (
-                  <p className="mt-3 text-sm font-semibold leading-relaxed text-[#4C43C7]">
+                  <p className="mt-3 text-sm font-semibold leading-relaxed text-[#ad1457]">
                     {selectedPriceLocation} is currently selected. Compare it with the recommended market before selling.
                   </p>
                 )}
@@ -869,7 +869,7 @@ export default function AnalyticsReportsScreen() {
                   <button
                     type="button"
                     onClick={() => setSelectedPriceLocation(highestLivePrice.location)}
-                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-transparent py-2 text-sm font-bold text-violet-600 transition hover:bg-violet-100/70"
+                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-transparent py-2 text-sm font-bold text-pink-600 transition hover:bg-pink-100/70"
                   >
                     Use recommended market <span aria-hidden="true">↗</span>
                   </button>
@@ -889,7 +889,7 @@ export default function AnalyticsReportsScreen() {
                     <XAxis dataKey="date" tick={{ fontSize: 9 }} />
                     <YAxis tick={{ fontSize: 9 }} label={{ value: 'PHP/kg', angle: -90, position: 'insideLeft', style: { fontSize: 9 } }} />
                     <Tooltip />
-                    <Line type="monotone" dataKey="price" stroke="#7C3AED" strokeWidth={2} dot={false} name="Observed price" />
+                    <Line type="monotone" dataKey="price" stroke="#f5125d" strokeWidth={2} dot={false} name="Observed price" />
                   </LineChart>
                 </ResponsiveContainer>
                 <div className="text-[10px] text-gray-500">Observed records only. Missing dates are not interpolated.</div>
@@ -925,7 +925,7 @@ export default function AnalyticsReportsScreen() {
               </div>
               <div className="flex items-center gap-2 text-[10px] font-semibold">
                 <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-700">● Recorded</span>
-                <span className="rounded-full bg-violet-100 px-2.5 py-1 text-violet-700">● Forecast</span>
+                <span className="rounded-full bg-pink-100 px-2.5 py-1 text-pink-700">● Forecast</span>
               </div>
             </div>
             <div className="rounded-xl border border-white/60 bg-white/55 p-3">
@@ -935,15 +935,15 @@ export default function AnalyticsReportsScreen() {
                   <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#555B6E' }} stroke="#A7ADBE" tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 10, fill: '#555B6E' }} stroke="#A7ADBE" tickLine={false} axisLine={false} width={34} />
                   <Tooltip
-                    contentStyle={{ borderRadius: 12, border: '1px solid #D8D4FF', boxShadow: '0 8px 20px rgba(37,40,56,0.12)', fontSize: 12 }}
+                    contentStyle={{ borderRadius: 12, border: '1px solid #ffd1df', boxShadow: '0 8px 20px rgba(37,40,56,0.12)', fontSize: 12 }}
                     labelStyle={{ color: '#252838', fontWeight: 700 }}
                     formatter={(value, name) => [`${value} kg`, name === 'actual' ? 'Recorded' : 'Forecast']}
                   />
                   <Legend verticalAlign="top" align="right" height={26} iconType="circle" wrapperStyle={{ fontSize: 10, color: '#555B6E' }} formatter={(value) => value === 'actual' ? 'Recorded' : 'Forecast'} />
-                  {forecastStartDate && <ReferenceLine x={forecastStartDate} stroke="#8B5CF6" strokeDasharray="5 5" strokeWidth={1.5} label={{ value: 'Forecast starts', position: 'insideTopRight', fill: '#6D28D9', fontSize: 10 }} />}
+                  {forecastStartDate && <ReferenceLine x={forecastStartDate} stroke="#f77f9f" strokeDasharray="5 5" strokeWidth={1.5} label={{ value: 'Forecast starts', position: 'insideTopRight', fill: '#ad1457', fontSize: 10 }} />}
                   <Line type="monotone" dataKey="actual" stroke="#059669" strokeWidth={3} dot={{ fill: '#059669', stroke: '#FFFFFF', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }} name="actual" connectNulls={false} />
-                  <Line type="monotone" dataKey="forecast" stroke="#7C3AED" strokeWidth={3} strokeDasharray="7 5" dot={{ fill: '#7C3AED', stroke: '#FFFFFF', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }} name="forecast" connectNulls={false}>
-                    <ErrorBar dataKey="errorRange" width={4} strokeWidth={1.5} stroke="#A78BFA" />
+                  <Line type="monotone" dataKey="forecast" stroke="#f5125d" strokeWidth={3} strokeDasharray="7 5" dot={{ fill: '#f5125d', stroke: '#FFFFFF', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }} name="forecast" connectNulls={false}>
+                    <ErrorBar dataKey="errorRange" width={4} strokeWidth={1.5} stroke="#ffd1df" />
                   </Line>
                 </LineChart>
               </ResponsiveContainer>
@@ -955,10 +955,10 @@ export default function AnalyticsReportsScreen() {
             {feedForecastError && <p className="text-[10px] text-red-700 mb-2">{feedForecastError}</p>}
 
             {feedForecastAi && (
-              <div className="bg-white/90 border border-[#D8D4FF] rounded-xl p-4 mb-3 shadow-sm">
-                <div className="flex items-center justify-between gap-2 mb-2"><span className="text-sm font-bold text-[#4C43C7]">AI Forecast Analysis</span><span className="text-[10px] uppercase font-bold text-[#5D55E9]">{feedForecastAi.riskLevel || 'unknown'} risk</span></div>
+              <div className="bg-white/90 border border-[#ffd1df] rounded-xl p-4 mb-3 shadow-sm">
+                <div className="flex items-center justify-between gap-2 mb-2"><span className="text-sm font-bold text-[#ad1457]">AI Forecast Analysis</span><span className="text-[10px] uppercase font-bold text-[#f5125d]">{feedForecastAi.riskLevel || 'unknown'} risk</span></div>
                 <p className="text-left text-sm leading-6 text-[#252838] mb-3">{feedForecastAi.analysis}</p>
-                <p className="text-left text-sm leading-6 text-[#252838]"><strong className="text-[#4C43C7]">Suggestion:</strong> {feedForecastAi.suggestion}</p>
+                <p className="text-left text-sm leading-6 text-[#252838]"><strong className="text-[#ad1457]">Suggestion:</strong> {feedForecastAi.suggestion}</p>
                 {feedForecastAi.stockContext && <div className="grid grid-cols-3 gap-2 mt-3 text-[10px] text-[#555B6E]"><span>Stock: <strong>{feedForecastAi.stockContext.totalStockKg} kg</strong></span><span>1-week need: <strong>{feedForecastAi.stockContext.forecastKg} kg</strong></span><span>Coverage: <strong>{feedForecastAi.stockContext.coverageWeeks == null ? '—' : `${feedForecastAi.stockContext.coverageWeeks} wk`}</strong></span></div>}
                 {feedForecastAi.stockContext?.projectedShortfallKg > 0 && <p className="text-[10px] text-red-700 mt-2">Projected stock shortfall: {feedForecastAi.stockContext.projectedShortfallKg} kg.</p>}
                 {feedForecastAi.actions?.length > 0 && <ul className="list-disc pl-4 mt-3 text-[10px] text-[#555B6E]">{feedForecastAi.actions.map((action) => <li key={action}>{action}</li>)}</ul>}
@@ -1078,14 +1078,14 @@ export default function AnalyticsReportsScreen() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-[#D8D4FF] bg-white/90 p-4 mb-3 shadow-sm">
-              <div className="flex items-center gap-2 text-sm font-bold text-[#4C43C7] mb-2"><Sparkles size={14} /> AI Expense Analysis</div>
+            <div className="rounded-xl border border-[#ffd1df] bg-white/90 p-4 mb-3 shadow-sm">
+              <div className="flex items-center gap-2 text-sm font-bold text-[#ad1457] mb-2"><Sparkles size={14} /> AI Expense Analysis</div>
               {expenseAiLoading && <p className="text-sm text-[#555B6E]">Analyzing recorded expense categories...</p>}
               {expenseAiError && <p className="text-xs text-red-700">{expenseAiError}</p>}
               {!expenseAiLoading && !expenseAiError && expenseAiAnalysis && (
                 <>
                   <p className="text-left text-sm leading-6 text-[#252838]">{expenseAiAnalysis.analysis}</p>
-                  <p className="text-left text-sm leading-6 text-[#252838] mt-3"><strong className="text-[#4C43C7]">Suggestion:</strong> {expenseAiAnalysis.suggestion}</p>
+                  <p className="text-left text-sm leading-6 text-[#252838] mt-3"><strong className="text-[#ad1457]">Suggestion:</strong> {expenseAiAnalysis.suggestion}</p>
                   {expenseAiAnalysis.actions?.length > 0 && <ul className="list-disc pl-4 mt-3 text-[10px] text-[#555B6E]">{expenseAiAnalysis.actions.map((action) => <li key={action}>{action}</li>)}</ul>}
                   {expenseAiAnalysis.limitations?.length > 0 && <p className="text-[10px] text-[#6B7280] mt-3">{expenseAiAnalysis.limitations.join(' ')}</p>}
                 </>

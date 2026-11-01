@@ -1,5 +1,5 @@
 const CACHE_NAME = 'prepapig-shell-v3';
-const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/pwa-192.svg', '/pwa-512.svg', '/favicon.svg'];
+const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/prepapig-logo.png', '/prepapig-logo-192.png', '/prepapig-logo-512.png', '/favicon.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

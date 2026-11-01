@@ -735,7 +735,7 @@ export default function DashboardScreen() {
       <div className="mobile-screen-layer relative z-10 flex flex-col flex-1 min-h-0">
         <aside className="dashboard-desktop-sidebar" aria-label="Farm navigation">
           <div className="dashboard-sidebar-brand">
-            <div className="dashboard-sidebar-logo"><span>🐖</span></div>
+            <div className="dashboard-sidebar-logo"><img src="/prepapig-logo.png" alt="PrepAPig logo" /></div>
             <div><strong className="brand-wordmark">Prep<span>AP</span>ig</strong><small>FARM OS</small></div>
           </div>
           <p className="dashboard-sidebar-label">Workspace</p>
@@ -762,7 +762,7 @@ export default function DashboardScreen() {
               <p className="mt-1 text-sm text-[#777D8D]">Here’s the pulse of your farm.</p>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={() => setShowAddBatch(true)} className="hidden sm:flex items-center gap-2 rounded-2xl bg-[#6C63FF] px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#6C63FF]/25 transition hover:-translate-y-0.5">
+              <button onClick={() => setShowAddBatch(true)} className="hidden sm:flex items-center gap-2 rounded-2xl bg-[#ff2f72] px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#ff2f72]/25 transition hover:-translate-y-0.5">
                 <Plus className="w-4 h-4" /> Add batch
               </button>
               <button
@@ -813,7 +813,7 @@ export default function DashboardScreen() {
                 <div className="relative z-10 max-w-[58%]">
                   <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#777D8D]">Current batch</p>
                   <h2 className="text-3xl font-extrabold tracking-[-0.05em] text-[#252838] sm:text-4xl">{currentBatch.name}</h2>
-                  <button onClick={() => navigate(`/batch/${currentBatch.id}/pigs`)} onPointerEnter={() => prefetchIndividualPigs(currentBatch.id)} onFocus={() => prefetchIndividualPigs(currentBatch.id)} onTouchStart={() => prefetchIndividualPigs(currentBatch.id)} className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-[#6C63FF] px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#6C63FF]/25 transition hover:-translate-y-0.5">
+                  <button onClick={() => navigate(`/batch/${currentBatch.id}/pigs`)} onPointerEnter={() => prefetchIndividualPigs(currentBatch.id)} onFocus={() => prefetchIndividualPigs(currentBatch.id)} onTouchStart={() => prefetchIndividualPigs(currentBatch.id)} className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-[#ff2f72] px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#ff2f72]/25 transition hover:-translate-y-0.5">
                     <Users className="w-4 h-4" /> View individual pigs
                   </button>
                 </div>
@@ -857,7 +857,7 @@ export default function DashboardScreen() {
                     <div className="relative mx-auto h-20 w-20 sm:h-24 sm:w-24">
                       <svg className="h-full w-full -rotate-90" viewBox="0 0 96 96" aria-hidden="true">
                         <circle cx="48" cy="48" r="38" fill="none" stroke="rgba(85,91,110,0.14)" strokeWidth="9" />
-                        <circle cx="48" cy="48" r="38" fill="none" stroke="#6C63FF" strokeWidth="9" strokeLinecap="round" strokeDasharray={2 * Math.PI * 38} strokeDashoffset={(2 * Math.PI * 38) - ((currentBatch.vaccination / 100) * 2 * Math.PI * 38)} />
+                        <circle cx="48" cy="48" r="38" fill="none" stroke="#ff2f72" strokeWidth="9" strokeLinecap="round" strokeDasharray={2 * Math.PI * 38} strokeDashoffset={(2 * Math.PI * 38) - ((currentBatch.vaccination / 100) * 2 * Math.PI * 38)} />
                       </svg>
                       <span className="absolute inset-0 grid place-items-center text-sm font-extrabold text-[#252838]">{currentBatch.vaccination}%</span>
                     </div>
@@ -1220,7 +1220,7 @@ export default function DashboardScreen() {
                 </div>
 
                 <div className="border-t border-white/30 pt-4">
-                  <button onClick={() => navigate('/settings')} className="w-full bg-white/40 rounded-xl py-3 mb-3 font-semibold text-purple-700">Profile, farm settings & backup</button>
+                  <button onClick={() => navigate('/settings')} className="w-full bg-white/40 rounded-xl py-3 mb-3 font-semibold text-pink-700">Profile, farm settings & backup</button>
                   <button
                     onClick={handleLogout}
                     className="w-full flex items-center justify-center gap-2 bg-red-500 text-white font-bold py-3 rounded-xl shadow-lg active:scale-95 transition-transform"

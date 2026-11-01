@@ -497,20 +497,21 @@ textarea {
   }
   .desktop-app-content { margin-left: 248px; }
   .desktop-sidebar-brand { display: flex; align-items: center; gap: 0.7rem; padding: 0 0.7rem 2.4rem; }
-  .desktop-sidebar-logo { display: grid; width: 3.1rem; height: 3.1rem; place-items: center; border-radius: 1.15rem; background: linear-gradient(145deg, #756cff, #5d55e9); box-shadow: 0 12px 24px rgba(108, 99, 255, 0.25); font-size: 1.4rem; }
+  .desktop-sidebar-logo { display: grid; width: 3.1rem; height: 3.1rem; place-items: center; border-radius: 1.15rem; background: linear-gradient(145deg, #ff78a4, #f5125d); box-shadow: 0 12px 24px rgba(255, 47, 114, 0.25); font-size: 1.4rem; }
+  .desktop-sidebar-logo img, .dashboard-sidebar-logo img { width: 2.4rem; height: 2.4rem; object-fit: contain; }
   .desktop-sidebar-brand strong { display: block; color: #252838; font-size: 1.2rem; letter-spacing: -0.04em; }
-  .desktop-sidebar-brand strong span { color: #6c63ff; }
+  .desktop-sidebar-brand strong span { color: #ff2f72; }
   .desktop-sidebar-brand small, .desktop-sidebar-user small { display: block; color: #858b98; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.14em; }
   .desktop-sidebar-label { margin: 0 0 0.7rem 0.7rem; color: #9299a5; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; }
   .desktop-sidebar-nav { display: grid; gap: 0.45rem; }
   .desktop-sidebar-nav button, .desktop-sidebar-footer > button:first-child { display: flex; align-items: center; gap: 0.8rem; width: 100%; min-height: 3.15rem; padding: 0 1rem; border: 0; border-radius: 1.1rem; background: transparent; color: #626b79; font-size: 0.85rem; font-weight: 700; text-align: left; }
-  .desktop-sidebar-nav button:hover, .desktop-sidebar-nav button.active, .desktop-sidebar-footer > button:first-child.active { color: #6c63ff; background: rgba(255,255,255,0.72); box-shadow: 0 8px 18px rgba(57, 76, 67, 0.08); }
-  .desktop-sidebar-nav button span { margin-left: auto; color: #6c63ff; font-size: 1.3rem; line-height: 0; }
+  .desktop-sidebar-nav button:hover, .desktop-sidebar-nav button.active, .desktop-sidebar-footer > button:first-child.active { color: #ff2f72; background: rgba(255,255,255,0.72); box-shadow: 0 8px 18px rgba(57, 76, 67, 0.08); }
+  .desktop-sidebar-nav button span { margin-left: auto; color: #ff2f72; font-size: 1.3rem; line-height: 0; }
   .desktop-sidebar-footer { margin-top: auto; display: grid; gap: 1rem; }
   .desktop-sidebar-user { display: flex; align-items: center; gap: 0.6rem; width: 100%; padding: 0.65rem; border: 1px solid rgba(255,255,255,0.65); border-radius: 1.2rem; background: rgba(255,255,255,0.55); color: #5f6876; text-align: left; }
   .desktop-sidebar-user strong { display: block; color: #4d5665; font-size: 0.72rem; }
   .desktop-sidebar-user > svg { margin-left: auto; }
-  .desktop-sidebar-avatar { display: grid; width: 2.35rem; height: 2.35rem; place-items: center; flex: 0 0 auto; border-radius: 999px; background: #e5e2ff; color: #6c63ff; font-size: 0.7rem; font-weight: 800; }
+  .desktop-sidebar-avatar { display: grid; width: 2.35rem; height: 2.35rem; place-items: center; flex: 0 0 auto; border-radius: 999px; background: #ffe4ec; color: #ff2f72; font-size: 0.7rem; font-weight: 800; }
   .dashboard-screen .dashboard-desktop-sidebar { display: none !important; }
   .dashboard-screen .mobile-screen-layer { padding-left: 0; }
   .dashboard-screen .dashboard-header { padding: 1.5rem 2.4rem 1.1rem; }
@@ -565,8 +566,8 @@ textarea {
   --dashboard-ink: #252838;
   --dashboard-muted: #777d8d;
   --dashboard-label: #555b6e;
-  --dashboard-primary: #6c63ff;
-  --dashboard-primary-dark: #5d55e9;
+  --dashboard-primary: #ff2f72;
+  --dashboard-primary-dark: #f5125d;
   --dashboard-teal: #00a896;
 }
 
@@ -581,19 +582,17 @@ textarea {
 .dashboard-theme .text-gray-500 { color: var(--dashboard-muted) !important; }
 .dashboard-theme [class*="from-emerald-"],
 .dashboard-theme [class*="from-green-"],
-.dashboard-theme [class*="from-violet-"] { background-image: linear-gradient(to right, var(--dashboard-primary), var(--dashboard-primary-dark)) !important; }
+.dashboard-theme [class*="from-pink-"] { background-image: linear-gradient(to right, var(--dashboard-primary), var(--dashboard-primary-dark)) !important; }
 .dashboard-theme [class*="to-teal-"],
 .dashboard-theme [class*="to-green-"],
-.dashboard-theme [class*="to-violet-"] { --tw-gradient-to: var(--dashboard-primary-dark) !important; }
+.dashboard-theme [class*="to-pink-"] { --tw-gradient-to: var(--dashboard-primary-dark) !important; }
 .dashboard-theme [class*="text-emerald-"],
 .dashboard-theme [class*="text-green-"] { color: var(--dashboard-teal) !important; }
-.dashboard-theme [class*="text-violet-"],
-.dashboard-theme [class*="text-purple-"] { color: var(--dashboard-primary) !important; }
+.dashboard-theme [class*="text-pink-"] { color: var(--dashboard-primary) !important; }
 .dashboard-theme [class*="bg-emerald-"],
 .dashboard-theme [class*="bg-green-"] { background-color: rgba(0, 168, 150, 0.14) !important; }
-.dashboard-theme [class*="bg-violet-"],
-.dashboard-theme [class*="bg-purple-"] { background-color: rgba(108, 99, 255, 0.14) !important; }
-.dashboard-theme [class*="ring-green-"] { --tw-ring-color: rgba(108, 99, 255, 0.5) !important; }
+.dashboard-theme [class*="bg-pink-"] { background-color: rgba(255, 47, 114, 0.14) !important; }
+.dashboard-theme [class*="ring-green-"] { --tw-ring-color: rgba(255, 47, 114, 0.5) !important; }
 .dashboard-theme [class*="focus:ring-green-"]:focus,
-.dashboard-theme [class*="focus:ring-violet-"]:focus { --tw-ring-color: rgba(108, 99, 255, 0.5) !important; }
+.dashboard-theme [class*="focus:ring-pink-"]:focus { --tw-ring-color: rgba(255, 47, 114, 0.5) !important; }
 .dashboard-theme .desktop-app-content { color: var(--dashboard-ink); }

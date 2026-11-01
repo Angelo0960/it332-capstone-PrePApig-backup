@@ -26,7 +26,7 @@ function DesktopSidebar() {
   return (
     <aside className="desktop-app-sidebar" aria-label="Farm navigation">
       <div className="desktop-sidebar-brand">
-        <div className="desktop-sidebar-logo">🐖</div>
+        <div className="desktop-sidebar-logo"><img src="/prepapig-logo.png" alt="PrepAPig logo" /></div>
         <div><strong className="brand-wordmark">Prep<span>AP</span>ig</strong><small>FARM OS</small></div>
       </div>
       <p className="desktop-sidebar-label">Workspace</p>

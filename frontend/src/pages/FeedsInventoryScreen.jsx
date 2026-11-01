@@ -558,7 +558,7 @@ export default function FeedsInventoryScreen() {
             </div>
           </div>
           <div className="feeds-header-actions flex items-center gap-2">
-            <button onClick={() => setShowRecordUsage(true)} className="hidden lg:inline-flex items-center gap-2 rounded-2xl bg-[#6C63FF] px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#6C63FF]/25">
+            <button onClick={() => setShowRecordUsage(true)} className="hidden lg:inline-flex items-center gap-2 rounded-2xl bg-[#ff2f72] px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#ff2f72]/25">
               <Plus className="w-4 h-4" /> Record Feed Usage
             </button>
             <button onClick={() => setShowAddPurchase(true)} className="hidden lg:inline-flex items-center gap-2 rounded-2xl bg-white/65 px-4 py-2.5 text-xs font-bold text-emerald-700 border border-white/70 shadow-lg">
@@ -586,9 +586,9 @@ export default function FeedsInventoryScreen() {
         <div className="px-4 md:px-8 lg:px-12 mb-4">
           <div className="feeds-batch-selector relative z-50 isolate bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-3 shadow-lg">
             <div className="flex items-center gap-2 overflow-x-auto">
-              <button type="button" onClick={() => setSelectedBatch('all')} className={`px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${selectedBatch === 'all' ? 'bg-[#6C63FF] text-white shadow-lg' : 'bg-white/30 text-gray-700'}`}>All Batches</button>
+              <button type="button" onClick={() => setSelectedBatch('all')} className={`px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${selectedBatch === 'all' ? 'bg-[#ff2f72] text-white shadow-lg' : 'bg-white/30 text-gray-700'}`}>All Batches</button>
               {batches.map((batch) => (
-                <button type="button" key={batch.id} onClick={() => setSelectedBatch(String(batch.id))} className={`px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${String(selectedBatch) === String(batch.id) ? 'bg-[#6C63FF] text-white shadow-lg' : 'bg-white/30 text-gray-700'}`}>{batch.name}</button>
+                <button type="button" key={batch.id} onClick={() => setSelectedBatch(String(batch.id))} className={`px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${String(selectedBatch) === String(batch.id) ? 'bg-[#ff2f72] text-white shadow-lg' : 'bg-white/30 text-gray-700'}`}>{batch.name}</button>
               ))}
             </div>
           </div>
@@ -816,17 +816,17 @@ export default function FeedsInventoryScreen() {
                     <Line
                       type="monotone"
                       dataKey="forecast"
-                      stroke="#7C3AED"
+                      stroke="#f5125d"
                       strokeWidth={2}
                       strokeDasharray="6 4"
-                      dot={{ fill: '#7C3AED', r: 3 }}
+                      dot={{ fill: '#f5125d', r: 3 }}
                       connectNulls={false}
                     />
                   </LineChart>
                 </ResponsiveContainer>
                 <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-xs text-gray-600">
                   <span className="text-emerald-700">● Actual feed consumption</span>
-                  <span className="text-violet-700">● 7-day forecast</span>
+                  <span className="text-pink-700">● 7-day forecast</span>
                 </div>
                 {feedForecast?.status === 'forecasted' && (
                   <p className="text-[10px] text-gray-500 text-center mt-1">

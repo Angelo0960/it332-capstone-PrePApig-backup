@@ -268,7 +268,7 @@ export default function BatchPigsScreen() {
           <button
             onClick={openSellModal}
             disabled={pigs.length === 0}
-            className="bg-gradient-to-r from-violet-500 to-violet-600 text-white font-bold px-4 py-2 rounded-xl shadow-lg active:scale-95 transition-transform flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-gradient-to-r from-pink-500 to-pink-600 text-white font-bold px-4 py-2 rounded-xl shadow-lg active:scale-95 transition-transform flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <TrendingUp className="w-4 h-4" /> Sell Batch
           </button>
@@ -491,19 +491,19 @@ export default function BatchPigsScreen() {
             <div className="p-5 space-y-4">
               <p className="text-xs text-gray-700">This records the completed batch sale using the current individual-pig count and total weight.</p>
               <label className="block text-sm font-semibold text-gray-800">Sale date
-                <input type="date" value={saleForm.sale_date} onChange={(e) => setSaleForm({ ...saleForm, sale_date: e.target.value })} className="w-full mt-2 px-4 py-3 rounded-xl bg-white/40 border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/50" />
+                <input type="date" value={saleForm.sale_date} onChange={(e) => setSaleForm({ ...saleForm, sale_date: e.target.value })} className="w-full mt-2 px-4 py-3 rounded-xl bg-white/40 border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500/50" />
               </label>
               <label className="block text-sm font-semibold text-gray-800">Estimated total proceeds (PHP)
-                <input type="number" min="0" step="0.01" value={saleForm.revenue} onChange={(e) => setSaleForm({ ...saleForm, revenue: e.target.value })} placeholder="0.00" className="w-full mt-2 px-4 py-3 rounded-xl bg-white/40 border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50" />
+                <input type="number" min="0" step="0.01" value={saleForm.revenue} onChange={(e) => setSaleForm({ ...saleForm, revenue: e.target.value })} placeholder="0.00" className="w-full mt-2 px-4 py-3 rounded-xl bg-white/40 border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500/50" />
                 <span className="block mt-1 text-[11px] font-normal text-gray-700">{totalWeight.toFixed(2)} kg × ₱{liveWeightPrice.toFixed(2)}/kg liveweight. Adjust to the buyer's actual offer if needed.</span>
               </label>
               <label className="block text-sm font-semibold text-gray-800">Buyer (optional)
-                <input type="text" value={saleForm.buyer} onChange={(e) => setSaleForm({ ...saleForm, buyer: e.target.value })} className="w-full mt-2 px-4 py-3 rounded-xl bg-white/40 border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/50" />
+                <input type="text" value={saleForm.buyer} onChange={(e) => setSaleForm({ ...saleForm, buyer: e.target.value })} className="w-full mt-2 px-4 py-3 rounded-xl bg-white/40 border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500/50" />
               </label>
               <label className="block text-sm font-semibold text-gray-800">Notes (optional)
-                <textarea rows={2} value={saleForm.notes} onChange={(e) => setSaleForm({ ...saleForm, notes: e.target.value })} className="w-full mt-2 px-4 py-3 rounded-xl bg-white/40 border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/50 resize-none" />
+                <textarea rows={2} value={saleForm.notes} onChange={(e) => setSaleForm({ ...saleForm, notes: e.target.value })} className="w-full mt-2 px-4 py-3 rounded-xl bg-white/40 border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500/50 resize-none" />
               </label>
-              <button onClick={handleSellBatch} disabled={isSelling} className="w-full bg-gradient-to-r from-violet-500 to-violet-600 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform disabled:opacity-60">
+              <button onClick={handleSellBatch} disabled={isSelling} className="w-full bg-gradient-to-r from-pink-500 to-pink-600 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform disabled:opacity-60">
                 {isSelling ? 'Saving...' : 'Record Batch Sale'}
               </button>
             </div>

@@ -5,7 +5,7 @@ import BottomNav from '../components/BottomNav.jsx';
 
 const glass = 'bg-white/30 backdrop-blur-xl rounded-2xl border border-white/40 p-4 shadow-lg';
 const input = 'w-full rounded-xl bg-white/60 border border-white/50 p-2 text-gray-900';
-const button = 'rounded-xl bg-purple-600 text-white px-4 py-2 disabled:opacity-50';
+const button = 'rounded-xl bg-pink-600 text-white px-4 py-2 disabled:opacity-50';
 async function request(path, method = 'GET', body) {
  const response = await fetch(`${API_BASE}${path}`, { method, headers: getAuthHeaders(), ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
  const result = await response.json();
@@ -85,7 +85,7 @@ export default function FarmManagementScreen({ section = 'mortality' }) {
   await act(async () => { await request(section === 'expenses' ? `/expenses/${row.id}` : `${config.endpoint}/${row.id}`, 'DELETE'); await load(); setMessage('Record deleted.'); });
  }
  const visible = config ? rows.filter((row) => (!filter || row.batch_id === filter) && (!from || row[config.date] >= from) && (!to || row[config.date] <= to)) : [];
- return <div className="dashboard-theme mobile-screen-shell bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100"><div className="mobile-screen-layer"><main className="mobile-page-content max-w-4xl mx-auto p-5 space-y-4">
+ return <div className="dashboard-theme mobile-screen-shell bg-gradient-to-br from-pink-100 via-pink-50 to-blue-100"><div className="mobile-screen-layer"><main className="mobile-page-content max-w-4xl mx-auto p-5 space-y-4">
   <h1 className="text-2xl font-bold text-gray-900">{config?.title || 'Profile & farm settings'}</h1>
   <nav className={`${glass} flex flex-wrap gap-3`} aria-label="Farm management"><Link to="/mortality">Mortality</Link><Link to="/treatments">Health history</Link><Link to="/expenses">Expenses</Link><Link to="/settings">Settings & backup</Link></nav>
   {error && <p role="alert" className="text-red-700">{error}</p>}{message && <p role="status" className="text-green-800">{message}</p>}
@@ -105,7 +105,7 @@ export default function FarmManagementScreen({ section = 'mortality' }) {
     {section === 'expenses' && <p>Filtered manual expenses: ₱{visible.reduce((sum, row) => sum + Number(row.amount), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>}
     {loaded && !visible.length && <p>No records in this selection.</p>}
     {visible.map((row) => <article className="bg-white/40 rounded-xl p-3 space-y-2" key={row.id}><p className="font-semibold">{row[config.date]} · {batches.find((batch) => batch.id === row.batch_id)?.batch_code || 'Farm-wide'}</p>{config.fields.map((field) => row[field] !== null && row[field] !== undefined && row[field] !== '' ? <p className="text-sm whitespace-pre-wrap" key={field}>{field.replaceAll('_', ' ')}: {row[field]}</p> : null)}
-     {section === 'expenses' && <button disabled={busy} className="mr-4 text-purple-700" onClick={() => { setEditing(row.id); setForm(Object.fromEntries(['batch_id', config.date, ...config.fields].map((key) => [key, row[key] ?? '']))); }}>Edit</button>}<button disabled={busy} className="text-red-700" onClick={() => remove(row)}>Delete{section === 'mortality' ? ' mistaken entry' : ''}</button></article>)}
+     {section === 'expenses' && <button disabled={busy} className="mr-4 text-pink-700" onClick={() => { setEditing(row.id); setForm(Object.fromEntries(['batch_id', config.date, ...config.fields].map((key) => [key, row[key] ?? '']))); }}>Edit</button>}<button disabled={busy} className="text-red-700" onClick={() => remove(row)}>Delete{section === 'mortality' ? ' mistaken entry' : ''}</button></article>)}
    </section>
   </> : <>
    <form className={`${glass} space-y-3`} onSubmit={(event) => { event.preventDefault(); act(async () => { const fields = ['first_name', 'middle_name', 'last_name', 'phone_number', 'farm_name', 'farm_address']; const result = await request('/management/settings/profile', 'PUT', Object.fromEntries(fields.map((field) => [field, profile[field] || '']))); setProfile(result.data); setMessage('Profile and farm settings saved.'); }); }}>

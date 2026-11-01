@@ -542,7 +542,7 @@ export default function VaccinationScreen() {
                     {isNaN(totalDoses) ? 0 : totalDoses} doses
                   </div>
                   <div className="text-xs text-gray-600">Across {uniqueVaccines} vaccine types</div>
-                  <div className="mt-2">
+                  <div className="mt-2 hidden md:block">
                     {totalDoses === 0 ? (
                       <span className="px-2 py-1 bg-gray-100/80 border border-gray-300/50 rounded-full text-xs text-gray-700 font-semibold">
                         No records
