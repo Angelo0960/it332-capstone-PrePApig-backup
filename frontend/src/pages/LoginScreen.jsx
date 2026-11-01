@@ -54,12 +54,12 @@ export function LoginScreen({ onLogin }) {
       <div className="absolute inset-0 bg-[#173f44]/10 backdrop-blur-[1px]" />
 
       <div className="relative z-10 mx-auto hidden min-h-[100dvh] w-full grid-cols-[1.08fr_0.92fr] lg:grid">
-        <section className="flex flex-col justify-between px-[8.6vw] py-14 xl:py-20">
+        <section className="flex flex-col justify-center gap-16 px-[8.6vw] py-14 xl:py-20">
           <div>
             <h1 className="login-erica-one text-[54px] leading-none tracking-[-0.035em] drop-shadow-sm xl:text-[60px]"><span className="text-[#67C6E3]">PrepA</span><span className="text-[#FF78A4]">Pig</span></h1>
             <p className="mt-5 max-w-[470px] text-lg font-bold leading-7 text-white drop-shadow-sm">The all-in-one pig farm management system<br />for modern Filipino farmers.</p>
           </div>
-          <div className="-mt-2">
+          <div>
             <h2 className="login-erica-one text-[48px] leading-[1.38] tracking-[0.01em] text-white drop-shadow-[0_4px_0_rgba(0,0,0,0.08)] xl:text-[54px]">Feed Smart.<br /><span className="text-[#FF78A4]">Grow Fast.</span><br />Profit More.</h2>
             <p className="mt-6 max-w-[490px] text-base leading-7 text-white/85">Everything your pig farm needs — tracked,<br />scheduled, and optimized in one place.</p>
           </div>
@@ -67,7 +67,7 @@ export function LoginScreen({ onLogin }) {
         </section>
 
         <section className="flex items-center justify-center px-8 py-12 xl:px-12">
-          <div className="relative mt-10 w-full max-w-[400px]">
+          <div className="relative w-full max-w-[400px]">
             <img src={pigImage} alt="Smiling PrepAPig mascot" className="pointer-events-none absolute left-1/2 top-0 z-0 h-[300px] w-[300px] -translate-x-1/2 -translate-y-[55%] object-contain drop-shadow-[0_16px_22px_rgba(20,50,48,0.26)]" />
             <div className="relative z-10 rounded-[36px] border border-white/45 bg-white/25 px-8 pb-7 pt-9 shadow-[0_28px_70px_rgba(13,48,43,0.18)] backdrop-blur-2xl">
               <div className="text-center"><div className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-white/90"><CheckCircle2 className="size-5 text-[#4DE2B6]" />Farm Management Portal</div><h2 className="font-['Erica_One'] text-[28px] text-white drop-shadow-md">Welcome Back</h2><p className="mt-2 text-sm text-white/65">Sign in to your farm dashboard</p></div>
