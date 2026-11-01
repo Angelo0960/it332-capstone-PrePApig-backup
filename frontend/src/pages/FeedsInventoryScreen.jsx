@@ -779,7 +779,7 @@ export default function FeedsInventoryScreen() {
               </div>
 
               {selectedBatch === 'all' && (
-                <div className="feeds-consumption-history bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg">
+                <div className="feeds-history-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg">
                   <div className="p-4 border-b border-white/20">
                     <h3 className="font-semibold text-gray-900">Feed Consumption History by Type</h3>
                   </div>

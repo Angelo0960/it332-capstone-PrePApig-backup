@@ -453,6 +453,10 @@ textarea {
     box-shadow: 0 10px 24px rgba(31, 64, 49, 0.12);
   }
 
+  .feeds-main-content > .space-y-4 > .feeds-history-card {
+    margin-top: 0;
+  }
+
   .feeds-main-content .feeds-action-buttons {
     gap: 0.75rem;
   }
