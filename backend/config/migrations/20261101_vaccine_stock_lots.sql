@@ -25,7 +25,8 @@ INSERT INTO public.vaccine_stock_lots (
 )
 SELECT owner_id, vaccine_name, stock_quantity, expiry_date, price_per_dose, notes
 FROM public.vaccine_stocks
-WHERE stock_quantity > 0
+WHERE owner_id IS NOT NULL
+  AND stock_quantity > 0
   AND NOT EXISTS (
       SELECT 1
       FROM public.vaccine_stock_lots lots
