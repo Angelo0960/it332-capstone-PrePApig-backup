@@ -27,3 +27,14 @@ body {
 .text-gray-700 {
   color: #1f2937 !important;
 }
+
+/* Make dashboard metadata and helper text easier to read without changing layout. */
+.text-xs {
+  font-size: 0.8125rem !important;
+  line-height: 1.25rem !important;
+}
+
+.text-\[10px\] {
+  font-size: 0.6875rem !important;
+  line-height: 1rem !important;
+}
