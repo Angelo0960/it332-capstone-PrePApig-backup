@@ -5,6 +5,11 @@
   font-family: "Erica One", cursive;
 }
 
+.brand-wordmark {
+  font-family: "Erica One", cursive;
+  letter-spacing: 0.01em;
+}
+
 :root {
   font-family: 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-synthesis: none;

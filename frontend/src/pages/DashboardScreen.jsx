@@ -736,7 +736,7 @@ export default function DashboardScreen() {
         <aside className="dashboard-desktop-sidebar" aria-label="Farm navigation">
           <div className="dashboard-sidebar-brand">
             <div className="dashboard-sidebar-logo"><span>🐖</span></div>
-            <div><strong>Prep<span>AP</span>ig</strong><small>FARM OS</small></div>
+            <div><strong className="brand-wordmark">Prep<span>AP</span>ig</strong><small>FARM OS</small></div>
           </div>
           <p className="dashboard-sidebar-label">Workspace</p>
           <nav className="dashboard-sidebar-nav">
