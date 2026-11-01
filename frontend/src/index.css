@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Erica+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Erica+One&family=Poppins:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 .login-erica-one {
@@ -13,4 +13,17 @@
 
 body {
   font-family: inherit;
+}
+
+/* Improve secondary-text contrast on the translucent dashboard cards. */
+.text-gray-500 {
+  color: #4b5563 !important;
+}
+
+.text-gray-600 {
+  color: #374151 !important;
+}
+
+.text-gray-700 {
+  color: #1f2937 !important;
 }
