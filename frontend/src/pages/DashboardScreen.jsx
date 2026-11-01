@@ -14,7 +14,7 @@ import {
   LogOut,
   Package,
   Syringe,
-  Settings,
+
   Trash2,
   Pencil,
   Users,
@@ -746,10 +746,9 @@ export default function DashboardScreen() {
             <button onClick={() => navigate('/reports')}><TrendingUp size={19} /> Farm reports</button>
           </nav>
           <div className="dashboard-sidebar-footer">
-            <button className="dashboard-sidebar-settings" onClick={() => setShowProfileModal(true)}><Settings size={19} /> Settings</button>
             <button className="dashboard-sidebar-user" onClick={() => setShowProfileModal(true)}>
               <span className="dashboard-sidebar-avatar">{(user?.name || 'U').slice(0, 2).toUpperCase()}</span>
-              <span><strong>{user?.name || 'Farm manager'}</strong><small>Farm manager</small></span>
+              <span><strong>{user?.name || 'Farm manager'}</strong><small>Farm Manager Account</small></span>
               <LogOut size={17} />
             </button>
           </div>
