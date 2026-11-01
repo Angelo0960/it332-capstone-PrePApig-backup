@@ -250,40 +250,40 @@ export const sendVaccinationReminders = async () => {
 
     console.log(`🔍 Checking vaccinations due or overdue for ${today}...`);
 
-    // 1. Fetch due vaccinations (next_due_date = today)
-    const { data: dueVaccinations, error: dueError } = await supabase
+    // A completed vaccination can carry the next due date. Treat it as an
+    // active reminder until a later completed vaccination supersedes it.
+    const { data: records, error: recordsError } = await supabase
         .from('vaccination_records')
         .select(`
             id,
+            batch_id,
             vaccine_name,
+            vaccination_date,
             next_due_date,
-            pig_batches (
-                batch_code,
-                owner_id
-            )
+            status,
+            pig_batches ( batch_code, owner_id )
         `)
-        .eq('next_due_date', today)
-        .eq('status', 'Scheduled');
+        .not('next_due_date', 'is', null);
+    if (recordsError) throw recordsError;
 
-    if (dueError) throw dueError;
+    const completedRecords = (records || []).filter((record) => String(record.status || '').toLowerCase() === 'completed');
+    const isSuperseded = (record) => completedRecords.some((later) => (
+        String(later.batch_id) === String(record.batch_id)
+        && String(later.vaccine_name).toLowerCase() === String(record.vaccine_name).toLowerCase()
+        && String(later.id) !== String(record.id)
+        && String(later.vaccination_date || '') > String(record.vaccination_date || '')
+    ));
+    const eligibleRecords = (records || []).filter((record) => {
+        const status = String(record.status || '').toLowerCase();
+        return ['scheduled', 'overdue', 'completed'].includes(status) && !isSuperseded(record);
+    });
+    const dueVaccinations = eligibleRecords.filter((record) => record.next_due_date === today);
+    const overdueVaccinations = eligibleRecords.filter((record) => String(record.next_due_date) < today);
+    const overdueToMark = overdueVaccinations.filter((record) => ['scheduled', 'overdue'].includes(String(record.status || '').toLowerCase()));
 
-    // 2. Fetch every scheduled/overdue vaccination whose due date has passed.
-    // Scheduled records must be included so they can transition to Overdue.
-    const { data: alreadyOverdue, error: overdueError } = await supabase
-        .from('vaccination_records')
-        .select(`
-        id,
-        vaccine_name,
-        next_due_date,
-        pig_batches ( batch_code, owner_id )
-    `)
-        .lt('next_due_date', today)
-        .in('status', ['Scheduled', 'Overdue']);
-    if (overdueError) throw overdueError;
-    const overdueVaccinations = alreadyOverdue || [];
-    // Update overdue records status to 'Overdue'
-    if (overdueVaccinations.length > 0) {
-        const overdueIds = overdueVaccinations.map(v => v.id);
+    // Preserve completed history; only scheduled records transition to Overdue.
+    if (overdueToMark.length > 0) {
+        const overdueIds = overdueToMark.map(v => v.id);
         await supabase
             .from('vaccination_records')
             .update({ status: 'Overdue' })
