@@ -588,7 +588,11 @@ export default function VaccinationScreen() {
                         new Date(item.expiry_date) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
                       let statusBadge = 'OK';
                       let statusColor = 'bg-green-100/80 border-green-300/50 text-green-700';
-                      if (isLow) {
+                      const isExpired = item.expiry_date && new Date(item.expiry_date) < new Date();
+                      if (isExpired) {
+                        statusBadge = 'Expired';
+                        statusColor = 'bg-red-100/80 border-red-300/50 text-red-700';
+                      } else if (isLow) {
                         statusBadge = 'Low Stock';
                         statusColor = 'bg-red-100/80 border-red-300/50 text-red-700';
                       } else if (isExpiringSoon) {

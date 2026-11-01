@@ -249,11 +249,20 @@ export const getUpcomingVaccinations = async (req, res) => {
 // GET vaccine stock – with proper error handling
 export const getVaccineStock = async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('vaccine_stocks')
+        let { data, error } = await supabase
+            .from('vaccine_stock_lots')
             .select('*')
             .eq('owner_id', req.user.id)
-            .order('vaccine_name');
+            .order('vaccine_name')
+            .order('expiry_date', { ascending: true, nullsFirst: false });
+
+        if (error?.code === '42P01') {
+            ({ data, error } = await supabase
+                .from('vaccine_stocks')
+                .select('*')
+                .eq('owner_id', req.user.id)
+                .order('vaccine_name'));
+        }
 
         if (error) {
             // If table doesn't exist, return empty array
@@ -341,8 +350,17 @@ export const getVaccinationOverview = async (req, res) => {
                 .select('id,batch_id,vaccine_name,vaccination_date,next_due_date,administered_by,dosage,notes,status,price_per_dose_at_usage,created_at')
                 .eq('owner_id', req.user.id)
                 .order('vaccination_date', { ascending: false })),
-            supabase.from('vaccine_stocks').select('id,vaccine_name,stock_quantity,expiry_date,price_per_dose,notes,updated_at').eq('owner_id', req.user.id).order('vaccine_name'),
+            supabase.from('vaccine_stock_lots').select('id,owner_id,vaccine_name,stock_quantity,expiry_date,price_per_dose,notes,created_at,updated_at').eq('owner_id', req.user.id).order('vaccine_name').order('expiry_date', { ascending: true, nullsFirst: false }),
         ]);
+        if (stock.error?.code === '42P01') {
+            const fallbackStock = await supabase
+                .from('vaccine_stocks')
+                .select('id,vaccine_name,stock_quantity,expiry_date,price_per_dose,notes,updated_at')
+                .eq('owner_id', req.user.id)
+                .order('vaccine_name');
+            stock.data = fallbackStock.data;
+            stock.error = fallbackStock.error;
+        }
         const failed = [stock].find((result) => result.error);
         if (failed) throw failed.error;
         res.json({ success: true, data: { batches, records, stock: stock.data || [] } });
