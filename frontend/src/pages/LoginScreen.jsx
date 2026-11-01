@@ -4,12 +4,6 @@ import { api } from '../api.js';
 import pigImage from '../assets/2e388bda-a6fa-4911-bcea-0e3aaa26ed7f-removebg-preview.webp';
 import backgroundImage from '../assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.webp';
 
-const stats = [
-  { value: '99%', label: 'Feed Efficiency' },
-  { value: '4×', label: 'Vaccines Tracked' },
-  { value: '₱0', label: 'Hidden Fees' },
-];
-
 export function LoginScreen({ onLogin }) {
   const [farmerId, setFarmerId] = useState('');
   const [password, setPassword] = useState('');
@@ -69,7 +63,7 @@ export function LoginScreen({ onLogin }) {
             <h2 className="login-erica-one text-[48px] leading-[1.38] tracking-[0.01em] text-white drop-shadow-[0_4px_0_rgba(0,0,0,0.08)] xl:text-[54px]">Feed Smart.<br /><span className="text-[#FF78A4]">Grow Fast.</span><br />Profit More.</h2>
             <p className="mt-6 max-w-[490px] text-base leading-7 text-white/85">Everything your pig farm needs — tracked,<br />scheduled, and optimized in one place.</p>
           </div>
-          <div className="flex gap-14">{stats.map(({ value, label }) => <div key={label}><p className="font-['Erica_One'] text-4xl leading-none text-white drop-shadow-sm">{value}</p><p className="mt-3 text-sm text-white/75">{label}</p></div>)}</div>
+
         </section>
 
         <section className="flex items-center justify-center px-8 py-12 xl:px-12">
