@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Package, Syringe, TrendingUp, Settings, LogOut } from 'lucide-react';
+import { Home, Package, Syringe, TrendingUp, LogOut } from 'lucide-react';
 import LoginScreen from './pages/LoginScreen.jsx';
 const DashboardScreen = lazy(() => import('./pages/DashboardScreen.jsx'));
 const FeedsInventoryScreen = lazy(() => import('./pages/FeedsInventoryScreen.jsx'));
@@ -38,7 +38,6 @@ function DesktopSidebar() {
         ))}
       </nav>
       <div className="desktop-sidebar-footer">
-        <button className={isActive(['/settings']) ? 'active' : ''} onClick={() => navigate('/settings')}><Settings size={19} /> Settings</button>
         <button className="desktop-sidebar-user" onClick={() => navigate('/settings')}>
           <span className="desktop-sidebar-avatar">AP</span>
           <span><strong>Farm manager</strong><small>Account settings</small></span>
