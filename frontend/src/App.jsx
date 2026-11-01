@@ -38,9 +38,9 @@ function DesktopSidebar() {
         ))}
       </nav>
       <div className="desktop-sidebar-footer">
-        <button className="desktop-sidebar-user" onClick={() => navigate('/settings')}>
+        <button className="desktop-sidebar-user" onClick={() => window.dispatchEvent(new CustomEvent('prepapig:logout'))}>
           <span className="desktop-sidebar-avatar">AP</span>
-          <span><strong>Farm manager</strong><small>Account settings</small></span>
+          <span><strong>Farm manager</strong><small>Log out</small></span>
           <LogOut size={17} />
         </button>
       </div>
@@ -103,9 +103,23 @@ function App() {
     };
     window.fetch = interceptedFetch;
     const handleAuthExpired = () => logoutExpiredSession();
+    const handleManualLogout = async () => {
+      try {
+        await originalFetch(`${API_BASE}/auth/logout`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+        });
+      } catch {
+        // Clear the local session even if the server is unavailable.
+      } finally {
+        logoutExpiredSession();
+      }
+    };
     window.addEventListener('prepapig:auth-expired', handleAuthExpired);
+    window.addEventListener('prepapig:logout', handleManualLogout);
     return () => {
       window.removeEventListener('prepapig:auth-expired', handleAuthExpired);
+      window.removeEventListener('prepapig:logout', handleManualLogout);
       if (window.fetch === interceptedFetch) window.fetch = originalFetch;
     };
   }, []);
