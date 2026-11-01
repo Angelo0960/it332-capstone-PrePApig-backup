@@ -600,3 +600,73 @@ textarea {
 .dashboard-theme [class*="focus:ring-green-"]:focus,
 .dashboard-theme [class*="focus:ring-pink-"]:focus { --tw-ring-color: rgba(255, 47, 114, 0.5) !important; }
 .dashboard-theme .desktop-app-content { color: var(--dashboard-ink); }
+
+@media (min-width: 1024px) {
+  .vaccination-desktop-content {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 1rem 1.1rem;
+    align-items: start;
+    padding: 0 2.4rem 2rem;
+    overflow: visible;
+  }
+
+  .vaccination-desktop-content > .vaccination-summary-cards {
+    grid-column: 1 / span 6;
+    grid-row: 1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 0;
+  }
+
+  .vaccination-summary-card {
+    width: auto !important;
+    min-height: 150px;
+    padding: 1.25rem !important;
+    border-radius: 1.5rem !important;
+  }
+
+  .vaccination-hero-number {
+    font-size: 2.25rem;
+  }
+
+  .vaccination-stock-card {
+    grid-column: 7 / span 6;
+    grid-row: 1;
+    min-height: 330px;
+    margin: 0;
+    border-radius: 1.5rem !important;
+  }
+
+  .vaccination-stock-card .divide-y > div {
+    min-height: 86px;
+  }
+
+  .vaccination-schedule-card {
+    grid-column: 1 / span 6;
+    grid-row: 2;
+    min-height: 230px;
+    margin: 0;
+    border-radius: 1.5rem !important;
+  }
+
+  .vaccination-history-card {
+    grid-column: 7 / span 6;
+    grid-row: 2 / span 2;
+    margin: 0;
+    border-radius: 1.5rem !important;
+  }
+
+  .vaccination-action-buttons {
+    display: none;
+  }
+
+  .vaccination-batch-selector > div {
+    scrollbar-width: none;
+  }
+
+  .vaccination-batch-selector > div::-webkit-scrollbar {
+    display: none;
+  }
+}
