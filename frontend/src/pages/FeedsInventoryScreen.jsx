@@ -37,7 +37,9 @@ const getFeedTypeName = (feedType) => {
     grower: 'Grower Pellet',
     finisher: 'Finisher',
   };
-  return names[feedType];
+  return names[String(feedType).toLowerCase()] || String(feedType || 'Unknown Feed')
+    .replaceAll('_', ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 };
 
 const getDaysUntilFeedChange = (day) => {
@@ -649,7 +651,7 @@ export default function FeedsInventoryScreen() {
                       className="feeds-summary-card flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg"
                     >
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-semibold text-gray-700">{feed.feed_type}</span>
+                        <span className="text-xs font-semibold text-gray-700">{getFeedTypeName(feed.feed_type)}</span>
                       </div>
                       <div className="feeds-hero-number text-4xl font-extrabold tracking-[-0.05em] text-gray-900 mb-1">
                         {feed.stock_quantity} kg
@@ -731,7 +733,7 @@ export default function FeedsInventoryScreen() {
                           }`}
                         >
                           <div className="flex-1">
-                            <div className="font-medium text-gray-900">{feed.feed_type}</div>
+                            <div className="font-medium text-gray-900">{getFeedTypeName(feed.feed_type)}</div>
                             <div className="flex items-center gap-2 mt-1">
                               <span className="text-xs text-gray-600">
                                 {feed.unit_price == null ? 'Unavailable' : `₱${Number(feed.unit_price).toFixed(2)}/kg`} ·{' '}
@@ -774,26 +776,27 @@ export default function FeedsInventoryScreen() {
                     ))
                   )}
                 </div>
-                {selectedBatch === 'all' && (
-                  <div className="feeds-consumption-history border-t border-white/20">
-                    <div className="p-4 border-b border-white/20">
-                      <h3 className="font-semibold text-gray-900">Feed Consumption History by Type</h3>
-                    </div>
-                    <div className="divide-y divide-white/20">
-                      {Object.keys(consumptionByFeedType).length === 0 ? (
-                        <div className="p-4 text-center text-gray-500 text-sm">No feed consumption records</div>
-                      ) : (
-                        Object.entries(consumptionByFeedType).map(([feedType, totalKg]) => (
-                          <div key={feedType} className="p-4 flex items-center justify-between">
-                            <div className="font-medium text-gray-900">{feedType}</div>
-                            <div className="font-bold text-orange-600">{totalKg} kg consumed</div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
+
+              {selectedBatch === 'all' && (
+                <div className="feeds-consumption-history bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg">
+                  <div className="p-4 border-b border-white/20">
+                    <h3 className="font-semibold text-gray-900">Feed Consumption History by Type</h3>
+                  </div>
+                  <div className="divide-y divide-white/20">
+                    {Object.keys(consumptionByFeedType).length === 0 ? (
+                      <div className="p-4 text-center text-gray-500 text-sm">No feed consumption records</div>
+                    ) : (
+                      Object.entries(consumptionByFeedType).map(([feedType, totalKg]) => (
+                        <div key={feedType} className="p-4 flex items-center justify-between">
+                          <div className="font-medium text-gray-900">{getFeedTypeName(feedType)}</div>
+                          <div className="font-bold text-orange-600">{totalKg} kg consumed</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="feeds-action-buttons grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
