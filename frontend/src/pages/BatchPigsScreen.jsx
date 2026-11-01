@@ -250,7 +250,7 @@ export default function BatchPigsScreen() {
         <div className="px-4 md:px-8 lg:px-12 pt-3 pb-2 flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
-            className="md:hidden w-8 h-8 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all"
+            className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all"
           >
             <ArrowLeft className="w-4 h-4 text-gray-700" />
           </button>
