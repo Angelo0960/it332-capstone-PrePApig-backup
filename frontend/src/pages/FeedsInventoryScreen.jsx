@@ -501,9 +501,9 @@ export default function FeedsInventoryScreen() {
   const filteredRecords = feedRecords;
 
   const { totalStock, totalStockValue, selectedBatchFeedRecords, totalFeedConsumed, consumptionByFeedType } = useMemo(() => {
-    const selectedRecords = selectedBatch !== 'all'
-      ? feedRecords.filter((r) => String(r.batch_id) === String(selectedBatch))
-      : [];
+    const selectedRecords = selectedBatch === 'all'
+      ? feedRecords
+      : feedRecords.filter((r) => String(r.batch_id) === String(selectedBatch));
     const byType = selectedRecords.reduce((acc, r) => {
       const type = r.feed_type;
       acc[type] = (acc[type] || 0) + (Number(r.quantity_kg) || 0);
@@ -775,6 +775,26 @@ export default function FeedsInventoryScreen() {
                   )}
                 </div>
               </div>
+
+              {selectedBatch === 'all' && (
+                <div className="feeds-consumption-history bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg">
+                  <div className="p-4 border-b border-white/20">
+                    <h3 className="font-semibold text-gray-900">Feed Consumption History by Type</h3>
+                  </div>
+                  <div className="divide-y divide-white/20">
+                    {Object.keys(consumptionByFeedType).length === 0 ? (
+                      <div className="p-4 text-center text-gray-500 text-sm">No feed consumption records</div>
+                    ) : (
+                      Object.entries(consumptionByFeedType).map(([feedType, totalKg]) => (
+                        <div key={feedType} className="p-4 flex items-center justify-between">
+                          <div className="font-medium text-gray-900">{feedType}</div>
+                          <div className="font-bold text-orange-600">{totalKg} kg consumed</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="feeds-action-buttons grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
