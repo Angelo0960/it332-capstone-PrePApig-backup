@@ -75,7 +75,7 @@ export default function AnalyticsReportsScreen() {
   const [expenseAiError, setExpenseAiError] = useState(null);
   const [pigPriceLocations, setPigPriceLocations] = useState(DEFAULT_PRICE_POINTS.map((point) => point.location));
   const [pigPriceReference, setPigPriceReference] = useState(null);
-  const [priceSources, setPriceSources] = useState([]);
+
   const [pricePoints, setPricePoints] = useState(DEFAULT_PRICE_POINTS);
   const [selectedPriceLocation, setSelectedPriceLocation] = useState(() => (
     localStorage.getItem(`prepapig:${getUserCacheKey()}:selected-price-location`) || null
@@ -200,7 +200,7 @@ export default function AnalyticsReportsScreen() {
       setPigPriceLocations(cached.priceSourceLocations || DEFAULT_PRICE_POINTS.map((point) => point.location));
       setPigPriceReference(cached.data || null);
       setPricePoints(cached.pricePoints?.length ? cached.pricePoints : DEFAULT_PRICE_POINTS);
-      setPriceSources(cached.priceSources || []);
+
       setPigPriceError(null);
     }
 
@@ -213,12 +213,12 @@ export default function AnalyticsReportsScreen() {
         priceSourceLocations: json.priceSourceLocations || [],
         data: json.data || null,
         pricePoints: json.pricePoints?.length ? json.pricePoints : DEFAULT_PRICE_POINTS,
-        priceSources: json.priceSources || [],
+
       };
       setPigPriceLocations(nextBasis.priceSourceLocations);
       setPigPriceReference(nextBasis.data);
       setPricePoints(nextBasis.pricePoints);
-      setPriceSources(nextBasis.priceSources);
+
       setPigPriceError(null);
       writeCache(cacheKey, nextBasis);
     } catch (err) {
@@ -228,7 +228,7 @@ export default function AnalyticsReportsScreen() {
         setPigPriceLocations(DEFAULT_PRICE_POINTS.map((point) => point.location));
         setPigPriceReference(null);
         setPricePoints(DEFAULT_PRICE_POINTS);
-        setPriceSources([]);
+
       }
       setPigPriceError(hasCachedBasis ? 'Using cached prices; live refresh unavailable' : 'Price sources unavailable');
     }
@@ -822,11 +822,6 @@ export default function AnalyticsReportsScreen() {
                       <span className="mt-1 block truncate text-[10px] text-gray-500">
                         {point.pricePhpPerKg == null ? point.source || 'No qualifying public Facebook result' : `${point.unit || 'PHP/kg liveweight'} · ${point.period || priceUpdatedLabel}`}
                       </span>
-                      {point.sourceUrl && point.sourceUrl !== 'unavailable' && (
-                        <a href={point.sourceUrl} target="_blank" rel="noreferrer" className="mt-1 block truncate text-[10px] text-violet-600 underline" onClick={(event) => event.stopPropagation()}>
-                          Source: {point.source || 'Open source'}
-                        </a>
-                      )}
                     </span>
                     <span className="shrink-0 text-right">
                       <span className={`block text-lg font-bold ${point.pricePhpPerKg == null ? 'text-gray-400' : 'text-gray-900'}`}>
@@ -838,18 +833,7 @@ export default function AnalyticsReportsScreen() {
                 );
               })}
             </div>
-            {priceSources.length > 0 && (
-              <div className="mt-3 border-t border-white/40 pt-2">
-                <div className="text-[10px] font-bold uppercase tracking-wide text-gray-500">Other price sources</div>
-                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
-                  {priceSources.slice(0, 8).map((source) => (
-                    <a key={source.url} href={source.url} target="_blank" rel="noreferrer" className="text-[10px] text-violet-600 underline">
-                      {source.title || source.url}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
+
             {pigPriceReference && (
               <div className="mt-3 text-[10px] text-gray-500">Provincial reference: {formatPricePerKg(pigPriceReference.pricePhpPerKg)} ({pigPriceReference.period}); not a municipality-specific quote.</div>
             )}
