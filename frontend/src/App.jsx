@@ -104,6 +104,7 @@ function App() {
     window.fetch = interceptedFetch;
     const handleAuthExpired = () => logoutExpiredSession();
     const handleManualLogout = async () => {
+      if (!window.confirm('Are you sure you want to log out?')) return;
       try {
         await originalFetch(`${API_BASE}/auth/logout`, {
           method: 'POST',
