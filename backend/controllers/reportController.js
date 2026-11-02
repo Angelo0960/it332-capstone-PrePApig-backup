@@ -25,8 +25,8 @@ export const getSoldBatchesReport = async (req, res) => {
                 .eq('owner_id', req.user.id)
                 .order('sale_date', { ascending: false })),
         ]);
-        const completedSales = sales.filter((sale) => Boolean(sale.sale_date));
-        const salesByBatch = new Map(completedSales.map((sale) => [String(sale.batch_id), sale]));
+        const recordedSales = sales.filter((sale) => Boolean(sale.batch_id));
+        const salesByBatch = new Map(recordedSales.map((sale) => [String(sale.batch_id), sale]));
         const sold = batches
             .filter((batch) => String(batch.status || '').trim().toLowerCase() === 'sold' || salesByBatch.has(String(batch.id)))
             .map((batch) => ({ ...batch, sale: salesByBatch.get(String(batch.id)) || null }));
