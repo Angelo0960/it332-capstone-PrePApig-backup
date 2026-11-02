@@ -641,7 +641,7 @@ export default function AnalyticsReportsScreen() {
     URL.revokeObjectURL(link.href);
   };
 
-  const handleDownloadProfitReport = async () => {
+  const handleDownloadProfitReport = async (batchCode = selectedBatch) => {
     try {
       const XLSXModule = await import('xlsx-js-style');
       const XLSX = XLSXModule.default || XLSXModule;
@@ -655,11 +655,11 @@ export default function AnalyticsReportsScreen() {
       const reportData = result.data || {};
       const allReportBatches = reportData.batches || [];
       const soldBatches = allReportBatches.filter((batch) => String(batch.status || '').toLowerCase() === 'sold');
-      const reportBatches = selectedBatch === 'All Batches'
+      const reportBatches = batchCode === 'All Batches'
         ? soldBatches
-        : soldBatches.filter((batch) => String(batch.batch_code) === String(selectedBatch));
+        : soldBatches.filter((batch) => String(batch.batch_code) === String(batchCode));
       if (reportBatches.length === 0) {
-        throw new Error(selectedBatch === 'All Batches'
+        throw new Error(batchCode === 'All Batches'
           ? 'No sold batch is available for the profit report.'
           : 'The selected batch is not marked as sold.');
       }
@@ -1265,11 +1265,14 @@ export default function AnalyticsReportsScreen() {
                   name: 'Profit & Loss Statement',
                   desc: 'Income vs expenses, margins',
                 },
-                {
-                  name: 'Farm Profit Report',
-                  desc: 'Batch, individual pigs, feed, vaccines, and profit (.xlsx)',
-                  xlsx: true,
-                },
+                ...batches
+                  .filter((batch) => String(batch.status || '').toLowerCase() === 'sold')
+                  .map((batch) => ({
+                    name: `${batchDisplayNames.get(String(batch.id)) || 'Batch'} Profit Report`,
+                    desc: 'Individual pigs, final weights, feed, vaccines, and profit (.xlsx)',
+                    batchCode: batch.batch_code,
+                    xlsx: true,
+                  })),
               ].map((report) => (
                 <div key={report.name} className="p-4 flex items-center justify-between">
                   <div className="flex items-start gap-3 flex-1">
@@ -1281,7 +1284,7 @@ export default function AnalyticsReportsScreen() {
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => report.xlsx ? handleDownloadProfitReport() : handleDownloadReport(report.name)}
+                      onClick={() => report.xlsx ? handleDownloadProfitReport(report.batchCode) : handleDownloadReport(report.name)}
                       className="w-8 h-8 bg-white/30 backdrop-blur-lg rounded-lg flex items-center justify-center active:scale-95 transition-transform"
                     >
                       <Download className="w-4 h-4 text-gray-700" />
