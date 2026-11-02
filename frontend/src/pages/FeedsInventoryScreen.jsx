@@ -990,8 +990,8 @@ export default function FeedsInventoryScreen() {
                               </div>
                             )}
                           </div>
-                          <span className="px-2 py-1 bg-green-100/80 border border-green-300/50 rounded-full text-xs text-green-700 font-semibold">
-                            {record.batch_id}
+                          <span className="max-w-[45%] truncate whitespace-nowrap px-2 py-1 bg-green-100/80 border border-green-300/50 rounded-full text-xs text-green-700 font-semibold" title={record.batch_name || getBatchName(record.batch_id)}>
+                            {record.batch_name || getBatchName(record.batch_id)}
                           </span>
                         </div>
                       </div>
