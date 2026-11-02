@@ -66,7 +66,7 @@ export default function VaccinationScreen() {
   const [showRecordVaccination, setShowRecordVaccination] = useState(false);
   const [showRestockVaccine, setShowRestockVaccine] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState('all');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   // Data
@@ -197,16 +197,12 @@ export default function VaccinationScreen() {
   };
 
   const fetchVaccinationOverview = async () => {
+    setLoading(true);
     const userKey = getUserCacheKey();
     const cachedBatches = readCache(`batches:${userKey}`);
     const cachedRecords = readCache(`vaccination-records:${userKey}:all`);
     const cachedStock = readCache(`vaccine-stock:${userKey}`);
-    const hasCachedOverview = Array.isArray(cachedBatches) || Array.isArray(cachedRecords) || Array.isArray(cachedStock);
-
-    if (Array.isArray(cachedBatches)) setBatches(cachedBatches);
-    if (Array.isArray(cachedRecords)) setVaccinationRecords(cachedRecords);
     if (Array.isArray(cachedStock)) setVaccineStock(cachedStock);
-    if (hasCachedOverview) setLoading(false);
 
     try {
       const res = await fetch(`${API_BASE}/vaccinations/overview`, { headers: getAuthHeaders() });
@@ -251,7 +247,7 @@ export default function VaccinationScreen() {
   }, []);
 
   useEffect(() => {
-    fetchVaccinations();
+    if (selectedBatch !== 'all') fetchVaccinations();
   }, [selectedBatch]);
 
   // Save vaccination (used by both modal and direct marking)
