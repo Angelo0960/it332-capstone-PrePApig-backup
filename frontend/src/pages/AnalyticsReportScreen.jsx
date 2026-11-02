@@ -653,8 +653,17 @@ export default function AnalyticsReportsScreen() {
       if (!response.ok || !result.success) throw new Error(result.message || 'Unable to load report data');
 
       const reportData = result.data || {};
-      const reportBatches = reportData.batches || [];
-      const displayNames = buildBatchDisplayNames(reportBatches);
+      const allReportBatches = reportData.batches || [];
+      const soldBatches = allReportBatches.filter((batch) => String(batch.status || '').toLowerCase() === 'sold');
+      const reportBatches = selectedBatch === 'All Batches'
+        ? soldBatches
+        : soldBatches.filter((batch) => String(batch.batch_code) === String(selectedBatch));
+      if (reportBatches.length === 0) {
+        throw new Error(selectedBatch === 'All Batches'
+          ? 'No sold batch is available for the profit report.'
+          : 'The selected batch is not marked as sold.');
+      }
+      const displayNames = buildBatchDisplayNames(allReportBatches);
       const pigsByBatch = await Promise.all(reportBatches.map(async (batch) => {
         const pigResponse = await fetch(`${API_BASE}/pigs/batch/${batch.id}/pigs`, { headers: getAuthHeaders(), cache: 'no-store' });
         const pigResult = await pigResponse.json();
