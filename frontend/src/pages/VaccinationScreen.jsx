@@ -202,7 +202,11 @@ export default function VaccinationScreen() {
     const cachedBatches = readCache(`batches:${userKey}`);
     const cachedRecords = readCache(`vaccination-records:${userKey}:all`);
     const cachedStock = readCache(`vaccine-stock:${userKey}`);
+    if (Array.isArray(cachedBatches)) setBatches(cachedBatches);
+    if (Array.isArray(cachedRecords)) setVaccinationRecords(cachedRecords);
     if (Array.isArray(cachedStock)) setVaccineStock(cachedStock);
+    const hasCachedOverview = Array.isArray(cachedBatches) || Array.isArray(cachedRecords) || Array.isArray(cachedStock);
+    if (hasCachedOverview) setLoading(false);
 
     try {
       const res = await fetch(`${API_BASE}/vaccinations/overview`, { headers: getAuthHeaders() });
