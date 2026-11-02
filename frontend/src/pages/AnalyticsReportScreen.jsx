@@ -148,7 +148,7 @@ export default function AnalyticsReportsScreen() {
       const soldResponse = await fetch(`${API_BASE}/reports/sold-batches`, { headers: getAuthHeaders(), signal, cache: 'no-store' });
       const soldJson = await soldResponse.json();
       const completedSaleIds = new Set((salesJson.data || [])
-        .filter((sale) => sale.sale_date && sale.revenue !== null && sale.revenue !== undefined)
+        .filter((sale) => Boolean(sale.sale_date))
         .map((sale) => String(sale.batch_id)));
       const fallbackSoldBatches = latestBatches.filter((batch) => String(batch.status || '').trim().toLowerCase() === 'sold' || completedSaleIds.has(String(batch.id)));
       const endpointSoldBatches = soldResponse.ok && soldJson.success ? soldJson.data || [] : [];
