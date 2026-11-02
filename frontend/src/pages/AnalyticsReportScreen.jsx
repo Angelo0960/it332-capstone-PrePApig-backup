@@ -151,7 +151,9 @@ export default function AnalyticsReportsScreen() {
         .filter((sale) => sale.sale_date && sale.revenue !== null && sale.revenue !== undefined)
         .map((sale) => String(sale.batch_id)));
       const fallbackSoldBatches = latestBatches.filter((batch) => String(batch.status || '').trim().toLowerCase() === 'sold' || completedSaleIds.has(String(batch.id)));
-      setSoldReportBatches(soldResponse.ok && soldJson.success ? soldJson.data || [] : fallbackSoldBatches);
+      const endpointSoldBatches = soldResponse.ok && soldJson.success ? soldJson.data || [] : [];
+      const soldById = new Map([...endpointSoldBatches, ...fallbackSoldBatches].map((batch) => [String(batch.id), batch]));
+      setSoldReportBatches([...soldById.values()]);
       setBatches(latestBatches);
       setSales(salesJson.data || []);
       setFeedRecords(data.feedRecords || []);
