@@ -67,6 +67,7 @@ export default function VaccinationScreen() {
   const [showRestockVaccine, setShowRestockVaccine] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
   // Data
@@ -197,6 +198,7 @@ export default function VaccinationScreen() {
   };
 
   const fetchVaccinationOverview = async () => {
+    setIsRefreshing(true);
     setLoading(true);
     const userKey = getUserCacheKey();
     const cachedBatches = readCache(`batches:${userKey}`);
@@ -239,8 +241,10 @@ export default function VaccinationScreen() {
       writeCache(`vaccination-records:${userKey}:all`, overview.records || []);
       writeCache(`vaccine-stock:${userKey}`, overview.stock || []);
       setLoading(false);
+      setIsRefreshing(false);
     } catch (err) {
       console.warn('Could not fetch vaccination overview:', err.message);
+      setIsRefreshing(false);
       void Promise.all([fetchBatches(), fetchVaccineStock(), fetchVaccinations()]);
     }
   };
@@ -439,6 +443,11 @@ export default function VaccinationScreen() {
 
   return (
     <div className="dashboard-theme mobile-screen-shell min-h-screen w-full relative overflow-hidden flex flex-col">
+      {isRefreshing && !loading && (
+        <div className="absolute left-0 right-0 top-0 z-[60] h-1 overflow-hidden bg-white/25">
+          <div className="h-full w-1/3 animate-pulse bg-emerald-400/80" />
+        </div>
+      )}
       {loading && (
         <div className="absolute inset-0 z-50 p-4 md:p-8 bg-[#EDF3EF]/55 backdrop-blur-[2px] animate-pulse pointer-events-none">
           <div className="h-8 w-56 rounded bg-white/50 mb-5" />
