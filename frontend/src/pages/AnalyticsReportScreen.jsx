@@ -1321,7 +1321,20 @@ export default function AnalyticsReportsScreen() {
               <h3 className="font-semibold text-gray-900">Generate Reports</h3>
             </div>
             <div className="divide-y divide-white/20">
-              {[
+              {loading ? (
+                Array.from({ length: 3 }).map((_, index) => (
+                  <div key={`report-skeleton-${index}`} className="p-4 flex items-center justify-between animate-pulse">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className="w-5 h-5 rounded bg-white/40" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 w-40 rounded bg-white/50" />
+                        <div className="h-3 w-64 max-w-full rounded bg-white/40" />
+                      </div>
+                    </div>
+                    <div className="w-8 h-8 rounded-lg bg-white/40" />
+                  </div>
+                ))
+              ) : [
                 ...profitReportItems,
               ].map((report) => (
                 <div key={report.name} className="p-4 flex items-center justify-between">
