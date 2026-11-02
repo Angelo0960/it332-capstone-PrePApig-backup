@@ -772,6 +772,23 @@ export default function AnalyticsReportsScreen() {
     window.print();
   };
 
+  const soldBatchReportItems = batches
+    .filter((batch) => String(batch.status || '').toLowerCase() === 'sold')
+    .map((batch) => ({
+      name: `${batchDisplayNames.get(String(batch.id)) || 'Batch'} Profit Report`,
+      desc: 'Individual pigs, final weights, feed, vaccines, and profit (.xlsx)',
+      batchCode: batch.batch_code,
+      xlsx: true,
+    }));
+  const profitReportItems = soldBatchReportItems.length > 0
+    ? soldBatchReportItems
+    : [{
+        name: selectedBatch === 'All Batches' ? 'Batch-XX Profit Report' : `${selectedBatchLabel} Profit Report`,
+        desc: 'Available after the selected batch is marked as sold',
+        batchCode: selectedBatch,
+        xlsx: true,
+      }];
+
   return (
     <div className="dashboard-theme mobile-screen-shell w-full relative overflow-hidden flex flex-col">
       <div className="absolute inset-0">
@@ -1265,14 +1282,7 @@ export default function AnalyticsReportsScreen() {
                   name: 'Profit & Loss Statement',
                   desc: 'Income vs expenses, margins',
                 },
-                ...batches
-                  .filter((batch) => String(batch.status || '').toLowerCase() === 'sold')
-                  .map((batch) => ({
-                    name: `${batchDisplayNames.get(String(batch.id)) || 'Batch'} Profit Report`,
-                    desc: 'Individual pigs, final weights, feed, vaccines, and profit (.xlsx)',
-                    batchCode: batch.batch_code,
-                    xlsx: true,
-                  })),
+                ...profitReportItems,
               ].map((report) => (
                 <div key={report.name} className="p-4 flex items-center justify-between">
                   <div className="flex items-start gap-3 flex-1">
