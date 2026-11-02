@@ -539,6 +539,16 @@ export default function FeedsInventoryScreen() {
 
   return (
     <div className="dashboard-theme mobile-screen-shell min-h-screen w-full relative overflow-hidden flex flex-col">
+      {loading && (
+        <div className="absolute inset-0 z-50 p-4 md:p-8 bg-[#EDF3EF]/55 backdrop-blur-[2px] animate-pulse pointer-events-none">
+          <div className="h-8 w-48 rounded bg-white/50 mb-5" />
+          <div className="h-16 rounded-2xl bg-white/45 border border-white/50 mb-4" />
+          <div className="flex gap-3 mb-4"><div className="h-12 w-28 rounded-xl bg-white/45" /><div className="h-12 w-28 rounded-xl bg-white/45" /><div className="h-12 w-28 rounded-xl bg-white/45" /></div>
+          <div className="flex gap-3 overflow-hidden mb-4"><div className="h-36 w-64 shrink-0 rounded-2xl bg-white/45" /><div className="h-36 w-64 shrink-0 rounded-2xl bg-white/45" /><div className="h-36 w-64 shrink-0 rounded-2xl bg-white/45" /></div>
+          <div className="h-56 rounded-2xl bg-white/45 mb-4" />
+          <div className="h-48 rounded-2xl bg-white/45" />
+        </div>
+      )}
       <div className="absolute inset-0">
         <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover saturate-[0.65] brightness-[0.9] blur-[2px]" />
       </div>
