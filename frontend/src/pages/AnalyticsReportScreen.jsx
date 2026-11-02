@@ -137,10 +137,14 @@ export default function AnalyticsReportsScreen() {
       const json = await response.json();
       if (!json.success) throw new Error(json.message || 'Failed to load analytics');
       const data = json.data || {};
+      const batchesResponse = await fetch(`${API_BASE}/pigs/all?all=true`, { headers: getAuthHeaders(), signal, cache: 'no-store' });
+      const batchesJson = await batchesResponse.json();
+      if (!batchesResponse.ok || !batchesJson.success) throw new Error(batchesJson.message || 'Failed to load batches');
+      const latestBatches = batchesJson.data || [];
       const salesResponse = await fetch(`${API_BASE}/sales`, { headers: getAuthHeaders(), signal, cache: 'no-store' });
       const salesJson = await salesResponse.json();
       if (!salesResponse.ok || !salesJson.success) throw new Error(salesJson.message || 'Failed to load sales');
-      setBatches(data.batches || []);
+      setBatches(latestBatches);
       setSales(salesJson.data || []);
       setFeedRecords(data.feedRecords || []);
       setVaccinationRecords(data.vaccinationRecords || []);
@@ -674,7 +678,10 @@ export default function AnalyticsReportsScreen() {
       if (!response.ok || !result.success) throw new Error(result.message || 'Unable to load report data');
 
       const reportData = result.data || {};
-      const allReportBatches = reportData.batches || [];
+      const batchesResponse = await fetch(`${API_BASE}/pigs/all?all=true`, { headers: getAuthHeaders(), cache: 'no-store' });
+      const batchesJson = await batchesResponse.json();
+      if (!batchesResponse.ok || !batchesJson.success) throw new Error(batchesJson.message || 'Unable to load batch records');
+      const allReportBatches = batchesJson.data || reportData.batches || [];
       const salesResponse = await fetch(`${API_BASE}/sales`, {
         headers: getAuthHeaders(),
         cache: 'no-store',
