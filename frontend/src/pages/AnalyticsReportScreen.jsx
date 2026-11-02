@@ -676,6 +676,11 @@ export default function AnalyticsReportsScreen() {
           : 'The selected batch is not marked as sold.');
       }
       const displayNames = buildBatchDisplayNames(allReportBatches);
+      const reportBatchName = (batch) => {
+        const code = String(batch?.batch_code || '').trim();
+        if (/^batch-\d+$/i.test(code)) return `Batch-${code.split('-')[1].padStart(2, '0')}`;
+        return displayNames.get(String(batch?.id)) || 'Batch-XX';
+      };
       const pigsByBatch = await Promise.all(reportBatches.map(async (batch) => {
         const pigResponse = await fetch(`${API_BASE}/pigs/batch/${batch.id}/pigs`, { headers: getAuthHeaders(), cache: 'no-store' });
         const pigResult = await pigResponse.json();
@@ -727,7 +732,7 @@ export default function AnalyticsReportsScreen() {
           const totalCost = feed.cost + vaccine.cost + (index === 0 ? otherExpenses : 0);
           const totalProfit = revenue - totalCost;
           rows.push([
-            displayNames.get(String(batch.id)) || `Batch-${String(rows.length).padStart(2, '0')}`,
+            reportBatchName(batch),
             pig.id ? `Pig-${String(pig.id).slice(0, 8)}` : '',
             batch.breed || '',
             sale && sale.sale_date ? sale.sale_date : (batch.updated_at || batch.created_at || ''),
@@ -777,7 +782,7 @@ export default function AnalyticsReportsScreen() {
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, sheet, 'Farm Profit Report');
       const reportFileName = reportBatches.length === 1
-        ? `${displayNames.get(String(reportBatches[0].id)) || 'Batch-XX'} Profit Report.xlsx`
+        ? `${reportBatchName(reportBatches[0])} Profit Report.xlsx`
         : 'Sold Batches Profit Report.xlsx';
       XLSX.writeFile(workbook, reportFileName);
     } catch (err) {
@@ -793,7 +798,7 @@ export default function AnalyticsReportsScreen() {
   const soldBatchReportItems = batches
     .filter((batch) => String(batch.status || '').toLowerCase() === 'sold' || recordedSaleBatchIds.has(String(batch.id)))
     .map((batch) => ({
-      name: `${batchDisplayNames.get(String(batch.id)) || 'Batch'} Profit Report`,
+      name: `${/^batch-\d+$/i.test(String(batch.batch_code || '')) ? `Batch-${String(batch.batch_code).split('-')[1].padStart(2, '0')}` : batchDisplayNames.get(String(batch.id)) || 'Batch-XX'} Profit Report`,
       desc: 'Individual pigs, final weights, feed, vaccines, and profit (.xlsx)',
       batchCode: batch.batch_code,
       xlsx: true,
