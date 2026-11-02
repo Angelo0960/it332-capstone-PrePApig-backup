@@ -75,6 +75,15 @@ export const saveSale = async (req, res) => {
         }
 
         if (!data) return res.status(404).json({ success: false, message: 'Harvest/sale not found' });
+        const completedSale = record.sale_date !== null && record.revenue !== null;
+        if (completedSale && !delete_batch) {
+            const { error: closeError } = await supabase
+                .from('pig_batches')
+                .update({ status: 'Sold' })
+                .eq('owner_id', req.user.id)
+                .eq('id', batch_id);
+            if (closeError) throw closeError;
+        }
         res.status(req.params.id ? 200 : 201).json({
             success: true,
             data,
