@@ -138,18 +138,22 @@ export default function AnalyticsReportsScreen() {
       const json = await response.json();
       if (!json.success) throw new Error(json.message || 'Failed to load analytics');
       const data = json.data || {};
-      const batchesResponse = await fetch(`${API_BASE}/pigs/all?all=true`, { headers: getAuthHeaders(), signal, cache: 'no-store' });
-      const batchesJson = await batchesResponse.json();
+      const [batchesResponse, salesResponse, soldResponse] = await Promise.all([
+        fetch(`${API_BASE}/pigs/all?all=true`, { headers: getAuthHeaders(), signal, cache: 'no-store' }),
+        fetch(`${API_BASE}/sales`, { headers: getAuthHeaders(), signal, cache: 'no-store' }),
+        fetch(`${API_BASE}/reports/sold-batches`, { headers: getAuthHeaders(), signal, cache: 'no-store' }),
+      ]);
+      const [batchesJson, salesJson, soldJson] = await Promise.all([
+        batchesResponse.json(),
+        salesResponse.json(),
+        soldResponse.json(),
+      ]);
       if (!batchesResponse.ok || !batchesJson.success) throw new Error(batchesJson.message || 'Failed to load batches');
-      const latestBatches = batchesJson.data || [];
-      const salesResponse = await fetch(`${API_BASE}/sales`, { headers: getAuthHeaders(), signal, cache: 'no-store' });
-      const salesJson = await salesResponse.json();
       if (!salesResponse.ok || !salesJson.success) throw new Error(salesJson.message || 'Failed to load sales');
-      const soldResponse = await fetch(`${API_BASE}/reports/sold-batches`, { headers: getAuthHeaders(), signal, cache: 'no-store' });
-      const soldJson = await soldResponse.json();
       const recordedSaleIds = new Set((salesJson.data || [])
         .filter((sale) => Boolean(sale.batch_id))
         .map((sale) => String(sale.batch_id)));
+      const latestBatches = batchesJson.data || [];
       const fallbackSoldBatches = latestBatches.filter((batch) => String(batch.status || '').trim().toLowerCase() === 'sold' || recordedSaleIds.has(String(batch.id)));
       const endpointSoldBatches = soldResponse.ok && soldJson.success ? soldJson.data || [] : [];
       const soldById = new Map([...endpointSoldBatches, ...fallbackSoldBatches].map((batch) => [String(batch.id), batch]));
