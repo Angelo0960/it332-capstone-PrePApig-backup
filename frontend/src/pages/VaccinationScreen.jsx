@@ -799,22 +799,6 @@ export default function VaccinationScreen() {
                     })}
                 </div>
 
-                <div className="mt-4 p-3 bg-blue-50/40 rounded-xl border border-blue-200/50">
-                  <div className="flex items-start gap-2">
-                    <div className="text-blue-600 text-sm">ℹ️</div>
-                    <div className="flex-1">
-                      <p className="text-xs text-blue-900 font-medium">
-                        Standard vaccination schedule:
-                      </p>
-                      <ul className="text-xs text-blue-800 mt-1 space-y-0.5 ml-2">
-                        <li>• Days 7-10: Swine Fever</li>
-                        <li>• Days 14-21: E. Coli</li>
-                        <li>• Days 28-35: PRRS</li>
-                        <li>• Days 42-49: Porcine Circovirus</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               {/* Vaccination History */}
