@@ -23,11 +23,10 @@ export const getSoldBatchesReport = async (req, res) => {
             collectPages(() => supabase.from('harvest_sales')
                 .select('id,batch_id,harvest_date,pig_count,total_weight_kg,sale_date,revenue,buyer,notes,created_at')
                 .eq('owner_id', req.user.id)
-                .not('sale_date', 'is', null)
-                .not('revenue', 'is', null)
                 .order('sale_date', { ascending: false })),
         ]);
-        const salesByBatch = new Map(sales.map((sale) => [String(sale.batch_id), sale]));
+        const completedSales = sales.filter((sale) => sale.sale_date && sale.revenue !== null && sale.revenue !== undefined);
+        const salesByBatch = new Map(completedSales.map((sale) => [String(sale.batch_id), sale]));
         const sold = batches
             .filter((batch) => String(batch.status || '').trim().toLowerCase() === 'sold' || salesByBatch.has(String(batch.id)))
             .map((batch) => ({ ...batch, sale: salesByBatch.get(String(batch.id)) || null }));
