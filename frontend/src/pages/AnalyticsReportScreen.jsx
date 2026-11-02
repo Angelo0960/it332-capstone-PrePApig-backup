@@ -688,8 +688,10 @@ export default function AnalyticsReportsScreen() {
       });
       const salesResult = await salesResponse.json();
       if (!salesResponse.ok || !salesResult.success) throw new Error(salesResult.message || 'Unable to load sale data');
-      const salesByBatch = new Map((salesResult.data || []).map((sale) => [String(sale.batch_id), sale]));
-      const soldBatches = allReportBatches.filter((batch) => String(batch.status || '').toLowerCase() === 'sold' || salesByBatch.has(String(batch.id)));
+      const salesByBatch = new Map((salesResult.data || [])
+        .filter((sale) => sale.sale_date && sale.revenue !== null && sale.revenue !== undefined)
+        .map((sale) => [String(sale.batch_id), sale]));
+      const soldBatches = allReportBatches.filter((batch) => String(batch.status || '').trim().toLowerCase() === 'sold' || salesByBatch.has(String(batch.id)));
       const reportBatches = batchCode === 'All Batches'
         ? soldBatches
         : soldBatches.filter((batch) => String(batch.batch_code) === String(batchCode));
@@ -817,9 +819,11 @@ export default function AnalyticsReportsScreen() {
     window.print();
   };
 
-  const recordedSaleBatchIds = new Set(sales.map((sale) => String(sale.batch_id)));
+  const recordedSaleBatchIds = new Set(sales
+    .filter((sale) => sale.sale_date && sale.revenue !== null && sale.revenue !== undefined)
+    .map((sale) => String(sale.batch_id)));
   const soldBatchReportItems = batches
-    .filter((batch) => String(batch.status || '').toLowerCase() === 'sold' || recordedSaleBatchIds.has(String(batch.id)))
+    .filter((batch) => String(batch.status || '').trim().toLowerCase() === 'sold' || recordedSaleBatchIds.has(String(batch.id)))
     .map((batch) => ({
       name: `${/^batch-\d+$/i.test(String(batch.batch_code || '')) ? `Batch-${String(batch.batch_code).split('-')[1].padStart(2, '0')}` : batchDisplayNames.get(String(batch.id)) || 'Batch-XX'} Profit Report`,
       desc: 'Individual pigs, final weights, feed, vaccines, and profit (.xlsx)',
