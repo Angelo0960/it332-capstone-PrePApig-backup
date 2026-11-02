@@ -359,6 +359,21 @@ export default function AnalyticsReportsScreen() {
   }, [dateRange]);
 
   useEffect(() => {
+    const refreshReportsWhenVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      const controller = new AbortController();
+      void fetchAllData(controller.signal);
+      window.setTimeout(() => controller.abort(), 15000);
+    };
+    window.addEventListener('visibilitychange', refreshReportsWhenVisible);
+    window.addEventListener('focus', refreshReportsWhenVisible);
+    return () => {
+      window.removeEventListener('visibilitychange', refreshReportsWhenVisible);
+      window.removeEventListener('focus', refreshReportsWhenVisible);
+    };
+  }, [dateRange]);
+
+  useEffect(() => {
     const controller = new AbortController();
     void fetchFeedForecast(controller.signal);
     return () => controller.abort();
