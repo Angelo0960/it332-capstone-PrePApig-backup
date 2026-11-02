@@ -147,8 +147,11 @@ export default function AnalyticsReportsScreen() {
       if (!salesResponse.ok || !salesJson.success) throw new Error(salesJson.message || 'Failed to load sales');
       const soldResponse = await fetch(`${API_BASE}/reports/sold-batches`, { headers: getAuthHeaders(), signal, cache: 'no-store' });
       const soldJson = await soldResponse.json();
-      if (!soldResponse.ok || !soldJson.success) throw new Error(soldJson.message || 'Failed to load sold reports');
-      setSoldReportBatches(soldJson.data || []);
+      const completedSaleIds = new Set((salesJson.data || [])
+        .filter((sale) => sale.sale_date && sale.revenue !== null && sale.revenue !== undefined)
+        .map((sale) => String(sale.batch_id)));
+      const fallbackSoldBatches = latestBatches.filter((batch) => String(batch.status || '').trim().toLowerCase() === 'sold' || completedSaleIds.has(String(batch.id)));
+      setSoldReportBatches(soldResponse.ok && soldJson.success ? soldJson.data || [] : fallbackSoldBatches);
       setBatches(latestBatches);
       setSales(salesJson.data || []);
       setFeedRecords(data.feedRecords || []);
