@@ -432,10 +432,10 @@ export default function VaccinationScreen() {
   const filteredRecords = vaccinationRecords;
   const scheduleBatches = batches;
 
-  const { totalDoses, uniqueVaccines } = useMemo(() => ({
-    totalDoses: vaccinationRecords.reduce((sum, r) => sum + (Number(r.dosage) || 0), 0),
-    uniqueVaccines: new Set(vaccinationRecords.map((r) => r.vaccine_name?.trim()).filter(Boolean)).size,
-  }), [vaccinationRecords]);
+  const totalDoses = useMemo(
+    () => vaccinationRecords.reduce((sum, r) => sum + (Number(r.dosage) || 0), 0),
+    [vaccinationRecords]
+  );
 
   return (
     <div className="dashboard-theme mobile-screen-shell min-h-screen w-full relative overflow-hidden flex flex-col">
@@ -519,18 +519,6 @@ export default function VaccinationScreen() {
                   </div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">
                     {isNaN(totalDoses) ? 0 : totalDoses} doses
-                  </div>
-                  <div className="text-xs text-gray-600">Across {uniqueVaccines} vaccine types</div>
-                  <div className="mt-2 hidden md:block">
-                    {totalDoses === 0 ? (
-                      <span className="px-2 py-1 bg-gray-100/80 border border-gray-300/50 rounded-full text-xs text-gray-700 font-semibold">
-                        No records
-                      </span>
-                    ) : (
-                      <span className="px-2 py-1 bg-green-100/80 border border-green-300/50 rounded-full text-xs text-green-700 font-semibold">
-                        {totalDoses} doses
-                      </span>
-                    )}
                   </div>
                 </div>
 
