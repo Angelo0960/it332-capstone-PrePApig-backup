@@ -115,7 +115,7 @@ export default function AnalyticsReportsScreen() {
   // ---------- Fetch all data in one response ----------
   const fetchAllData = async (signal) => {
     const cacheKey = `analytics:${getUserCacheKey()}:${dateRange}`;
-    const cached = readCache(cacheKey);
+    const cached = null; // Reports must always reflect the latest sold-batch records.
     if (cached && typeof cached === 'object') {
       setBatches(cached.batches || []);
       setFeedRecords(cached.feedRecords || []);
@@ -131,6 +131,7 @@ export default function AnalyticsReportsScreen() {
       const response = await fetch(`${API_BASE}/reports/analytics?${getDateQuery()}`, {
         headers: getAuthHeaders(),
         signal,
+        cache: 'no-store',
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const json = await response.json();
