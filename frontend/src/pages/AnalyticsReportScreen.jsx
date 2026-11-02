@@ -641,6 +641,121 @@ export default function AnalyticsReportsScreen() {
     URL.revokeObjectURL(link.href);
   };
 
+  const handleDownloadProfitReport = async () => {
+    try {
+      const XLSXModule = await import('xlsx-js-style');
+      const XLSX = XLSXModule.default || XLSXModule;
+      const response = await fetch(`${API_BASE}/reports/analytics?from=1900-01-01&to=2999-12-31`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store',
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || 'Unable to load report data');
+
+      const reportData = result.data || {};
+      const reportBatches = reportData.batches || [];
+      const displayNames = buildBatchDisplayNames(reportBatches);
+      const pigsByBatch = await Promise.all(reportBatches.map(async (batch) => {
+        const pigResponse = await fetch(`${API_BASE}/pigs/batch/${batch.id}/pigs`, { headers: getAuthHeaders(), cache: 'no-store' });
+        const pigResult = await pigResponse.json();
+        return [batch.id, pigResponse.ok && pigResult.success ? pigResult.data || [] : []];
+      }));
+      const pigMap = new Map(pigsByBatch);
+      const feedByBatch = new Map();
+      (reportData.feedRecords || []).forEach((record) => {
+        const current = feedByBatch.get(record.batch_id) || { kg: 0, cost: 0 };
+        const quantity = Number(record.quantity_kg) || 0;
+        const price = Number(record.unit_price_at_usage);
+        current.kg += quantity;
+        if (Number.isFinite(price) && price >= 0) current.cost += quantity * price;
+        feedByBatch.set(record.batch_id, current);
+      });
+      const vaccineByBatch = new Map();
+      (reportData.vaccinationRecords || []).forEach((record) => {
+        if (String(record.status || '').toLowerCase() !== 'completed') return;
+        const current = vaccineByBatch.get(record.batch_id) || { dosage: 0, cost: 0, names: [] };
+        const dosage = Number(record.dosage) || 0;
+        const price = Number(record.price_per_dose_at_usage);
+        current.dosage += dosage;
+        if (record.vaccine_name && !current.names.includes(record.vaccine_name)) current.names.push(record.vaccine_name);
+        if (Number.isFinite(price) && price >= 0) current.cost += dosage * price;
+        vaccineByBatch.set(record.batch_id, current);
+      });
+      const expensesByBatch = new Map();
+      (reportData.expenses || []).forEach((expense) => {
+        const current = expensesByBatch.get(expense.batch_id) || 0;
+        expensesByBatch.set(expense.batch_id, current + (Number(expense.amount) || 0));
+      });
+      const headers = ['Batch Name', 'Individual Pig', 'Breed', 'Sale Date', 'Final Weight (kg)', 'Sale Price per kg', 'Sales Revenue', 'Feed Consumed (bags)', 'Feed Cost', 'Vaccine Name', 'Vaccine Dosage', 'Vaccine Cost', 'Other Recorded Expenses', 'Total Cost', 'Total Profit', 'Profit Margin'];
+      const rows = [['PrepAPig Farm Profit Report'], [], headers];
+      reportBatches.forEach((batch) => {
+        const pigs = pigMap.get(batch.id) || [];
+        const pigRows = pigs.length > 0 ? pigs : [{ id: '', weight: batch.current_weight }];
+        const feed = feedByBatch.get(batch.id) || { kg: 0, cost: 0 };
+        const vaccine = vaccineByBatch.get(batch.id) || { dosage: 0, cost: 0, names: [] };
+        const otherExpenses = expensesByBatch.get(batch.id) || 0;
+        const salePrice = Number(batch.sale_price_per_kg);
+        pigRows.forEach((pig, index) => {
+          const finalWeight = Number(pig.weight ?? batch.current_weight);
+          const revenue = Number.isFinite(salePrice) && salePrice > 0 && Number.isFinite(finalWeight) ? finalWeight * salePrice : 0;
+          const totalCost = feed.cost + vaccine.cost + (index === 0 ? otherExpenses : 0);
+          const totalProfit = revenue - totalCost;
+          rows.push([
+            displayNames.get(String(batch.id)) || `Batch-${String(rows.length).padStart(2, '0')}`,
+            pig.id ? `Pig-${String(pig.id).slice(0, 8)}` : '',
+            batch.breed || '',
+            batch.status?.toLowerCase() === 'sold' ? (batch.updated_at || batch.created_at || '') : '',
+            Number.isFinite(finalWeight) ? finalWeight : '',
+            salePrice > 0 ? salePrice : '',
+            revenue || '',
+            feed.kg > 0 ? feed.kg / 50 : '',
+            feed.cost || '',
+            vaccine.names.join(', '),
+            vaccine.dosage || '',
+            vaccine.cost || '',
+            index === 0 ? otherExpenses : '',
+            totalCost || '',
+            revenue || totalCost ? totalProfit : '',
+            revenue > 0 ? totalProfit / revenue : '',
+          ]);
+        });
+      });
+      const totalRow = ['TOTALS', '', '', '', 0, 0, 0, 0, 0, '', 0, 0, 0, 0, 0, 0];
+      rows.slice(3).forEach((row) => {
+        [4, 5, 6, 7, 8, 10, 11, 12, 13, 14].forEach((index) => { totalRow[index] += Number(row[index]) || 0; });
+      });
+      totalRow[15] = totalRow[6] > 0 ? totalRow[14] / totalRow[6] : 0;
+      rows.push(totalRow);
+
+      const sheet = XLSX.utils.aoa_to_sheet(rows);
+      sheet['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } }];
+      sheet['A1'] = { v: 'PrepAPig Farm Profit Report', t: 's' };
+      sheet['!freeze'] = { xSplit: 0, ySplit: 3 };
+      sheet['!autofilter'] = { ref: `A3:P${rows.length}` };
+      sheet['!cols'] = [18, 18, 16, 12, 16, 16, 16, 18, 16, 24, 16, 16, 20, 16, 16, 14].map((wch) => ({ wch }));
+      const border = { top: { style: 'thin', color: { rgb: 'B7B7B7' } }, bottom: { style: 'thin', color: { rgb: 'B7B7B7' } }, left: { style: 'thin', color: { rgb: 'B7B7B7' } }, right: { style: 'thin', color: { rgb: 'B7B7B7' } } };
+      for (let row = 0; row < rows.length; row += 1) {
+        for (let col = 0; col < headers.length; col += 1) {
+          const cell = sheet[XLSX.utils.encode_cell({ r: row, c: col })];
+          if (!cell) continue;
+          cell.s = { ...(cell.s || {}), border, alignment: { vertical: 'center', horizontal: row < 3 ? 'center' : [4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15].includes(col) ? 'right' : 'left' } };
+          if (row === 0) cell.s = { ...cell.s, font: { bold: true, sz: 14 }, alignment: { vertical: 'center', horizontal: 'center' } };
+          if (row === 2) cell.s = { ...cell.s, font: { bold: true, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '1F4E78' } } };
+          if (row > 2 && row < rows.length - 1 && row % 2 === 0) cell.s = { ...cell.s, fill: { fgColor: { rgb: 'F2F2F2' } } };
+          if (row === rows.length - 1) cell.s = { ...cell.s, font: { bold: true }, border: { ...border, top: { style: 'medium', color: { rgb: '555555' } } } };
+          if ([5, 6, 8, 11, 12, 13, 14].includes(col)) cell.z = '₱#,##0.00;[Red]-₱#,##0.00';
+          if (col === 15) cell.z = '0.0%';
+          if (col === 3 && row > 2) cell.z = 'mm/dd/yyyy';
+        }
+      }
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, sheet, 'Farm Profit Report');
+      XLSX.writeFile(workbook, 'PrepAPig_Farm_Profit_Report.xlsx');
+    } catch (err) {
+      setError(err.message || 'Unable to generate the farm profit report');
+    }
+  };
+
   const handleHeaderDownload = () => {
     window.print();
   };
@@ -1138,6 +1253,11 @@ export default function AnalyticsReportsScreen() {
                   name: 'Profit & Loss Statement',
                   desc: 'Income vs expenses, margins',
                 },
+                {
+                  name: 'Farm Profit Report',
+                  desc: 'Batch, individual pigs, feed, vaccines, and profit (.xlsx)',
+                  xlsx: true,
+                },
               ].map((report) => (
                 <div key={report.name} className="p-4 flex items-center justify-between">
                   <div className="flex items-start gap-3 flex-1">
@@ -1149,7 +1269,7 @@ export default function AnalyticsReportsScreen() {
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => handleDownloadReport(report.name)}
+                      onClick={() => report.xlsx ? handleDownloadProfitReport() : handleDownloadReport(report.name)}
                       className="w-8 h-8 bg-white/30 backdrop-blur-lg rounded-lg flex items-center justify-center active:scale-95 transition-transform"
                     >
                       <Download className="w-4 h-4 text-gray-700" />
