@@ -1318,22 +1318,6 @@ export default function AnalyticsReportsScreen() {
             </div>
             <div className="divide-y divide-white/20">
               {[
-                {
-                  name: 'Growth Performance Report',
-                  desc: 'Weight progression, ADG, trends',
-                },
-                {
-                  name: 'Feed Consumption Report',
-                  desc: 'Daily intake, forecast, usage',
-                },
-                {
-                  name: 'Vaccination Report',
-                  desc: 'Vaccines by batch, dates, costs',
-                },
-                {
-                  name: 'Profit & Loss Statement',
-                  desc: 'Income vs expenses, margins',
-                },
                 ...profitReportItems,
               ].map((report) => (
                 <div key={report.name} className="p-4 flex items-center justify-between">
