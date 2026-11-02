@@ -759,7 +759,10 @@ export default function AnalyticsReportsScreen() {
       }
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, sheet, 'Farm Profit Report');
-      XLSX.writeFile(workbook, 'PrepAPig_Farm_Profit_Report.xlsx');
+      const reportFileName = reportBatches.length === 1
+        ? `${displayNames.get(String(reportBatches[0].id)) || 'Batch-XX'} Profit Report.xlsx`
+        : 'Sold Batches Profit Report.xlsx';
+      XLSX.writeFile(workbook, reportFileName);
     } catch (err) {
       setError(err.message || 'Unable to generate the farm profit report');
     }
