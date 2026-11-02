@@ -654,7 +654,14 @@ export default function AnalyticsReportsScreen() {
 
       const reportData = result.data || {};
       const allReportBatches = reportData.batches || [];
-      const soldBatches = allReportBatches.filter((batch) => String(batch.status || '').toLowerCase() === 'sold');
+      const salesResponse = await fetch(`${API_BASE}/sales`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store',
+      });
+      const salesResult = await salesResponse.json();
+      if (!salesResponse.ok || !salesResult.success) throw new Error(salesResult.message || 'Unable to load sale data');
+      const salesByBatch = new Map((salesResult.data || []).map((sale) => [String(sale.batch_id), sale]));
+      const soldBatches = allReportBatches.filter((batch) => String(batch.status || '').toLowerCase() === 'sold' || salesByBatch.has(String(batch.id)));
       const reportBatches = batchCode === 'All Batches'
         ? soldBatches
         : soldBatches.filter((batch) => String(batch.batch_code) === String(batchCode));
@@ -703,7 +710,12 @@ export default function AnalyticsReportsScreen() {
         const feed = feedByBatch.get(batch.id) || { kg: 0, cost: 0 };
         const vaccine = vaccineByBatch.get(batch.id) || { dosage: 0, cost: 0, names: [] };
         const otherExpenses = expensesByBatch.get(batch.id) || 0;
-        const salePrice = Number(batch.sale_price_per_kg);
+        const sale = salesByBatch.get(String(batch.id));
+        const salePrice = Number.isFinite(Number(batch.sale_price_per_kg)) && Number(batch.sale_price_per_kg) > 0
+          ? Number(batch.sale_price_per_kg)
+          : sale && Number(sale.total_weight_kg) > 0 && Number(sale.revenue) >= 0
+            ? Number(sale.revenue) / Number(sale.total_weight_kg)
+            : NaN;
         pigRows.forEach((pig, index) => {
           const finalWeight = Number(pig.weight ?? batch.current_weight);
           const revenue = Number.isFinite(salePrice) && salePrice > 0 && Number.isFinite(finalWeight) ? finalWeight * salePrice : 0;
@@ -713,7 +725,7 @@ export default function AnalyticsReportsScreen() {
             displayNames.get(String(batch.id)) || `Batch-${String(rows.length).padStart(2, '0')}`,
             pig.id ? `Pig-${String(pig.id).slice(0, 8)}` : '',
             batch.breed || '',
-            batch.status?.toLowerCase() === 'sold' ? (batch.updated_at || batch.created_at || '') : '',
+            sale && sale.sale_date ? sale.sale_date : (batch.updated_at || batch.created_at || ''),
             Number.isFinite(finalWeight) ? finalWeight : '',
             salePrice > 0 ? salePrice : '',
             revenue || '',
