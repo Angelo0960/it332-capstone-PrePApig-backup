@@ -830,14 +830,7 @@ export default function AnalyticsReportsScreen() {
       batchCode: batch.batch_code,
       xlsx: true,
     }));
-  const profitReportItems = soldBatchReportItems.length > 0
-    ? soldBatchReportItems
-    : [{
-        name: selectedBatch === 'All Batches' ? 'Batch-XX Profit Report' : `${selectedBatchLabel} Profit Report`,
-        desc: 'Available after the selected batch is marked as sold',
-        batchCode: selectedBatch,
-        xlsx: true,
-      }];
+  const profitReportItems = loading ? [] : soldBatchReportItems;
 
   return (
     <div className="dashboard-theme mobile-screen-shell w-full relative overflow-hidden flex flex-col">
