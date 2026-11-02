@@ -527,6 +527,7 @@ textarea {
   .dashboard-screen .dashboard-progress-stack > div { min-height: 168px; padding: 1rem; }
   .dashboard-screen .dashboard-bottom-nav { display: none; }
   .dashboard-screen .floating-action-button { display: none; }
+  .dashboard-profile-button { display: none !important; }
   .desktop-app-shell .app-bottom-nav { display: none; }
 }
 
