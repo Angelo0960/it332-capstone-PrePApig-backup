@@ -758,7 +758,7 @@ export default function DashboardScreen() {
           <div className="flex items-center justify-between">
             <div>
               <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#777D8D]">PrepAPig farm center</p>
-              <h1 className="text-2xl font-extrabold tracking-[-0.04em] text-[#252838] sm:text-3xl">Good morning, {user?.name?.split(' ')[0] || 'there'}.</h1>
+              <h1 className="text-2xl font-extrabold tracking-[-0.04em] text-[#252838] sm:text-3xl">Good morning, {user?.name && !user.name.includes('@') ? user.name.split(' ')[0] : 'Farm Manager'}.</h1>
               <p className="mt-1 text-sm text-[#777D8D]">Here’s the pulse of your farm.</p>
             </div>
             <div className="flex items-center gap-2">
@@ -1240,12 +1240,24 @@ export default function DashboardScreen() {
             <div className="responsive-modal bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-[90%] md:w-[70%] lg:w-[50%] max-h-[70%] overflow-y-auto">
               <div className="flex items-center justify-between p-4 border-b border-white/30">
                 <h2 className="text-lg font-bold text-gray-900">Notifications</h2>
-                <button
-                  onClick={() => setShowNotifications(false)}
-                  className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all"
-                >
+                <div className="flex items-center gap-2">
+                  {unreadCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={markAllAsRead}
+                      className="text-xs font-semibold text-blue-700 hover:text-blue-900"
+                    >
+                      Mark all as read
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowNotifications(false)}
+                    className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all"
+                  >
                   <X className="w-4 h-4 text-gray-700" />
                 </button>
+                </div>
               </div>
 
               <div className="p-4 space-y-3">
