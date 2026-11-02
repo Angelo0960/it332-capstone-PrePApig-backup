@@ -170,6 +170,7 @@ export default function AnalyticsReportsScreen() {
         setFeedForecastError(null);
       }
       const response = await fetch(`${API_BASE}/feeds/forecast?source=uploaded_historical&batch_id=${encodeURIComponent(batchId)}&horizon_weeks=1&include_ai=true`, {
+        cache: 'no-store',
         headers: getAuthHeaders(), signal,
       });
       const json = await response.json();
@@ -205,7 +206,7 @@ export default function AnalyticsReportsScreen() {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/market-prices/pigs`, { signal });
+      const response = await fetch(`${API_BASE}/market-prices/pigs`, { signal, cache: 'no-store' });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const json = await response.json();
       if (!json.success) throw new Error(json.message || 'Pig price unavailable');
@@ -260,6 +261,7 @@ export default function AnalyticsReportsScreen() {
           ...getAuthHeaders(),
           'Content-Type': 'application/json',
         },
+        cache: 'no-store',
         body: JSON.stringify({ locations }),
         signal: controller.signal,
       });
@@ -360,7 +362,7 @@ export default function AnalyticsReportsScreen() {
   useEffect(() => {
     if (autoAiAnalysisRequested.current || !pigPriceReference || pigPriceLocations.length < 3) return;
     autoAiAnalysisRequested.current = true;
-    void requestAiPriceAnalysis(pigPriceLocations);
+    void requestAiPriceAnalysis(pigPriceLocations, { bypassCache: true });
   }, [pigPriceReference, pigPriceLocations]);
 
   useEffect(() => {
@@ -579,6 +581,7 @@ export default function AnalyticsReportsScreen() {
     fetch(`${API_BASE}/expenses/ai-analysis`, {
       method: 'POST',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      cache: 'no-store',
       body: JSON.stringify({ summary }),
       signal: controller.signal,
     }).then(async (response) => {
