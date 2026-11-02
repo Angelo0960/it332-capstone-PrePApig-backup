@@ -58,7 +58,7 @@ export const saveSale = async (req, res) => {
             const { data: result, error } = await supabase.rpc('create_harvest_sale_and_delete_batch', {
                 p_owner_id: req.user.id,
                 p_sale: record,
-                p_delete_batch: delete_batch === true,
+                p_delete_batch: false,
             });
             if (error) throw error;
             data = result?.sale || null;
@@ -76,7 +76,8 @@ export const saveSale = async (req, res) => {
 
         if (!data) return res.status(404).json({ success: false, message: 'Harvest/sale not found' });
         const completedSale = record.sale_date !== null && record.revenue !== null;
-        if (completedSale && !delete_batch) {
+        const shouldMarkSold = delete_batch === true || completedSale;
+        if (shouldMarkSold) {
             const { error: closeError } = await supabase
                 .from('pig_batches')
                 .update({ status: 'Sold' })
