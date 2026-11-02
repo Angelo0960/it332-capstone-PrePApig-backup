@@ -13,6 +13,30 @@ const analyticsFields = {
     expenses: 'id,batch_id,expense_type,amount,expense_date,description,created_at',
 };
 
+export const getSoldBatchesReport = async (req, res) => {
+    try {
+        const [batches, sales] = await Promise.all([
+            collectPages(() => supabase.from('pig_batches')
+                .select('id,batch_code,breed,pig_count,start_weight,current_weight,sale_price_per_kg,date_acquired,status,created_at')
+                .eq('owner_id', req.user.id)
+                .order('created_at', { ascending: true })),
+            collectPages(() => supabase.from('harvest_sales')
+                .select('id,batch_id,harvest_date,pig_count,total_weight_kg,sale_date,revenue,buyer,notes,created_at')
+                .eq('owner_id', req.user.id)
+                .not('sale_date', 'is', null)
+                .not('revenue', 'is', null)
+                .order('sale_date', { ascending: false })),
+        ]);
+        const salesByBatch = new Map(sales.map((sale) => [String(sale.batch_id), sale]));
+        const sold = batches
+            .filter((batch) => String(batch.status || '').trim().toLowerCase() === 'sold' || salesByBatch.has(String(batch.id)))
+            .map((batch) => ({ ...batch, sale: salesByBatch.get(String(batch.id)) || null }));
+        res.json({ success: true, data: sold });
+    } catch (error) {
+        res.status(error.status || 500).json({ success: false, message: error.message });
+    }
+};
+
 // Dashboard Summary
 export const getDashboardReport = async (req, res) => {
     try {

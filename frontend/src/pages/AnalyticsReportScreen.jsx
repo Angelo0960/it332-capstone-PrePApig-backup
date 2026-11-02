@@ -61,6 +61,7 @@ export default function AnalyticsReportsScreen() {
   // Data state
   const [batches, setBatches] = useState([]);
   const [sales, setSales] = useState([]);
+  const [soldReportBatches, setSoldReportBatches] = useState([]);
   const [feedRecords, setFeedRecords] = useState([]);
   const [vaccinationRecords, setVaccinationRecords] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -144,6 +145,10 @@ export default function AnalyticsReportsScreen() {
       const salesResponse = await fetch(`${API_BASE}/sales`, { headers: getAuthHeaders(), signal, cache: 'no-store' });
       const salesJson = await salesResponse.json();
       if (!salesResponse.ok || !salesJson.success) throw new Error(salesJson.message || 'Failed to load sales');
+      const soldResponse = await fetch(`${API_BASE}/reports/sold-batches`, { headers: getAuthHeaders(), signal, cache: 'no-store' });
+      const soldJson = await soldResponse.json();
+      if (!soldResponse.ok || !soldJson.success) throw new Error(soldJson.message || 'Failed to load sold reports');
+      setSoldReportBatches(soldJson.data || []);
       setBatches(latestBatches);
       setSales(salesJson.data || []);
       setFeedRecords(data.feedRecords || []);
@@ -822,8 +827,7 @@ export default function AnalyticsReportsScreen() {
   const recordedSaleBatchIds = new Set(sales
     .filter((sale) => sale.sale_date && sale.revenue !== null && sale.revenue !== undefined)
     .map((sale) => String(sale.batch_id)));
-  const soldBatchReportItems = batches
-    .filter((batch) => String(batch.status || '').trim().toLowerCase() === 'sold' || recordedSaleBatchIds.has(String(batch.id)))
+  const soldBatchReportItems = soldReportBatches
     .map((batch) => ({
       name: `${/^batch-\d+$/i.test(String(batch.batch_code || '')) ? `Batch-${String(batch.batch_code).split('-')[1].padStart(2, '0')}` : batchDisplayNames.get(String(batch.id)) || 'Batch-XX'} Profit Report`,
       desc: 'Individual pigs, final weights, feed, vaccines, and profit (.xlsx)',
