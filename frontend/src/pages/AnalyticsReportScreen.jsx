@@ -964,10 +964,6 @@ export default function AnalyticsReportsScreen() {
               <div className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight break-words">
                 {totalRecordedCosts == null ? 'Unavailable' : formatCurrency(totalRecordedCosts)}
               </div>
-              <div className="text-xs text-gray-600 space-y-0.5">
-                <div>Feed usage cost: {formatCurrency(totalFeedCost)}</div>
-                <div>Vaccine usage cost: {formatCurrency(totalVaccineCost)}</div>
-              </div>
             </div>
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
               <div className="text-xs text-gray-700 font-semibold mb-2">Batches</div>
