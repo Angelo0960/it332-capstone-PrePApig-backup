@@ -83,7 +83,10 @@ export default function BatchPigsScreen() {
   };
 
   useEffect(() => {
+    const refreshAfterSync = () => { void fetchPigs(); };
     fetchPigs();
+    window.addEventListener('prepapig:offline-sync-complete', refreshAfterSync);
+    return () => window.removeEventListener('prepapig:offline-sync-complete', refreshAfterSync);
   }, [batchId]);
 
   // Add pig
@@ -106,7 +109,15 @@ export default function BatchPigsScreen() {
       if (!res.ok) throw new Error('Failed to add pig');
       const json = await res.json();
       if (json.success) {
-        await fetchPigs();
+        if (json.queued && json.data) {
+          setPigs((current) => {
+            const nextPigs = [json.data, ...current];
+            localStorage.setItem(`prepapig:pigs:${getUserCacheKey()}:${batchId}`, JSON.stringify(nextPigs));
+            return nextPigs;
+          });
+        } else {
+          await fetchPigs();
+        }
         setShowAddModal(false);
         setNewPig({ weight: '', health_status: 'Healthy', notes: '' });
       } else {
@@ -184,7 +195,15 @@ export default function BatchPigsScreen() {
       if (!res.ok) throw new Error('Failed to delete pig');
       const json = await res.json();
       if (json.success) {
-        await fetchPigs();
+        if (json.queued) {
+          setPigs((current) => {
+            const nextPigs = current.filter((pig) => String(pig.id) !== String(pigId));
+            localStorage.setItem(`prepapig:pigs:${getUserCacheKey()}:${batchId}`, JSON.stringify(nextPigs));
+            return nextPigs;
+          });
+        } else {
+          await fetchPigs();
+        }
       } else {
         throw new Error(json.message);
       }
@@ -224,7 +243,11 @@ export default function BatchPigsScreen() {
       window.dispatchEvent(new Event('prepapig:financial-data-changed'));
       setShowSellModal(false);
       setSaleForm({ sale_date: new Date().toISOString().slice(0, 10), revenue: '', buyer: '', notes: '' });
-      alert('Batch sale recorded successfully. The batch was retained as Sold history.');
+      alert(json.needsReview
+        ? 'The sale outcome is unclear. Check sales history before retrying.'
+        : json.queued
+          ? 'Batch sale saved on this device; waiting to sync.'
+          : 'Batch sale recorded successfully. The batch was retained as Sold history.');
       navigate('/');
     } catch (err) {
       alert('Error recording batch sale: ' + err.message);

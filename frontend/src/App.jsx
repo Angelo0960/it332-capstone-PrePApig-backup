@@ -9,6 +9,7 @@ const VaccinationScreen = lazy(() => import('./pages/VaccinationScreen.jsx'));
 const BatchPigsScreen = lazy(() => import('./pages/BatchPigsScreen.jsx'));
 const FarmManagementScreen = lazy(() => import('./pages/FarmManagementScreen.jsx'));
 import { registerFcmToken, API_BASE, getAuthHeaders, preloadInitialData } from './api.js';
+import { recoverInterruptedSync, syncOfflineQueue, getOfflineStatus, retryOfflineItem, discardOfflineItem, offlineEvents, getOwnerId, handleOfflineFetch } from './services/offlineSync.js';
 import './App.css';
 
 const tabKeys = ['/dashboard', '/feeds', '/reports', '/vaccination'];
@@ -83,6 +84,94 @@ function PersistentTabs() {
   );
 }
 
+function OfflineSyncNotice({ isLoggedIn }) {
+  const [online, setOnline] = useState(() => navigator.onLine !== false);
+  const [status, setStatus] = useState({ pending: 0, failed: 0, needsReview: 0, items: [], usingCachedData: false, staleCacheCount: 0 });
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setOnline(navigator.onLine !== false);
+      setStatus({ pending: 0, failed: 0, needsReview: 0, items: [], usingCachedData: false, staleCacheCount: 0 });
+      return undefined;
+    }
+    let active = true;
+    const refresh = async () => {
+      setOnline(navigator.onLine !== false);
+      if (!getOwnerId()) {
+        if (active) setStatus({ pending: 0, failed: 0, needsReview: 0, items: [] });
+        return;
+      }
+      let next;
+      try { next = await getOfflineStatus(); }
+      catch { next = { pending: 0, failed: 0, needsReview: 0, items: [] }; }
+      if (active) setStatus(next);
+    };
+    const sync = async () => {
+      await refresh();
+      if (navigator.onLine !== false && getOwnerId()) {
+        await syncOfflineQueue({ apiBase: API_BASE }).catch(() => {});
+      }
+      await refresh();
+    };
+    const onNetwork = () => { void (navigator.onLine === false ? refresh() : sync()); };
+    const onChange = () => { void refresh(); };
+    window.addEventListener('online', onNetwork);
+    window.addEventListener('offline', onNetwork);
+    window.addEventListener(offlineEvents.state, onChange);
+    const onServiceWorkerMessage = (event) => {
+      if (event.data?.type === 'PREPAPIG_SYNC_OFFLINE_QUEUE') void sync();
+    };
+    navigator.serviceWorker?.addEventListener('message', onServiceWorkerMessage);
+    void recoverInterruptedSync().then(sync).catch(refresh);
+    return () => {
+      active = false;
+      window.removeEventListener('online', onNetwork);
+      window.removeEventListener('offline', onNetwork);
+      window.removeEventListener(offlineEvents.state, onChange);
+      navigator.serviceWorker?.removeEventListener('message', onServiceWorkerMessage);
+    };
+  }, [isLoggedIn]);
+
+  const discard = async (item) => {
+    if (!window.confirm('Permanently remove this unsynced local change? This does not delete any server record.')) return;
+    await discardOfflineItem(item.id);
+    if (navigator.onLine !== false) await syncOfflineQueue({ apiBase: API_BASE }).catch(() => {});
+    setStatus(await getOfflineStatus());
+  };
+  const retry = async (item) => {
+    if (!window.confirm('Retry this save? If the server already accepted it, retrying may create a duplicate. Check the server first when the outcome is unclear.')) return;
+    if (await retryOfflineItem(item.id)) await syncOfflineQueue({ apiBase: API_BASE });
+    setStatus(await getOfflineStatus());
+  };
+
+  if (online && status.items.length === 0 && !status.usingCachedData) return null;
+  const label = !online
+    ? 'Offline — new supported records are saved on this device.'
+    : status.usingCachedData
+      ? `Server unavailable — showing cached data${status.staleCacheCount > 1 ? ` from ${status.staleCacheCount} saved requests` : ''}.`
+      : status.needsReview
+        ? 'Some saves need review before retrying.'
+        : status.failed
+          ? 'Some saved changes need attention.'
+          : `${status.pending} saved change${status.pending === 1 ? '' : 's'} waiting to sync.`;
+
+  const canSync = online && status.pending > 0 && status.failed === 0 && status.needsReview === 0;
+
+  return <section className="fixed left-1/2 z-[100] w-[calc(100%-1rem)] max-w-3xl -translate-x-1/2 rounded-2xl border border-white/70 bg-white/95 p-3 text-sm text-gray-800 shadow-xl backdrop-blur-xl" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }} aria-live="polite">
+    <div className="flex items-center justify-between gap-2">
+      <div><strong>{label}</strong>{canSync && <span className="ml-2 text-xs text-gray-600">Syncing in order…</span>}</div>
+      <div className="flex shrink-0 gap-2">{canSync && <button type="button" className="rounded-lg bg-emerald-700 px-3 py-1 font-semibold text-white" onClick={() => { void syncOfflineQueue({ apiBase: API_BASE }).then(getOfflineStatus).then(setStatus); }}>Sync now</button>}{status.items.length > 0 && <button type="button" className="rounded-lg bg-white/70 px-3 py-1 font-semibold" onClick={() => setExpanded((value) => !value)}>{expanded ? 'Hide' : `${status.items.length} details`}</button>}</div>
+    </div>
+    {expanded && <div className="mt-2 max-h-56 space-y-2 overflow-y-auto border-t border-gray-200 pt-2">
+      {status.items.map((item) => <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-gray-50 p-2">
+        <div className="min-w-0"><strong className="block">{item.method} {item.path.replace(/[0-9a-f]{8}-[0-9a-f-]{27}/ig, ':record')}</strong><span className="text-xs text-gray-600">{item.status.replace('_', ' ')}{item.lastError ? ` · ${item.lastError}` : ''}</span></div>
+        <div className="flex gap-2">{['failed', 'needs_review'].includes(item.status) && <button type="button" className="rounded-lg bg-emerald-700 px-2 py-1 text-xs font-semibold text-white" onClick={() => retry(item)}>Retry</button>}{item.status !== 'sending' && <button type="button" className="rounded-lg border border-gray-300 px-2 py-1 text-xs" onClick={() => discard(item)}>Discard local copy</button>}</div>
+      </div>)}
+    </div>}
+  </section>;
+}
+
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -95,7 +184,12 @@ function App() {
   useEffect(() => {
     const originalFetch = window.fetch.bind(window);
     const interceptedFetch = async (...args) => {
-      const response = await originalFetch(...args);
+      const init = args[1] || {};
+      const { __prepapigSync, ...requestInit } = init;
+      const fetchArgs = [args[0], Object.keys(requestInit).length ? requestInit : undefined];
+      const response = __prepapigSync
+        ? await originalFetch(...fetchArgs)
+        : await handleOfflineFetch({ input: args[0], init: args[1], originalFetch, apiBase: API_BASE });
       if (response.status === 401 && localStorage.getItem('token')) {
         window.dispatchEvent(new CustomEvent('prepapig:auth-expired'));
       }
@@ -259,6 +353,7 @@ function App() {
   return (
     <BrowserRouter>
       <DesktopShell>
+      <OfflineSyncNotice isLoggedIn={isLoggedIn} />
       <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
       <Routes>
         {['mortality', 'treatments', 'expenses', 'settings'].map((section) => <Route key={section} path={`/${section}`} element={<ProtectedRoute><FarmManagementScreen key={section} section={section} /></ProtectedRoute>} />)}

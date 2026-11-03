@@ -40,6 +40,7 @@ import { API_BASE, getAuthHeaders } from '../api.js';
 import { formatCurrency, formatPricePerKg } from '../utils/formatters.js';
 import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 import { buildBatchDisplayNames } from '../utils/batchNames.js';
+import useOfflineStatus from '../hooks/useOfflineStatus.js';
 // ────────────────────────────────────────────────────────────────
 
 const DEFAULT_PRICE_POINTS = [
@@ -54,7 +55,7 @@ const DEFAULT_PRICE_POINTS = [
 
 export default function AnalyticsReportsScreen() {
   const navigate = useNavigate();
-  const [isOnline] = useState(true);
+  const { isOnline } = useOfflineStatus();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 

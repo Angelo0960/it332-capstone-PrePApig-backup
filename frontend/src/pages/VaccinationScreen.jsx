@@ -20,6 +20,7 @@ import { buildVaccinationDonePayload } from '../utils/markDonePayloads.js';
 import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 import { buildBatchDisplayNames } from '../utils/batchNames.js';
 import { formatLocalDate } from '../utils/dates.js';
+import useOfflineStatus from '../hooks/useOfflineStatus.js';
 
 // Standard vaccination schedule by age
 const vaccinationSchedule = [
@@ -64,8 +65,7 @@ const VACCINE_NAME_MAP = {
 export default function VaccinationScreen() {
   const navigate = useNavigate();
 
-  const [isOnline] = useState(true);
-  const [pendingSync] = useState(0);
+  const { isOnline, pendingSync } = useOfflineStatus();
   const [showRecordVaccination, setShowRecordVaccination] = useState(false);
   const [showRestockVaccine, setShowRestockVaccine] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState('all');
@@ -95,6 +95,7 @@ export default function VaccinationScreen() {
     purchaseDate: formatLocalDate(),
   });
   const [vaccinationErrors, setVaccinationErrors] = useState({});
+  const [restockErrors, setRestockErrors] = useState({});
 
   // Fetch batches
   const fetchBatches = async () => {
@@ -261,6 +262,12 @@ export default function VaccinationScreen() {
   }, []);
 
   useEffect(() => {
+    const refreshAfterSync = () => { void fetchVaccinationOverview(); };
+    window.addEventListener('prepapig:offline-sync-complete', refreshAfterSync);
+    return () => window.removeEventListener('prepapig:offline-sync-complete', refreshAfterSync);
+  }, []);
+
+  useEffect(() => {
     if (selectedBatch !== 'all') fetchVaccinations();
   }, [selectedBatch]);
 
@@ -361,49 +368,53 @@ export default function VaccinationScreen() {
 
   // Restock vaccine
   const handleRestock = async () => {
+    const errors = {};
     const vaccineName = VACCINE_NAME_MAP[restockForm.vaccineType];
-    if (!vaccineName) {
-      alert('Please select a vaccine type');
-      return;
-    }
-    const doses = parseInt(restockForm.doses, 10) || 0;
-    if (doses <= 0) {
-      alert('Please enter a valid number of doses');
-      return;
-    }
-    const price = restockForm.cost.trim() === '' ? null : Number(restockForm.cost);
+    const quantity = Number(restockForm.doses);
+    const price = Number(restockForm.cost);
+    const expiryDate = String(restockForm.expiryDate || '').trim();
+    const today = formatLocalDate();
+
+    if (!vaccineName) errors.vaccineType = 'Vaccine type is required';
+    if (!String(restockForm.doses).trim()) errors.doses = 'Doses added are required';
+    else if (!Number.isSafeInteger(quantity) || quantity <= 0 || quantity > 10000) errors.doses = 'Enter a whole number of doses from 1 to 10,000';
+    if (!String(restockForm.cost).trim()) errors.cost = 'Cost per dose is required';
+    else if (!Number.isFinite(price) || price < 0) errors.cost = 'Enter a valid non-negative cost';
+    if (!expiryDate) errors.expiryDate = 'Expiry date is required';
+    else if (!/^\d{4}-\d{2}-\d{2}$/.test(expiryDate) || !Number.isFinite(Date.parse(`${expiryDate}T00:00:00Z`)) || new Date(`${expiryDate}T00:00:00Z`).toISOString().slice(0, 10) !== expiryDate) errors.expiryDate = 'Enter a valid expiry date';
+    else if (expiryDate < today) errors.expiryDate = 'Expiry date cannot be in the past';
+
+    setRestockErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     try {
       const res = await fetch(`${API_BASE}/vaccinations/stock/update`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
           vaccine_name: vaccineName,
-          stock_quantity: doses,
-          expiry_date: restockForm.expiryDate || null,
-          ...(price === null ? {} : { price_per_dose: price }),
+          stock_quantity: quantity,
+          expiry_date: expiryDate,
+          price_per_dose: price,
         }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.success) {
         throw new Error(json.message || `Failed to restock (HTTP ${res.status})`);
       }
-      if (json.success) {
-        alert('Stock updated successfully!');
-        setShowRestockVaccine(false);
-        setRestockForm({
-          vaccineType: '',
-          doses: '',
-          cost: '',
-          expiryDate: '',
-          purchaseDate: formatLocalDate(),
-        });
-        fetchVaccineStock();
-        window.dispatchEvent(new Event('prepapig:financial-data-changed'));
-      } else {
-        throw new Error(json.message || 'Unknown error');
-      }
+
+      setRestockErrors({});
+      alert(json.needsReview
+        ? 'The save outcome is unclear. Check vaccine stock on the server before retrying.'
+        : json.queued
+          ? 'Vaccine restock saved on this device; waiting to sync.'
+          : 'Stock updated successfully!');
+      setShowRestockVaccine(false);
+      setRestockForm({ vaccineType: '', doses: '', cost: '', expiryDate: '', purchaseDate: formatLocalDate() });
+      void fetchVaccineStock();
+      window.dispatchEvent(new Event('prepapig:financial-data-changed'));
     } catch (err) {
-      alert('Error restocking: ' + err.message);
+      setRestockErrors((current) => ({ ...current, form: err.message || 'Unable to save vaccine stock. Please try again.' }));
     }
   };
 
@@ -480,7 +491,7 @@ export default function VaccinationScreen() {
             <button onClick={() => setShowRecordVaccination(true)} className="hidden lg:inline-flex items-center gap-2 rounded-2xl bg-[#ff2f72] px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#ff2f72]/25">
               <Plus className="w-4 h-4" /> Record Vaccination
             </button>
-            <button onClick={() => setShowRestockVaccine(true)} className="hidden lg:inline-flex items-center gap-2 rounded-2xl bg-white/65 px-4 py-2.5 text-xs font-bold text-emerald-700 border border-white/70 shadow-lg">
+            <button onClick={() => { setRestockErrors({}); setShowRestockVaccine(true); }} className="hidden lg:inline-flex items-center gap-2 rounded-2xl bg-white/65 px-4 py-2.5 text-xs font-bold text-emerald-700 border border-white/70 shadow-lg">
               <Plus className="w-4 h-4" /> Purchase Vaccine
             </button>
             <button className="relative w-9 h-9 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_6px_rgba(255,255,255,0.7)] transition-all">
@@ -632,7 +643,7 @@ export default function VaccinationScreen() {
                   Record Vaccination
                 </button>
                 <button
-                  onClick={() => setShowRestockVaccine(true)}
+                  onClick={() => { setRestockErrors({}); setShowRestockVaccine(true); }}
                   className="bg-white/30 backdrop-blur-lg border border-white/40 text-emerald-700 font-bold py-3 rounded-xl shadow-[6px_6px_12px_rgba(0,0,0,0.1),-6px_-6px_12px_rgba(255,255,255,0.8)] active:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.1),inset_-3px_-3px_6px_rgba(255,255,255,0.8)] transition-all"
                 >
                   Purchase Vaccine
@@ -1013,7 +1024,7 @@ export default function VaccinationScreen() {
               <div className="flex items-center justify-between p-5 border-b border-white/30">
                 <h2 className="text-lg font-bold text-gray-900">Restock Vaccine</h2>
                 <button
-                  onClick={() => setShowRestockVaccine(false)}
+                  onClick={() => { setShowRestockVaccine(false); setRestockErrors({}); }}
                   className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all"
                 >
                   <X className="w-4 h-4 text-gray-700" />
@@ -1021,48 +1032,94 @@ export default function VaccinationScreen() {
               </div>
 
               <div className="p-5 space-y-4">
+                {restockErrors.form && <p className="rounded-xl border border-red-300 bg-red-50/80 p-3 text-sm font-semibold text-red-700" role="alert">{restockErrors.form}</p>}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">Vaccine Type</label>
-                  <select
-                    value={restockForm.vaccineType}
-                    onChange={(e) => setRestockForm({ ...restockForm, vaccineType: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  >
-                    <option value="">Select vaccine...</option>
-                    <option value="swine-fever">Swine Fever</option>
-                    <option value="ecoli">E. Coli</option>
-                    <option value="prrs">PRRS</option>
-                  </select>
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Vaccine Type <span className="text-red-700" aria-hidden="true">*</span></label>
+                  <div className="relative">
+                    <select
+                      value={restockForm.vaccineType}
+                      onChange={(e) => {
+                        setRestockForm({ ...restockForm, vaccineType: e.target.value });
+                        setRestockErrors((current) => ({ ...current, vaccineType: '', form: '' }));
+                      }}
+                      aria-required="true"
+                      aria-invalid={Boolean(restockErrors.vaccineType)}
+                      aria-describedby={restockErrors.vaccineType ? 'restock-vaccine-type-error' : undefined}
+                      className={`w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${restockErrors.vaccineType ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
+                    >
+                      <option value="">Select vaccine...</option>
+                      <option value="swine-fever">Swine Fever</option>
+                      <option value="ecoli">E. Coli</option>
+                      <option value="prrs">PRRS</option>
+                    </select>
+                    {restockErrors.vaccineType && <AlertTriangle className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
+                  </div>
+                  <InlineFieldError id="restock-vaccine-type-error" message={restockErrors.vaccineType} />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">Doses Added</label>
-                  <input
-                    type="number"
-                    value={restockForm.doses}
-                    onChange={(e) => setRestockForm({ ...restockForm, doses: e.target.value })}
-                    placeholder="50"
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  />
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Doses Added <span className="text-red-700" aria-hidden="true">*</span></label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="1"
+                      max="10000"
+                      step="1"
+                      value={restockForm.doses}
+                      onChange={(e) => {
+                        setRestockForm({ ...restockForm, doses: e.target.value });
+                        setRestockErrors((current) => ({ ...current, doses: '', form: '' }));
+                      }}
+                      placeholder="50"
+                      aria-required="true"
+                      aria-invalid={Boolean(restockErrors.doses)}
+                      aria-describedby={restockErrors.doses ? 'restock-doses-error' : undefined}
+                      className={`w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${restockErrors.doses ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
+                    />
+                    {restockErrors.doses && <AlertTriangle className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
+                  </div>
+                  <InlineFieldError id="restock-doses-error" message={restockErrors.doses} />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">Cost (₱)</label>
-                  <input
-                    type="number"
-                    value={restockForm.cost}
-                    onChange={(e) => setRestockForm({ ...restockForm, cost: e.target.value })}
-                    placeholder="3250"
-                    step="0.01"
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  />
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Cost (₱) <span className="text-red-700" aria-hidden="true">*</span></label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={restockForm.cost}
+                      onChange={(e) => {
+                        setRestockForm({ ...restockForm, cost: e.target.value });
+                        setRestockErrors((current) => ({ ...current, cost: '', form: '' }));
+                      }}
+                      placeholder="3250"
+                      min="0"
+                      step="0.01"
+                      aria-required="true"
+                      aria-invalid={Boolean(restockErrors.cost)}
+                      aria-describedby={restockErrors.cost ? 'restock-cost-error' : undefined}
+                      className={`w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${restockErrors.cost ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
+                    />
+                    {restockErrors.cost && <AlertTriangle className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
+                  </div>
+                  <InlineFieldError id="restock-cost-error" message={restockErrors.cost} />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">Expiry Date</label>
-                  <input
-                    type="date"
-                    value={restockForm.expiryDate}
-                    onChange={(e) => setRestockForm({ ...restockForm, expiryDate: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  />
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Expiry Date <span className="text-red-700" aria-hidden="true">*</span></label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      min={formatLocalDate()}
+                      value={restockForm.expiryDate}
+                      onChange={(e) => {
+                        setRestockForm({ ...restockForm, expiryDate: e.target.value });
+                        setRestockErrors((current) => ({ ...current, expiryDate: '', form: '' }));
+                      }}
+                      aria-required="true"
+                      aria-invalid={Boolean(restockErrors.expiryDate)}
+                      aria-describedby={restockErrors.expiryDate ? 'restock-expiry-error' : undefined}
+                      className={`w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${restockErrors.expiryDate ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
+                    />
+                    {restockErrors.expiryDate && <AlertTriangle className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
+                  </div>
+                  <InlineFieldError id="restock-expiry-error" message={restockErrors.expiryDate} />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-2">Date of Purchase</label>

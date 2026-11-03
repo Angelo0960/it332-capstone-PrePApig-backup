@@ -1,4 +1,4 @@
-const CACHE_NAME = 'prepapig-shell-v3';
+const CACHE_NAME = 'prepapig-shell-v4';
 const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/prepapig-logo.png', '/prepapig-logo-192.png', '/prepapig-logo-512.png', '/favicon.svg'];
 
 self.addEventListener('install', (event) => {
@@ -21,11 +21,21 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+self.addEventListener('sync', (event) => {
+  if (event.tag !== 'prepapig-offline-sync') return;
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+    clients.forEach((client) => client.postMessage({ type: 'PREPAPIG_SYNC_OFFLINE_QUEUE' }));
+  }));
+});
+
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
-  if (request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/')) {
+  const apiPaths = ['/api', '/pigs', '/feeds', '/vaccinations', '/expenses', '/sales', '/reports', '/management', '/notifications', '/market-prices', '/auth'];
+  const isApiPath = apiPaths.some((path) => url.pathname === path || url.pathname.startsWith(`${path}/`));
+
+  if (request.method !== 'GET' || url.origin !== self.location.origin || request.mode !== 'navigate' && isApiPath) {
     return;
   }
 

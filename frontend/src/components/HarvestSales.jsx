@@ -28,6 +28,11 @@ export default function HarvestSales({ batches, onChanged }) {
       }).catch((err) => { if (err.name !== 'AbortError') setError(err.message); }).finally(() => { if (!controller.signal.aborted) setHistoryLoading(false); });
     return () => controller.abort();
   }, [revision]);
+  useEffect(() => {
+    const refreshAfterSync = () => setRevision((value) => value + 1);
+    window.addEventListener('prepapig:offline-sync-complete', refreshAfterSync);
+    return () => window.removeEventListener('prepapig:offline-sync-complete', refreshAfterSync);
+  }, []);
   const save = async (event) => {
     event.preventDefault();
     setBusy(true);
@@ -41,7 +46,14 @@ export default function HarvestSales({ batches, onChanged }) {
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.message || 'Unable to save harvest/sale');
       setForm(empty); setEditing(null); setOpen(false);
-      setRevision((value) => value + 1); onChanged();
+      if (result.queued) {
+        setRecords((current) => editing
+          ? current.map((row) => String(row.id) === String(editing) ? { ...row, ...result.data } : row)
+          : result.data ? [result.data, ...current] : current);
+      } else {
+        setRevision((value) => value + 1);
+      }
+      onChanged();
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
   };

@@ -298,13 +298,30 @@ export const getVaccineStock = async (req, res) => {
 export const updateVaccineStock = async (req, res) => {
     try {
         const { vaccine_name, stock_quantity, expiry_date, price_per_dose, notes } = req.body;
-        if (!vaccine_name || (stock_quantity === undefined && price_per_dose === undefined && expiry_date === undefined && notes === undefined)) {
-            return res.status(400).json({ success: false, message: 'Vaccine name and an update value are required' });
+        if (typeof vaccine_name !== 'string' || !vaccine_name.trim()
+            || stock_quantity === undefined || stock_quantity === null || stock_quantity === ''
+            || expiry_date === undefined || expiry_date === null || expiry_date === ''
+            || price_per_dose === undefined || price_per_dose === null || price_per_dose === '') {
+            return res.status(400).json({ success: false, message: 'Vaccine type, doses, cost per dose, and expiry date are required' });
         }
 
-        const addedQuantity = stock_quantity === undefined ? 0 : Number(stock_quantity);
-        if (!Number.isFinite(addedQuantity) || addedQuantity < 0) {
-            return res.status(400).json({ success: false, message: 'Stock quantity must be non-negative' });
+        const addedQuantity = Number(stock_quantity);
+        const pricePerDose = Number(price_per_dose);
+        if (!Number.isSafeInteger(addedQuantity) || addedQuantity <= 0 || addedQuantity > 10000) {
+            return res.status(400).json({ success: false, message: 'Doses added must be a whole number from 1 to 10,000' });
+        }
+        if (!Number.isFinite(pricePerDose) || pricePerDose < 0) {
+            return res.status(400).json({ success: false, message: 'Cost per dose must be a valid non-negative amount' });
+        }
+        const expiryDateIsValid = typeof expiry_date === 'string'
+            && /^\d{4}-\d{2}-\d{2}$/.test(expiry_date)
+            && Number.isFinite(Date.parse(`${expiry_date}T00:00:00Z`))
+            && new Date(`${expiry_date}T00:00:00Z`).toISOString().slice(0, 10) === expiry_date;
+        if (!expiryDateIsValid) {
+            return res.status(400).json({ success: false, message: 'Expiry date must be a valid date' });
+        }
+        if (expiry_date < getTodayInTimezone()) {
+            return res.status(400).json({ success: false, message: 'Expiry date cannot be in the past' });
         }
 
         const { data: stockRow, error } = await supabase.rpc('add_vaccine_stock', {
@@ -312,7 +329,7 @@ export const updateVaccineStock = async (req, res) => {
             p_vaccine_name: vaccine_name,
             p_quantity: addedQuantity,
             p_expiry_date: expiry_date || null,
-            p_price_per_dose: price_per_dose === undefined ? null : price_per_dose,
+            p_price_per_dose: pricePerDose,
             p_notes: notes === undefined ? null : notes,
         });
 

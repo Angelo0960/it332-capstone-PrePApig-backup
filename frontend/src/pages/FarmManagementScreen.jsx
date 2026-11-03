@@ -56,6 +56,11 @@ export default function FarmManagementScreen({ section = 'mortality' }) {
   setLoaded(true);
  }
  useEffect(() => { load().catch((err) => setError(err.message)); }, [section]);
+ useEffect(() => {
+  const refreshAfterSync = () => { void load().catch((err) => setError(err.message)); };
+  window.addEventListener('prepapig:offline-sync-complete', refreshAfterSync);
+  return () => window.removeEventListener('prepapig:offline-sync-complete', refreshAfterSync);
+ }, [section]);
  async function act(work) {
   setBusy(true); setError(''); setMessage('');
   try { await work(); } catch (err) { setError(err.message); } finally { setBusy(false); }
@@ -76,13 +81,29 @@ export default function FarmManagementScreen({ section = 'mortality' }) {
    const payload = { ...form, batch_id: form.batch_id || null };
    for (const field of ['amount', 'count']) if (config.fields.includes(field)) payload[field] = Number(form[field]);
    const path = section === 'expenses' ? editing ? `/expenses/${editing}` : '/expenses/create' : config.endpoint;
-   await request(path, editing ? 'PUT' : 'POST', payload);
+   const saveResult = await request(path, editing ? 'PUT' : 'POST', payload);
+   if (saveResult.queued) {
+    const localRecord = saveResult.data;
+    setRows((current) => editing
+     ? current.map((row) => String(row.id) === String(editing) ? { ...row, ...localRecord } : row)
+     : localRecord ? [localRecord, ...current] : current);
+    setForm({}); setEditing(null); setMessage(saveResult.needsReview ? 'Save outcome unclear; check the server before retrying.' : 'Saved on this device; waiting to sync.');
+    return;
+   }
    setForm({}); setEditing(null); await load(); setMessage('Record saved.');
   });
  }
  async function remove(row) {
   if (!window.confirm(section === 'mortality' ? 'Delete this mistaken mortality entry and restore its count to the batch?' : 'Delete this record?')) return;
-  await act(async () => { await request(section === 'expenses' ? `/expenses/${row.id}` : `${config.endpoint}/${row.id}`, 'DELETE'); await load(); setMessage('Record deleted.'); });
+  await act(async () => {
+   const result = await request(section === 'expenses' ? `/expenses/${row.id}` : `${config.endpoint}/${row.id}`, 'DELETE');
+   if (result.queued) {
+    setRows((current) => current.filter((item) => String(item.id) !== String(row.id)));
+    setMessage('Delete saved on this device; waiting to sync.');
+    return;
+   }
+   await load(); setMessage('Record deleted.');
+  });
  }
  const visible = config ? rows.filter((row) => (!filter || row.batch_id === filter) && (!from || row[config.date] >= from) && (!to || row[config.date] <= to)) : [];
  return <div className="dashboard-theme mobile-screen-shell bg-gradient-to-br from-pink-100 via-pink-50 to-blue-100"><div className="mobile-screen-layer"><main className="mobile-page-content max-w-4xl mx-auto p-5 space-y-4">

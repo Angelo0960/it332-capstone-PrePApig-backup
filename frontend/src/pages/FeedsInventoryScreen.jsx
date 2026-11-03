@@ -22,6 +22,7 @@ import { buildFeedDonePayload } from '../utils/markDonePayloads.js';
 import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 import { formatLocalDate, formatLocalTime } from '../utils/dates.js';
 import { buildBatchDisplayNames } from '../utils/batchNames.js';
+import useOfflineStatus from '../hooks/useOfflineStatus.js';
 // ────────────────────────────────────────────────────────────────
 
 // Helpers
@@ -73,8 +74,7 @@ const InlineFieldError = ({ id, message }) => message ? (
 export default function FeedsInventoryScreen() {
   const navigate = useNavigate();
 
-  const [isOnline] = useState(true);
-  const [pendingSync] = useState(0);
+  const { isOnline, pendingSync } = useOfflineStatus();
   const [showRecordUsage, setShowRecordUsage] = useState(false);
   const [showAddPurchase, setShowAddPurchase] = useState(false);
   const [showEditPrice, setShowEditPrice] = useState(false);
@@ -275,6 +275,12 @@ export default function FeedsInventoryScreen() {
   }, []);
 
   useEffect(() => {
+    const refreshAfterSync = () => { void fetchFeedOverview(); };
+    window.addEventListener('prepapig:offline-sync-complete', refreshAfterSync);
+    return () => window.removeEventListener('prepapig:offline-sync-complete', refreshAfterSync);
+  }, []);
+
+  useEffect(() => {
     fetchFeedRecords();
   }, [selectedBatch]);
 
@@ -415,7 +421,7 @@ export default function FeedsInventoryScreen() {
       if (!res.ok) throw new Error('Failed to update stock');
       const json = await res.json();
       if (json.success) {
-        alert('Stock updated successfully!');
+        alert(json.needsReview ? 'The save outcome is unclear. Check feed stock on the server before retrying.' : json.queued ? 'Feed purchase saved on this device; waiting to sync.' : 'Stock updated successfully!');
         setShowAddPurchase(false);
         setPurchaseForm({
           feedType: '',
@@ -454,7 +460,7 @@ export default function FeedsInventoryScreen() {
       if (!res.ok) throw new Error('Failed to update price');
       const json = await res.json();
       if (json.success) {
-        alert('Price updated successfully!');
+        alert(json.needsReview ? 'The save outcome is unclear. Check the feed price on the server before retrying.' : json.queued ? 'Feed price saved on this device; waiting to sync.' : 'Price updated successfully!');
         setShowEditPrice(false);
         setEditingFeed(null);
         setNewPrice('');
