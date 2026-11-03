@@ -768,7 +768,7 @@ export default function DashboardScreen() {
 
                   <div className="dashboard-card col-span-1 min-w-0 overflow-hidden flex min-h-[128px] flex-col justify-center rounded-2xl p-3 text-left">
                     <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#555B6E]">Pig Age</div>
-                    <div className="text-5xl sm:text-6xl leading-none font-extrabold tracking-[-0.06em] text-[#252838]">Day {currentBatchDay}</div>
+                    <div className="text-[clamp(1.5rem,6vw,2.5rem)] leading-none font-extrabold tracking-[-0.05em] text-[#252838] whitespace-nowrap">Day {currentBatchDay}</div>
                   </div>
                   <div className="dashboard-card col-span-1 min-w-0 overflow-hidden flex min-h-[128px] flex-col justify-center rounded-2xl p-3 text-left">
                     <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#555B6E]">Estimated Price</div>
