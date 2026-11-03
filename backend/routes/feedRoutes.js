@@ -38,7 +38,9 @@ feedRouter.get('/forecast', async (req, res) => {
         result.aiAnalysis = await generateFeedForecastAnalysis({ forecast: result, feedStocks: stocks });
         result.feedStockSnapshot = result.aiAnalysis.stockContext;
       } catch (error) {
-        result.aiAnalysisError = String(error.message || '').includes('API key is not configured')
+        const message = String(error.message || '');
+        console.error(JSON.stringify({ event: 'feed_forecast_ai_failed', requestId: req.requestId, message: message.slice(0, 1000) }));
+        result.aiAnalysisError = message.includes('No AI provider is configured') || message.includes('API key is not configured')
           ? 'Feed forecast AI analysis is not configured'
           : 'Feed forecast AI analysis is temporarily unavailable';
       }
@@ -57,7 +59,8 @@ feedRouter.post('/forecast/ai-analysis', rateLimit({ limit: 5, windowMs: 600000,
     res.json({ ...analysis, forecast: { status: forecast.status, granularity: forecast.granularity, historicalSummary: forecast.historicalSummary, evaluation: forecast.evaluation, provenance: forecast.provenance } });
   } catch (error) {
     console.error(JSON.stringify({ event: 'feed_forecast_ai_failed', requestId: req.requestId, message: String(error.message || '').slice(0, 300) }));
-    const missingKey = String(error.message || '').includes('API key is not configured');
+    const message = String(error.message || '');
+    const missingKey = message.includes('API key is not configured') || message.includes('No AI provider is configured');
     res.status(missingKey ? 503 : 502).json({ success: false, message: missingKey ? 'Feed forecast AI analysis is not configured' : 'Feed forecast AI analysis is temporarily unavailable', requestId: req.requestId });
   }
 });
