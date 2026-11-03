@@ -553,23 +553,23 @@ export default function VaccinationScreen() {
               {/* Summary Cards */}
               <div className="vaccination-summary-cards grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
                 <div className="vaccination-summary-card bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
-                  <div className="text-xs text-gray-700 font-semibold uppercase tracking-wide mb-2">
+                  <div className="vaccination-summary-label mb-2 text-xs text-gray-700 font-semibold uppercase tracking-wide">
                     Total Vaccines Administered
                   </div>
-                  <div className="text-5xl sm:text-6xl leading-none font-extrabold tracking-[-0.06em] text-gray-900">
+                  <div className="vaccination-summary-value mb-1 font-extrabold text-gray-900">
                     {isNaN(totalDoses) ? 0 : totalDoses}
                   </div>
-                  <div className="text-xs text-gray-600 mt-2 font-semibold">doses</div>
+                  <div className="vaccination-summary-caption mt-2 text-xs text-gray-600 font-semibold">doses</div>
                 </div>
 
                 <div className="vaccination-summary-card bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
-                  <div className="text-xs text-gray-700 font-semibold mb-2">
+                  <div className="vaccination-summary-label mb-2 text-xs text-gray-700 font-semibold uppercase tracking-wide">
                     {selectedBatch === 'all' ? 'Total Vaccination Expenses' : selectedBatchData?.name || 'Unknown'}
                   </div>
-                  <div className="text-2xl font-bold text-gray-900 mb-1">
+                  <div className="vaccination-summary-value mb-1 font-extrabold text-gray-900">
                     {batchExpense == null ? 'Unavailable' : `₱${batchExpense.toLocaleString('en-PH', { maximumFractionDigits: 0 })}`}
                   </div>
-                  <div className="text-xs text-gray-600">
+                  <div className="vaccination-summary-caption mt-2 text-xs text-gray-600">
                     {selectedBatch === 'all'
                       ? 'Across all batches'
                       : 'Vaccination expenses for this batch'}
