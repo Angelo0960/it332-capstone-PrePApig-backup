@@ -137,6 +137,7 @@ export default function FeedsInventoryScreen() {
           }
           return {
             id: batch.id,
+            batch_code: batch.batch_code,
             name: displayNames.get(String(batch.id)) || 'Batch',
             day: day,
             pigCount: batch.pig_count || 0,
@@ -252,7 +253,7 @@ export default function FeedsInventoryScreen() {
         const day = sourceDate
           ? (Number(batch.age_on_acquisition) || 0) + Math.max(0, Math.floor((new Date() - new Date(sourceDate)) / (1000 * 60 * 60 * 24)))
           : 0;
-        return { id: batch.id, name: displayNames.get(String(batch.id)) || 'Batch', day, pigCount: batch.pig_count || 0, breed: batch.breed || 'Unknown', age_on_acquisition: batch.age_on_acquisition || 0 };
+        return { id: batch.id, batch_code: batch.batch_code, name: displayNames.get(String(batch.id)) || 'Batch', day, pigCount: batch.pig_count || 0, breed: batch.breed || 'Unknown', age_on_acquisition: batch.age_on_acquisition || 0 };
       });
       setBatches(mappedBatches);
       setFeedRecords(overview.records || []);
