@@ -43,6 +43,12 @@ const getFeedTypeName = (feedType) => {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 };
 
+const kgQuantityFormatter = new Intl.NumberFormat('en-PH', { maximumFractionDigits: 2 });
+const formatKgQuantity = (value) => {
+  const quantity = Number(value);
+  return Number.isFinite(quantity) ? kgQuantityFormatter.format(quantity) : '0';
+};
+
 const getDaysUntilFeedChange = (day) => {
   if (day < 71) return 71 - day;
   if (day < 106) return 106 - day;
@@ -618,7 +624,7 @@ export default function FeedsInventoryScreen() {
                 </span>
               </div>
               <div className="feeds-hero-number text-4xl font-extrabold tracking-[-0.05em] text-gray-900 mb-1">
-                {selectedBatch === 'all' ? totalStock : totalFeedConsumed} kg
+                {formatKgQuantity(selectedBatch === 'all' ? totalStock : totalFeedConsumed)} <span className="whitespace-nowrap">kg</span>
               </div>
               <div className="text-xs text-gray-600 mb-3">
                 {selectedBatch === 'all'
@@ -665,7 +671,7 @@ export default function FeedsInventoryScreen() {
                         <span className="text-xs font-semibold text-gray-700">{getFeedTypeName(feed.feed_type)}</span>
                       </div>
                       <div className="feeds-hero-number text-4xl font-extrabold tracking-[-0.05em] text-gray-900 mb-1">
-                        {feed.stock_quantity} kg
+                        {formatKgQuantity(feed.stock_quantity)} <span className="whitespace-nowrap">kg</span>
                       </div>
                       <div className="text-xs text-gray-600">
                         {feed.unit_price == null ? 'Unavailable' : `₱${Number(feed.unit_price).toFixed(2)}/kg`}
@@ -693,7 +699,7 @@ export default function FeedsInventoryScreen() {
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-xs font-semibold text-gray-700">{feedType}</span>
                       </div>
-                      <div className="feeds-hero-number text-4xl font-extrabold tracking-[-0.05em] text-gray-900 mb-1">{totalKg} kg</div>
+                      <div className="feeds-hero-number text-4xl font-extrabold tracking-[-0.05em] text-gray-900 mb-1">{formatKgQuantity(totalKg)} <span className="whitespace-nowrap">kg</span></div>
                       <div className="text-xs text-gray-600">Consumed</div>
                       <div className="mt-2 h-1.5 bg-white/30 rounded-full overflow-hidden">
                         <div
@@ -764,7 +770,7 @@ export default function FeedsInventoryScreen() {
                                 feed.stock_quantity < 50 ? 'text-orange-600' : 'text-emerald-600'
                               }`}
                             >
-                              {feed.stock_quantity} kg
+                              {formatKgQuantity(feed.stock_quantity)} <span className="whitespace-nowrap">kg</span>
                             </div>
                           </div>
                         </div>
@@ -781,7 +787,7 @@ export default function FeedsInventoryScreen() {
                           <div className="font-medium text-gray-900">{feedType}</div>
                         </div>
                         <div className="text-right">
-                          <div className="font-bold text-orange-600">{totalKg} kg</div>
+                          <div className="font-bold text-orange-600">{formatKgQuantity(totalKg)} <span className="whitespace-nowrap">kg</span></div>
                         </div>
                       </div>
                     ))
@@ -801,7 +807,7 @@ export default function FeedsInventoryScreen() {
                       Object.entries(consumptionByFeedType).map(([feedType, totalKg]) => (
                         <div key={feedType} className="p-4 flex items-center justify-between">
                           <div className="font-medium text-gray-900">{getFeedTypeName(feedType)}</div>
-                          <div className="font-bold text-orange-600">{totalKg} kg consumed</div>
+                          <div className="font-bold text-orange-600">{formatKgQuantity(totalKg)} kg consumed</div>
                         </div>
                       ))
                     )}
