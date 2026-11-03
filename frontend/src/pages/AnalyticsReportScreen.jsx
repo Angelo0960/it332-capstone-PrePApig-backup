@@ -495,6 +495,9 @@ export default function AnalyticsReportsScreen() {
       ? total + dosage * priceAtUsage
       : total;
   }, 0), [filteredVaccinationRecords]);
+  const totalRecordedCosts = financial
+    ? Math.round((Number(financial.recordedExpenses || 0) + totalFeedCost + totalVaccineCost) * 100) / 100
+    : null;
   const selectedBatches = selectedBatch === 'All Batches'
     ? batches.filter((b) => b.status?.toLowerCase() === 'active')
     : batches.filter((b) => b.batch_code === selectedBatch && b.status?.toLowerCase() === 'active');
@@ -957,14 +960,15 @@ export default function AnalyticsReportsScreen() {
               </div>
             </div>
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
-              <div className="text-xs text-gray-700 font-semibold mb-2">Recorded expenses (period)</div>
+              <div className="text-xs text-gray-700 font-semibold mb-2">Total recorded costs (period)</div>
               <div className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight break-words">
-                {financial ? formatCurrency(financial.recordedExpenses) : 'Unavailable'}
+                {totalRecordedCosts == null ? 'Unavailable' : formatCurrency(totalRecordedCosts)}
               </div>
               <div className="text-xs text-gray-600 space-y-0.5">
+                <div>Manual expenses: {financial ? formatCurrency(financial.recordedExpenses) : 'Unavailable'}</div>
                 <div>Feed usage cost: {formatCurrency(totalFeedCost)}</div>
                 <div>Vaccine usage cost: {formatCurrency(totalVaccineCost)}</div>
-                <div className="text-[10px] text-gray-500">Usage costs are tracked separately from recorded expenses.</div>
+                <div className="text-[10px] text-gray-500">Combined cost total includes manual expenses and priced feed/vaccine usage.</div>
               </div>
             </div>
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
@@ -1178,9 +1182,9 @@ export default function AnalyticsReportsScreen() {
             <h3 className="font-semibold text-gray-900 mb-3">Financial Summary</h3>
             <div className="space-y-2 mb-3 text-sm">
               <div className="flex justify-between"><span>Actual recorded sales (period)</span><strong>{financial ? formatCurrency(financial.actualRevenue) : 'Unavailable'}</strong></div>
-              <div className="flex justify-between"><span>Recorded expenses (period)</span><strong>{financial ? formatCurrency(financial.recordedExpenses) : 'Unavailable'}</strong></div>
-              <div className="flex justify-between"><span>Recorded profit (period)</span><strong>{financial ? formatCurrency(financial.recordedProfit) : 'Unavailable'}</strong></div>
-              <p className="text-xs text-gray-600">Sales minus recorded expenses by transaction date. Unrecorded costs are excluded. Zero sales means no sales recorded for this period.</p>
+              <div className="flex justify-between"><span>Manual expenses (period)</span><strong>{financial ? formatCurrency(financial.recordedExpenses) : 'Unavailable'}</strong></div>
+              <div className="flex justify-between"><span>Recorded ledger profit (sales minus manual expenses)</span><strong>{financial ? formatCurrency(financial.recordedProfit) : 'Unavailable'}</strong></div>
+              <p className="text-xs text-gray-600">Ledger profit uses sales minus manual expenses by transaction date. Feed and vaccine usage costs are shown separately and included in total costs below.</p>
               {financialError && <p className="text-xs text-red-700">{financialError}</p>}
             </div>
             <p className="text-xs text-gray-600 mb-3">Estimates below use current standing weight and explicitly selected or recorded prices, not historical revenue. Feed and vaccine usage costs use transaction-time snapshots when available. Manual expenses may be incomplete.</p>
@@ -1222,15 +1226,15 @@ export default function AnalyticsReportsScreen() {
                   </div>
                 )}
                 <div className="flex items-center justify-between text-sm font-semibold border-t border-white/30 pt-2 mt-2">
-                  <span className="text-gray-900">Recorded expenses (period)</span>
-                  <span className="text-red-600">{financial ? formatCurrency(financial.recordedExpenses) : 'Unavailable'}</span>
+                  <span className="text-gray-900">Total recorded costs (period)</span>
+                  <span className="text-red-600">{totalRecordedCosts == null ? 'Unavailable' : formatCurrency(totalRecordedCosts)}</span>
                 </div>
               </div>
               <div className="flex items-center justify-between bg-green-100/60 rounded-lg p-3 mt-3">
                 <span className="font-bold text-gray-900">Estimated value less recorded costs</span>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-green-600">
-                    {estimateAvailable && financial ? formatCurrency(salesRevenue - financial.recordedExpenses) : 'Unavailable'}
+                    {estimateAvailable && totalRecordedCosts != null ? formatCurrency(salesRevenue - totalRecordedCosts) : 'Unavailable'}
                   </div>
                   <span className="px-2 py-0.5 bg-green-500 text-white rounded-full text-xs font-semibold">
                     {estimateAvailable
