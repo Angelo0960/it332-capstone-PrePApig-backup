@@ -468,9 +468,10 @@ export default function FeedsInventoryScreen() {
   };
 
   // ----- Computed -----
-  const getBatchName = (batchId) => {
-    const batch = batches.find((b) => b.id === batchId);
-    return batch ? batch.name : 'Unknown';
+  const getBatchName = (batchId, fallbackName = '') => {
+    const batch = batches.find((b) => String(b.id) === String(batchId));
+    const name = String(batch?.name || fallbackName || '').trim();
+    return name && name.toLowerCase() !== 'unknown' ? name : '';
   };
 
   const calculateBatchFeedExpense = (batchId) => {
@@ -983,9 +984,11 @@ export default function FeedsInventoryScreen() {
                       <div key={record.id} className="p-4">
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1">
-                            <div className="font-medium text-gray-900 text-sm">
-                              {record.batch_name || getBatchName(record.batch_id)}
-                            </div>
+                            {getBatchName(record.batch_id, record.batch_name) && (
+                              <div className="font-medium text-gray-900 text-sm">
+                                {getBatchName(record.batch_id, record.batch_name)}
+                              </div>
+                            )}
                             <div className="text-xs text-gray-700 mt-1">
                               {record.feed_type} · {record.quantity_kg} kg
                             </div>
@@ -1002,9 +1005,11 @@ export default function FeedsInventoryScreen() {
                               </div>
                             )}
                           </div>
-                          <span className="max-w-[45%] truncate whitespace-nowrap px-2 py-1 bg-green-100/80 border border-green-300/50 rounded-full text-xs text-green-700 font-semibold" title={record.batch_name || getBatchName(record.batch_id)}>
-                            {record.batch_name || getBatchName(record.batch_id)}
-                          </span>
+                          {getBatchName(record.batch_id, record.batch_name) && (
+                            <span className="max-w-[45%] truncate whitespace-nowrap px-2 py-1 bg-green-100/80 border border-green-300/50 rounded-full text-xs text-green-700 font-semibold" title={getBatchName(record.batch_id, record.batch_name)}>
+                              {getBatchName(record.batch_id, record.batch_name)}
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))
