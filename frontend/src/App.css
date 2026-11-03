@@ -631,17 +631,13 @@ textarea {
   letter-spacing: -0.06em;
 }
 
-.feeds-desktop-content .feeds-summary-card:first-child .feeds-hero-number {
-  font-size: clamp(3rem, 6vw, 4.5rem);
-}
-
 @media (max-width: 1023px) {
   .feeds-desktop-content .feeds-summary-card:first-child {
     min-height: 12rem;
   }
 
   .feeds-desktop-content .feeds-summary-card:first-child .feeds-hero-number {
-    font-size: clamp(3rem, 14vw, 4.5rem);
+    font-size: clamp(1.65rem, 8vw, 2.5rem);
   }
 
   .feeds-desktop-content .feeds-summary-card:not(:first-child) .feeds-hero-number {
