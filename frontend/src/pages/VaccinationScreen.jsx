@@ -454,21 +454,6 @@ export default function VaccinationScreen() {
 
   return (
     <div className="dashboard-theme mobile-screen-shell min-h-screen w-full relative overflow-hidden flex flex-col">
-      {isRefreshing && !loading && (
-        <div className="absolute left-0 right-0 top-0 z-[60] h-1 overflow-hidden bg-white/25">
-          <div className="h-full w-1/3 animate-pulse bg-emerald-400/80" />
-        </div>
-      )}
-      {loading && (
-        <div className="absolute inset-0 z-50 p-4 md:p-8 bg-[#EDF3EF]/55 backdrop-blur-[2px] animate-pulse pointer-events-none">
-          <div className="h-8 w-56 rounded bg-white/50 mb-5" />
-          <div className="h-16 rounded-2xl bg-white/45 border border-white/50 mb-4" />
-          <div className="flex gap-3 mb-4"><div className="h-12 w-32 rounded-xl bg-white/45" /><div className="h-12 w-32 rounded-xl bg-white/45" /><div className="h-12 w-32 rounded-xl bg-white/45" /></div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"><div className="h-28 rounded-2xl bg-white/45" /><div className="h-28 rounded-2xl bg-white/45" /><div className="h-28 rounded-2xl bg-white/45" /><div className="h-28 rounded-2xl bg-white/45" /></div>
-          <div className="h-56 rounded-2xl bg-white/45 mb-4" />
-          <div className="h-48 rounded-2xl bg-white/45" />
-        </div>
-      )}
       <div className="absolute inset-0">
         <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover saturate-[0.65] brightness-[0.9] blur-[2px]" />
       </div>

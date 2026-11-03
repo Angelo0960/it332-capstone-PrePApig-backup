@@ -939,17 +939,7 @@ export default function AnalyticsReportsScreen() {
 
         {/* Scrollable Content */}
         <div className="flex-1 min-h-0 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24 relative">
-          {loading && (
-            <div className="absolute inset-0 z-20 px-4 md:px-8 lg:px-12 pb-24 bg-[#EDF3EF]/45 backdrop-blur-[2px] animate-pulse">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                {Array.from({ length: 4 }).map((_, index) => <div key={`summary-skeleton-${index}`} className="h-28 rounded-2xl bg-white/45 border border-white/50" />)}
-              </div>
-              <div className="h-72 rounded-[1.75rem] bg-white/45 border border-white/50 mb-4" />
-              <div className="h-56 rounded-2xl bg-white/45 border border-white/50 mb-4" />
-              <div className="h-52 rounded-2xl bg-white/45 border border-white/50" />
-            </div>
-          )}
-          <div className={loading ? 'opacity-0 pointer-events-none select-none' : ''}>
+          <div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
               <div className="text-xs text-gray-700 font-semibold mb-2">Feed Stock</div>
@@ -1331,22 +1321,7 @@ export default function AnalyticsReportsScreen() {
               <h3 className="font-semibold text-gray-900">Generate Reports</h3>
             </div>
             <div className="divide-y divide-white/20">
-              {loading ? (
-                Array.from({ length: 3 }).map((_, index) => (
-                  <div key={`report-skeleton-${index}`} className="p-4 flex items-center justify-between animate-pulse">
-                    <div className="flex items-start gap-3 flex-1">
-                      <div className="w-5 h-5 rounded bg-white/40" />
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 w-40 rounded bg-white/50" />
-                        <div className="h-3 w-64 max-w-full rounded bg-white/40" />
-                      </div>
-                    </div>
-                    <div className="w-8 h-8 rounded-lg bg-white/40" />
-                  </div>
-                ))
-              ) : [
-                ...profitReportItems,
-              ].map((report) => (
+              {[...profitReportItems].map((report) => (
                 <div key={report.name} className="p-4 flex items-center justify-between">
                   <div className="flex items-start gap-3 flex-1">
                     <FileText className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
