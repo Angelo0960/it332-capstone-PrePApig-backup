@@ -390,23 +390,20 @@ export default function FeedsInventoryScreen() {
   // ----- Restock -----
   const handleAddPurchase = async () => {
     const errors = {};
-    if (!purchaseForm.feedType) errors.feedType = 'Feed type is required';
-    if (!String(purchaseForm.quantity).trim()) errors.quantity = 'Quantity is required';
+    const feedType = FEED_TYPE_MAP[purchaseForm.feedType];
+    const quantityText = String(purchaseForm.quantity).trim();
+    const quantity = quantityText ? Number(purchaseForm.quantity) : null;
+    const unitCostText = String(purchaseForm.unitCost).trim();
+    const unitCost = unitCostText ? Number(purchaseForm.unitCost) : null;
+
+    if (!feedType) errors.feedType = 'Feed type is required';
+    if (!quantityText) errors.quantity = 'Quantity is required';
+    else if (!Number.isFinite(quantity) || quantity <= 0) errors.quantity = 'Enter a quantity greater than 0';
     if (!purchaseForm.date) errors.date = 'Date is required';
+    if (unitCost !== null && (!Number.isFinite(unitCost) || unitCost < 0)) errors.unitCost = 'Enter a valid non-negative cost';
     setPurchaseErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
-    const feedType = FEED_TYPE_MAP[purchaseForm.feedType];
-    if (!feedType) {
-      setPurchaseErrors({ feedType: 'Select a valid feed type' });
-      return;
-    }
-    const quantity = parseFloat(purchaseForm.quantity);
-    if (!Number.isFinite(quantity) || quantity <= 0) {
-      setPurchaseErrors({ quantity: 'Enter a quantity greater than 0' });
-      return;
-    }
-    const unitCost = purchaseForm.unitCost.trim() === '' ? null : Number(purchaseForm.unitCost);
     try {
       const res = await fetch(`${API_BASE}/feeds/stock/update`, {
         method: 'POST',
@@ -418,24 +415,19 @@ export default function FeedsInventoryScreen() {
           last_updated: purchaseForm.date,
         }),
       });
-      if (!res.ok) throw new Error('Failed to update stock');
-      const json = await res.json();
-      if (json.success) {
-        alert(json.needsReview ? 'The save outcome is unclear. Check feed stock on the server before retrying.' : json.queued ? 'Feed purchase saved on this device; waiting to sync.' : 'Stock updated successfully!');
-        setShowAddPurchase(false);
-        setPurchaseForm({
-          feedType: '',
-          quantity: '',
-          unitCost: '',
-          date: formatLocalDate(),
-        });
-        fetchFeedStock();
-        window.dispatchEvent(new Event('prepapig:financial-data-changed'));
-      } else {
-        throw new Error(json.message || 'Unknown error');
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || `Failed to update stock (HTTP ${res.status})`);
       }
+
+      setPurchaseErrors({});
+      alert(json.needsReview ? 'The save outcome is unclear. Check feed stock on the server before retrying.' : json.queued ? 'Feed purchase saved on this device; waiting to sync.' : 'Stock updated successfully!');
+      setShowAddPurchase(false);
+      setPurchaseForm({ feedType: '', quantity: '', unitCost: '', date: formatLocalDate() });
+      void fetchFeedStock();
+      window.dispatchEvent(new Event('prepapig:financial-data-changed'));
     } catch (err) {
-      alert('Error restocking: ' + err.message);
+      setPurchaseErrors((current) => ({ ...current, form: err.message || 'Unable to save the feed purchase. Please try again.' }));
     }
   };
 
@@ -571,7 +563,7 @@ export default function FeedsInventoryScreen() {
             <button onClick={() => setShowRecordUsage(true)} className="hidden lg:inline-flex items-center gap-2 rounded-2xl bg-[#ff2f72] px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#ff2f72]/25">
               <Plus className="w-4 h-4" /> Record Feed Usage
             </button>
-            <button onClick={() => setShowAddPurchase(true)} className="hidden lg:inline-flex items-center gap-2 rounded-2xl bg-white/65 px-4 py-2.5 text-xs font-bold text-emerald-700 border border-white/70 shadow-lg">
+            <button onClick={() => { setPurchaseErrors({}); setShowAddPurchase(true); }} className="hidden lg:inline-flex items-center gap-2 rounded-2xl bg-white/65 px-4 py-2.5 text-xs font-bold text-emerald-700 border border-white/70 shadow-lg">
               <Plus className="w-4 h-4" /> Add Feed Purchase
             </button>
             <button className="relative w-9 h-9 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all">
@@ -826,7 +818,7 @@ export default function FeedsInventoryScreen() {
                   Record Feed Usage
                 </button>
                 <button
-                  onClick={() => setShowAddPurchase(true)}
+                  onClick={() => { setPurchaseErrors({}); setShowAddPurchase(true); }}
                   className="bg-white/30 backdrop-blur-lg border border-white/40 text-emerald-700 font-bold py-3 rounded-xl shadow-[6px_6px_12px_rgba(0,0,0,0.1),-6px_-6px_12px_rgba(255,255,255,0.8)] active:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.1),inset_-3px_-3px_6px_rgba(255,255,255,0.8)] transition-all"
                 >
                   Add Feed Purchase
@@ -1202,12 +1194,8 @@ export default function FeedsInventoryScreen() {
                 <button
                   onClick={() => {
                     setShowAddPurchase(false);
-                    setPurchaseForm({
-                      feedType: '',
-                      quantity: '',
-                      unitCost: '',
-                      date: formatLocalDate(),
-                    });
+                    setPurchaseErrors({});
+                    setPurchaseForm({ feedType: '', quantity: '', unitCost: '', date: formatLocalDate() });
                   }}
                   className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all"
                 >
@@ -1216,51 +1204,94 @@ export default function FeedsInventoryScreen() {
               </div>
 
               <div className="p-5 space-y-4">
+                {purchaseErrors.form && <p className="flex items-start gap-2 rounded-xl border border-red-300 bg-red-50/80 p-3 text-sm font-semibold text-red-700" role="alert"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />{purchaseErrors.form}</p>}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">Feed Type</label>
-                  <select
-                    value={purchaseForm.feedType}
-                    onChange={(e) => setPurchaseForm({ ...purchaseForm, feedType: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  >
-                    <option value="">Select feed type...</option>
-                    <option value="starter">Starter Mash</option>
-                    <option value="grower">Grower Pellet</option>
-                    <option value="finisher">Finisher</option>
-                  </select>
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Feed Type <span className="text-red-700" aria-hidden="true">*</span></label>
+                  <div className="relative">
+                    <select
+                      value={purchaseForm.feedType}
+                      onChange={(e) => {
+                        setPurchaseForm({ ...purchaseForm, feedType: e.target.value });
+                        setPurchaseErrors((current) => ({ ...current, feedType: '', form: '' }));
+                      }}
+                      aria-required="true"
+                      aria-invalid={Boolean(purchaseErrors.feedType)}
+                      aria-describedby={purchaseErrors.feedType ? 'purchase-feed-type-error' : undefined}
+                      className={`w-full px-4 py-3 pr-11 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all ${purchaseErrors.feedType ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
+                    >
+                      <option value="">Select feed type...</option>
+                      <option value="starter">Starter Mash</option>
+                      <option value="grower">Grower Pellet</option>
+                      <option value="finisher">Finisher</option>
+                    </select>
+                    {purchaseErrors.feedType && <AlertTriangle className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
+                  </div>
+                  <InlineFieldError id="purchase-feed-type-error" message={purchaseErrors.feedType} />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">Quantity (kg)</label>
-                  <input
-                    type="number"
-                    value={purchaseForm.quantity}
-                    onChange={(e) => setPurchaseForm({ ...purchaseForm, quantity: e.target.value })}
-                    placeholder="250"
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  />
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Quantity (kg) <span className="text-red-700" aria-hidden="true">*</span></label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={purchaseForm.quantity}
+                      onChange={(e) => {
+                        setPurchaseForm({ ...purchaseForm, quantity: e.target.value });
+                        setPurchaseErrors((current) => ({ ...current, quantity: '', form: '' }));
+                      }}
+                      placeholder="250"
+                      aria-required="true"
+                      aria-invalid={Boolean(purchaseErrors.quantity)}
+                      aria-describedby={purchaseErrors.quantity ? 'purchase-quantity-error' : undefined}
+                      className={`w-full px-4 py-3 pr-11 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all ${purchaseErrors.quantity ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
+                    />
+                    {purchaseErrors.quantity && <AlertTriangle className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
+                  </div>
+                  <InlineFieldError id="purchase-quantity-error" message={purchaseErrors.quantity} />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">Unit Cost (₱ per kg)</label>
-                  <input
-                    type="number"
-                    value={purchaseForm.unitCost}
-                    onChange={(e) => setPurchaseForm({ ...purchaseForm, unitCost: e.target.value })}
-                    placeholder="28.50"
-                    step="0.01"
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  />
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Unit Cost (₱ per kg) <span className="text-gray-600 font-normal">(Optional)</span></label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={purchaseForm.unitCost}
+                      onChange={(e) => {
+                        setPurchaseForm({ ...purchaseForm, unitCost: e.target.value });
+                        setPurchaseErrors((current) => ({ ...current, unitCost: '', form: '' }));
+                      }}
+                      placeholder="28.50"
+                      aria-invalid={Boolean(purchaseErrors.unitCost)}
+                      aria-describedby={purchaseErrors.unitCost ? 'purchase-unit-cost-error' : undefined}
+                      className={`w-full px-4 py-3 pr-11 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all ${purchaseErrors.unitCost ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
+                    />
+                    {purchaseErrors.unitCost && <AlertTriangle className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
+                  </div>
+                  <InlineFieldError id="purchase-unit-cost-error" message={purchaseErrors.unitCost} />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">Date of Purchase</label>
-                  <input
-                    type="date"
-                    value={purchaseForm.date}
-                    onChange={(e) => setPurchaseForm({ ...purchaseForm, date: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  />
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Date of Purchase <span className="text-red-700" aria-hidden="true">*</span></label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={purchaseForm.date}
+                      onChange={(e) => {
+                        setPurchaseForm({ ...purchaseForm, date: e.target.value });
+                        setPurchaseErrors((current) => ({ ...current, date: '', form: '' }));
+                      }}
+                      aria-required="true"
+                      aria-invalid={Boolean(purchaseErrors.date)}
+                      aria-describedby={purchaseErrors.date ? 'purchase-date-error' : undefined}
+                      className={`w-full px-4 py-3 pr-11 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all ${purchaseErrors.date ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
+                    />
+                    {purchaseErrors.date && <AlertTriangle className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
+                  </div>
+                  <InlineFieldError id="purchase-date-error" message={purchaseErrors.date} />
                 </div>
 
                 <button
