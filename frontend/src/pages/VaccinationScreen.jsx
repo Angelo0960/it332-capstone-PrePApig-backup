@@ -564,14 +564,14 @@ export default function VaccinationScreen() {
 
                 <div className="vaccination-summary-card bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
                   <div className="text-xs text-gray-700 font-semibold mb-2">
-                    {selectedBatch === 'all' ? 'All Batches' : selectedBatchData?.name || 'Unknown'}
+                    {selectedBatch === 'all' ? 'Total Vaccination Expenses' : selectedBatchData?.name || 'Unknown'}
                   </div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">
                     {batchExpense == null ? 'Unavailable' : `₱${batchExpense.toLocaleString('en-PH', { maximumFractionDigits: 0 })}`}
                   </div>
                   <div className="text-xs text-gray-600">
                     {selectedBatch === 'all'
-                      ? 'Total vaccination expenses'
+                      ? 'Across all batches'
                       : 'Vaccination expenses for this batch'}
                   </div>
                 </div>
