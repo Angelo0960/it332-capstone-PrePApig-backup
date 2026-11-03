@@ -647,14 +647,14 @@ export default function FeedsInventoryScreen() {
             <div className="feeds-summary-card flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
               <div className="mb-3">
                 <span className="text-xs text-gray-700 font-semibold">
-                  {selectedBatch === 'all' ? 'All Batches' : selectedBatchData?.name}
+                  {selectedBatch === 'all' ? 'Total Feed Expenses' : selectedBatchData?.name}
                 </span>
               </div>
               <div className="feeds-hero-number text-4xl font-extrabold tracking-[-0.05em] text-gray-900 mb-1">
                 {displayedFeedExpense == null ? 'Unavailable' : `₱${displayedFeedExpense.toLocaleString('en-PH', { maximumFractionDigits: 0 })}`}
               </div>
               <div className="text-xs text-gray-600">
-                {selectedBatch === 'all' ? 'Total feed expenses' : 'Feed expenses for this batch'}
+                {selectedBatch === 'all' ? 'Across all batches' : 'Feed expenses for this batch'}
               </div>
             </div>
 
