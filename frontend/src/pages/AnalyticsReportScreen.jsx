@@ -945,33 +945,33 @@ export default function AnalyticsReportsScreen() {
         <div className="flex-1 min-h-0 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24 relative">
           <div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-            <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
-              <div className="text-xs text-gray-700 font-semibold mb-2">Feed Stock</div>
-              <div className="text-2xl font-bold text-gray-900">{totalFeedStock} kg</div>
-              <div className="text-xs text-gray-600">Total remaining</div>
+            <div className="analytics-summary-card bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
+              <div className="analytics-summary-label mb-2 text-xs text-gray-700 font-semibold uppercase tracking-wide">Feed Stock</div>
+              <div className="analytics-summary-value font-bold text-gray-900">{Number(totalFeedStock).toLocaleString('en-PH', { maximumFractionDigits: 2 })} <span className="whitespace-nowrap">kg</span></div>
+              <div className="analytics-summary-caption text-xs text-gray-600">Total remaining</div>
             </div>
-            <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
-              <div className="text-xs text-gray-700 font-semibold mb-2">Vaccinations</div>
-              <div className="text-2xl font-bold text-gray-900">
-                {vaccinationSummary.totalDoses} doses
+            <div className="analytics-summary-card bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
+              <div className="analytics-summary-label mb-2 text-xs text-gray-700 font-semibold uppercase tracking-wide">Vaccinations</div>
+              <div className="analytics-summary-value font-bold text-gray-900">
+                {vaccinationSummary.totalDoses} <span className="whitespace-nowrap">doses</span>
               </div>
-              <div className="text-xs text-gray-600">
+              <div className="analytics-summary-caption text-xs text-gray-600">
                 {vaccinationSummary.completed} completed ·{' '}
                 {vaccinationSummary.scheduled} scheduled
               </div>
             </div>
-            <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
-              <div className="text-xs text-gray-700 font-semibold mb-2">Total recorded costs (period)</div>
-              <div className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight break-words">
+            <div className="analytics-summary-card bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
+              <div className="analytics-summary-label mb-2 text-xs text-gray-700 font-semibold uppercase tracking-wide">Total recorded costs (period)</div>
+              <div className="analytics-summary-value font-bold text-gray-900">
                 {totalRecordedCosts == null ? 'Unavailable' : formatCurrency(totalRecordedCosts)}
               </div>
             </div>
-            <div className="bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
-              <div className="text-xs text-gray-700 font-semibold mb-2">Batches</div>
-              <div className="text-2xl font-bold text-gray-900">
+            <div className="analytics-summary-card bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
+              <div className="analytics-summary-label mb-2 text-xs text-gray-700 font-semibold uppercase tracking-wide">Batches</div>
+              <div className="analytics-summary-value font-bold text-gray-900">
                 {selectedBatch === 'All Batches' ? batches.length : 1}
               </div>
-              <div className="text-xs text-gray-600">
+              <div className="analytics-summary-caption text-xs text-gray-600">
                 {selectedBatch === 'All Batches' ? 'Total batches' : selectedBatch}
               </div>
             </div>

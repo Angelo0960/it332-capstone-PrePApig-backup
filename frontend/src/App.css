@@ -20,6 +20,27 @@ body {
   box-shadow: 0 10px 24px rgba(31, 64, 49, 0.1);
 }
 
+.analytics-summary-card {
+  min-width: 0;
+  min-height: 150px;
+}
+
+.analytics-summary-label {
+  min-height: 2rem;
+  line-height: 1.35;
+}
+
+.analytics-summary-value {
+  font-size: clamp(1.125rem, 5.5vw, 1.5rem);
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+}
+
+.analytics-summary-caption {
+  line-height: 1.35;
+}
+
 .dashboard-screen {
   --dashboard-summary-surface: rgba(255, 255, 255, 0.42);
   --dashboard-summary-border: rgba(255, 255, 255, 0.5);
