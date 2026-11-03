@@ -20,6 +20,19 @@ body {
   box-shadow: 0 10px 24px rgba(31, 64, 49, 0.1);
 }
 
+.dashboard-screen {
+  --dashboard-summary-surface: rgba(255, 255, 255, 0.42);
+  --dashboard-summary-border: rgba(255, 255, 255, 0.5);
+}
+
+.dashboard-screen .dashboard-batch-hero,
+.dashboard-screen .dashboard-summary-grid > .dashboard-card {
+  background-color: var(--dashboard-summary-surface) !important;
+  border-color: var(--dashboard-summary-border) !important;
+  backdrop-filter: blur(18px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(120%) !important;
+}
+
 .dashboard-desktop-sidebar {
   display: none;
 }
