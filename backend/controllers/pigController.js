@@ -85,11 +85,14 @@ export const createBatch = async (req, res) => {
 
 export const getAllBatches = async (req, res) => {
     try {
-        const makeQuery = () => supabase
+        const makeQuery = () => {
+            let query = supabase
             .from('pig_batches')
             .select('id,batch_code,pig_count,breed,start_weight,current_weight,sale_price_per_kg,age_on_acquisition,date_acquired,status,created_at')
-            .eq('owner_id', req.user.id)
-            .order('created_at', { ascending: false });
+            .eq('owner_id', req.user.id);
+            if (req.query.available === 'true') query = query.or('status.eq.Active,status.is.null');
+            return query.order('created_at', { ascending: false });
+        };
 
         const all = req.query.all === 'true';
         const batches = all

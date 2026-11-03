@@ -344,7 +344,8 @@ export const getVaccinationOverview = async (req, res) => {
                 .from('pig_batches')
                 .select('id,batch_code,pig_count,breed,age_on_acquisition,start_weight,current_weight,date_acquired,status,created_at')
                 .eq('owner_id', req.user.id)
-                .order('created_at', { ascending: false })),
+                                .or('status.eq.Active,status.is.null')
+                                .order('created_at', { ascending: false })),
             collectPages(() => supabase
                 .from('vaccination_records')
                 .select('id,batch_id,vaccine_name,vaccination_date,next_due_date,administered_by,dosage,notes,status,price_per_dose_at_usage,created_at')

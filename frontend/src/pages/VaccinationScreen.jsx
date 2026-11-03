@@ -100,7 +100,7 @@ export default function VaccinationScreen() {
       setBatches(cached);
     }
     try {
-      const res = await fetch(`${API_BASE}/pigs/all?all=true`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE}/pigs/all?all=true&available=true`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.success && json.data.length > 0) {

@@ -341,9 +341,10 @@ export const getFeedOverview = async (req, res) => {
         const [batches, records, stock, expenses] = await Promise.all([
             collectPages(() => supabase
                 .from('pig_batches')
-                .select('id,batch_code,pig_count,breed,age_on_acquisition,date_acquired,created_at')
+                .select('id,batch_code,pig_count,breed,age_on_acquisition,date_acquired,status,created_at')
                 .eq('owner_id', req.user.id)
-                .order('created_at', { ascending: false })),
+                                .or('status.eq.Active,status.is.null')
+                                .order('created_at', { ascending: false })),
             collectPages(() => supabase
                 .from('feed_records')
                 .select('id,batch_id,feed_type,quantity_kg,feeding_date,feeding_time,notes,unit_price_at_usage,created_at')
