@@ -610,6 +610,7 @@ textarea {
     align-items: start;
     padding: 0 2.4rem 2rem;
     overflow: visible;
+    position: relative;
   }
 
   .vaccination-desktop-content > .vaccination-summary-cards {
@@ -645,11 +646,12 @@ textarea {
   }
 
   .vaccination-schedule-card {
-    grid-column: 1 / span 6;
-    grid-row: 2;
+    position: absolute;
+    top: 166px;
+    left: 2.4rem;
+    right: calc(50% + 0.55rem);
     min-height: 230px;
-    margin-top: -230px;
-    margin-bottom: -230px;
+    margin: 0;
     border-radius: 1.5rem !important;
   }
 
