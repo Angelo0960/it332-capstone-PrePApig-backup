@@ -619,7 +619,7 @@ export default function FeedsInventoryScreen() {
           <div className="flex flex-nowrap overflow-x-auto gap-3 pb-2">
             <div className="feeds-summary-card flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs text-gray-700 font-semibold">
+                <span className="text-xs text-gray-700 font-semibold uppercase tracking-wide">
                   {selectedBatch === 'all' ? 'Current Stock' : 'Feed Consumed'}
                 </span>
               </div>
@@ -646,7 +646,7 @@ export default function FeedsInventoryScreen() {
 
             <div className="feeds-summary-card flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
               <div className="mb-3">
-                <span className="text-xs text-gray-700 font-semibold">
+                <span className="text-xs text-gray-700 font-semibold uppercase tracking-wide">
                   {selectedBatch === 'all' ? 'Total Feed Expenses' : selectedBatchData?.name}
                 </span>
               </div>
@@ -668,7 +668,7 @@ export default function FeedsInventoryScreen() {
                       className="feeds-summary-card flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg"
                     >
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-semibold text-gray-700">{getFeedTypeName(feed.feed_type)}</span>
+                        <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">{getFeedTypeName(feed.feed_type)}</span>
                       </div>
                       <div className="feeds-hero-number text-4xl font-extrabold tracking-[-0.05em] text-gray-900 mb-1">
                         {formatKgQuantity(feed.stock_quantity)} <span className="whitespace-nowrap">kg</span>
@@ -697,7 +697,7 @@ export default function FeedsInventoryScreen() {
                       className="feeds-summary-card flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg"
                     >
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-semibold text-gray-700">{feedType}</span>
+                        <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">{feedType}</span>
                       </div>
                       <div className="feeds-hero-number text-4xl font-extrabold tracking-[-0.05em] text-gray-900 mb-1">{formatKgQuantity(totalKg)} <span className="whitespace-nowrap">kg</span></div>
                       <div className="text-xs text-gray-600">Consumed</div>

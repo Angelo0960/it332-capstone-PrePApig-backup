@@ -602,6 +602,46 @@ textarea {
 .dashboard-theme [class*="focus:ring-pink-"]:focus { --tw-ring-color: rgba(255, 47, 114, 0.5) !important; }
 .dashboard-theme .desktop-app-content { color: var(--dashboard-ink); }
 
+/* Match feed summary tiles to the clean, oversized vaccination metric cards. */
+.feeds-desktop-content .feeds-summary-card {
+  min-height: 11rem;
+  padding: 1.25rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.82) !important;
+  border-radius: 1.5rem !important;
+  background: rgba(244, 247, 245, 0.86) !important;
+  box-shadow: 0 10px 24px rgba(37, 40, 56, 0.1) !important;
+}
+
+.feeds-desktop-content .feeds-summary-card .feeds-hero-number {
+  font-size: clamp(1.75rem, 4vw, 3rem);
+  line-height: 1;
+  letter-spacing: -0.06em;
+}
+
+.feeds-desktop-content .feeds-summary-card:first-child .feeds-hero-number {
+  font-size: clamp(3rem, 6vw, 4.5rem);
+}
+
+@media (max-width: 1023px) {
+  .feeds-desktop-content .feeds-summary-card:first-child {
+    min-height: 12rem;
+  }
+
+  .feeds-desktop-content .feeds-summary-card:first-child .feeds-hero-number {
+    font-size: clamp(3rem, 14vw, 4.5rem);
+  }
+
+  .feeds-desktop-content .feeds-summary-card:not(:first-child) .feeds-hero-number {
+    font-size: clamp(1.65rem, 8vw, 2.5rem);
+  }
+}
+
+@media (max-width: 380px) {
+  .feeds-desktop-content .feeds-summary-card {
+    padding: 0.9rem !important;
+  }
+}
+
 @media (min-width: 1024px) {
   .vaccination-desktop-content {
     display: grid;
