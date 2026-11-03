@@ -506,7 +506,18 @@ export default function VaccinationScreen() {
         {/* Batch Selector */}
         <div className="px-4 md:px-8 lg:px-12 mb-4">
           <div className="vaccination-batch-selector relative z-50 isolate bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-3 shadow-lg">
-            <div className="flex items-center gap-2 overflow-x-auto">
+            <select
+              value={selectedBatch}
+              onChange={(event) => setSelectedBatch(event.target.value)}
+              className="md:hidden min-h-11 w-full rounded-xl border border-white/50 bg-white/45 px-3 text-base font-semibold text-gray-700 outline-none"
+              aria-label="Select batch"
+            >
+              <option value="all">All Available Batches</option>
+              {batches.map((batch) => (
+                <option key={batch.id} value={String(batch.id)}>{batch.name}</option>
+              ))}
+            </select>
+            <div className="hidden md:flex items-center gap-2 overflow-x-auto">
               <button type="button" onClick={() => setSelectedBatch('all')} className={`px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${selectedBatch === 'all' ? 'bg-[#ff2f72] text-white shadow-lg' : 'bg-white/30 text-gray-700'}`}>All Batches</button>
               {batches.map((batch) => (
                 <button type="button" key={batch.id} onClick={() => setSelectedBatch(String(batch.id))} className={`px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${String(selectedBatch) === String(batch.id) ? 'bg-[#ff2f72] text-white shadow-lg' : 'bg-white/30 text-gray-700'}`}>{batch.name}</button>
