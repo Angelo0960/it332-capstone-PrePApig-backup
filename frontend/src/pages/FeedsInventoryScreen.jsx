@@ -605,7 +605,7 @@ export default function FeedsInventoryScreen() {
             >
               <option value="all">All Available Batches</option>
               {batches.map((batch) => (
-                <option key={batch.id} value={String(batch.id)}>{batch.name}</option>
+                <option key={batch.id} value={String(batch.id)}>{batch.name} ({batch.pigCount ?? 0} pigs)</option>
               ))}
             </select>
             <div className="hidden md:flex items-center gap-2 overflow-x-auto">
