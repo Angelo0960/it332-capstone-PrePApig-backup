@@ -51,6 +51,9 @@ const getNextScheduledDate = (batch, vaccinationDate) => {
 };
 
 
+const InlineFieldError = ({ id, message }) => (
+  message ? <p id={id} className="mt-1 text-xs font-semibold text-red-700" role="alert">{message}</p> : null
+);
 // Map select value to vaccine name
 const VACCINE_NAME_MAP = {
   'swine-fever': 'Swine Fever',
@@ -91,6 +94,7 @@ export default function VaccinationScreen() {
     expiryDate: '',
     purchaseDate: formatLocalDate(),
   });
+  const [vaccinationErrors, setVaccinationErrors] = useState({});
 
   // Fetch batches
   const fetchBatches = async () => {
@@ -329,7 +333,14 @@ export default function VaccinationScreen() {
 
   // Modal submit
   const handleFormSubmit = () => {
-    if (!vaccinationForm.batch || !vaccinationForm.vaccineType || !vaccinationForm.doses) return;
+    const errors = {};
+    if (!vaccinationForm.batch) errors.batch = 'Batch is required';
+    if (!vaccinationForm.vaccineType) errors.vaccineType = 'Vaccine type is required';
+    if (!String(vaccinationForm.doses).trim()) errors.doses = 'Doses are required';
+    if (!vaccinationForm.date) errors.date = 'Date is required';
+    setVaccinationErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     const payload = {
       batch_id: vaccinationForm.batch,
       vaccine_name: vaccinationForm.vaccineType,
@@ -877,7 +888,10 @@ export default function VaccinationScreen() {
               <div className="flex items-center justify-between p-5 border-b border-white/30">
                 <h2 className="text-lg font-bold text-gray-900">Record Vaccination</h2>
                 <button
-                  onClick={() => setShowRecordVaccination(false)}
+                  onClick={() => {
+                    setShowRecordVaccination(false);
+                    setVaccinationErrors({});
+                  }}
                   className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all"
                 >
                   <X className="w-4 h-4 text-gray-700" />
@@ -886,59 +900,95 @@ export default function VaccinationScreen() {
 
               <div className="p-5 space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">Batch</label>
-                  <select
-                    value={vaccinationForm.batch}
-                    onChange={(e) => setVaccinationForm({ ...vaccinationForm, batch: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  >
-                    <option value="">Select batch...</option>
-                    {batches.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name}
-                      </option>
-                    ))}
-                  </select>
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Batch <span className="text-red-700" aria-hidden="true">*</span></label>
+                  <div className="relative">
+                    <select
+                      value={vaccinationForm.batch}
+                      onChange={(e) => {
+                        setVaccinationForm({ ...vaccinationForm, batch: e.target.value });
+                        setVaccinationErrors((current) => ({ ...current, batch: '' }));
+                      }}
+                      aria-required="true"
+                      aria-invalid={Boolean(vaccinationErrors.batch)}
+                      aria-describedby={vaccinationErrors.batch ? 'vaccination-batch-error' : undefined}
+                      className={`w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${vaccinationErrors.batch ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
+                    >
+                      <option value="">Select batch...</option>
+                      {batches.map((b) => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                    {vaccinationErrors.batch && <AlertTriangle className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
+                  </div>
+                  <InlineFieldError id="vaccination-batch-error" message={vaccinationErrors.batch} />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">Vaccine Type</label>
-                  <select
-                    value={vaccinationForm.vaccineType}
-                    onChange={(e) =>
-                      setVaccinationForm({ ...vaccinationForm, vaccineType: e.target.value })
-                    }
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  >
-                    <option value="">Select vaccine...</option>
-                    <option value="Swine Fever">Swine Fever</option>
-                    <option value="E. Coli">E. Coli</option>
-                    <option value="PRRS">PRRS</option>
-                    <option value="Porcine Circovirus">Porcine Circovirus</option>
-                  </select>
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Vaccine Type <span className="text-red-700" aria-hidden="true">*</span></label>
+                  <div className="relative">
+                    <select
+                      value={vaccinationForm.vaccineType}
+                      onChange={(e) => {
+                        setVaccinationForm({ ...vaccinationForm, vaccineType: e.target.value });
+                        setVaccinationErrors((current) => ({ ...current, vaccineType: '' }));
+                      }}
+                      aria-required="true"
+                      aria-invalid={Boolean(vaccinationErrors.vaccineType)}
+                      aria-describedby={vaccinationErrors.vaccineType ? 'vaccination-vaccine-type-error' : undefined}
+                      className={`w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${vaccinationErrors.vaccineType ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
+                    >
+                      <option value="">Select vaccine...</option>
+                      <option value="Swine Fever">Swine Fever</option>
+                      <option value="E. Coli">E. Coli</option>
+                      <option value="PRRS">PRRS</option>
+                      <option value="Porcine Circovirus">Porcine Circovirus</option>
+                    </select>
+                    {vaccinationErrors.vaccineType && <AlertTriangle className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
+                  </div>
+                  <InlineFieldError id="vaccination-vaccine-type-error" message={vaccinationErrors.vaccineType} />
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-2">
-                    Doses Administered
+                    Doses Administered <span className="text-red-700" aria-hidden="true">*</span>
                   </label>
-                  <input
-                    type="number"
-                    value={vaccinationForm.doses}
-                    onChange={(e) => setVaccinationForm({ ...vaccinationForm, doses: e.target.value })}
-                    placeholder="12"
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  />
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={vaccinationForm.doses}
+                      onChange={(e) => {
+                        setVaccinationForm({ ...vaccinationForm, doses: e.target.value });
+                        setVaccinationErrors((current) => ({ ...current, doses: '' }));
+                      }}
+                      placeholder="12"
+                      aria-required="true"
+                      aria-invalid={Boolean(vaccinationErrors.doses)}
+                      aria-describedby={vaccinationErrors.doses ? 'vaccination-doses-error' : undefined}
+                      className={`w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${vaccinationErrors.doses ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
+                    />
+                    {vaccinationErrors.doses && <AlertTriangle className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
+                  </div>
+                  <InlineFieldError id="vaccination-doses-error" message={vaccinationErrors.doses} />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">Date</label>
-                  <input
-                    type="date"
-                    value={vaccinationForm.date}
-                    onChange={(e) => setVaccinationForm({ ...vaccinationForm, date: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                  />
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Date <span className="text-red-700" aria-hidden="true">*</span></label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={vaccinationForm.date}
+                      onChange={(e) => {
+                        setVaccinationForm({ ...vaccinationForm, date: e.target.value });
+                        setVaccinationErrors((current) => ({ ...current, date: '' }));
+                      }}
+                      aria-required="true"
+                      aria-invalid={Boolean(vaccinationErrors.date)}
+                      aria-describedby={vaccinationErrors.date ? 'vaccination-date-error' : undefined}
+                      className={`w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${vaccinationErrors.date ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
+                    />
+                    {vaccinationErrors.date && <AlertTriangle className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
+                  </div>
+                  <InlineFieldError id="vaccination-date-error" message={vaccinationErrors.date} />
                 </div>
 
                 <div>
