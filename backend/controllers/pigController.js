@@ -38,18 +38,42 @@ export const createBatch = async (req, res) => {
         } = req.body;
 
         const owner_id = req.user.id;
-
-        // The database assigns the persistent sequential batch code atomically.
         const baseBatch = {
             pig_count, breed, start_weight, current_weight,
             sale_price_per_kg: sale_price_per_kg ?? null,
             age_on_acquisition: age_on_acquisition ?? 0,
             date_acquired, status,
         };
-        const { data: newBatch, error: batchError } = await supabase.rpc('create_batch_with_pigs', {
-            p_owner_id: owner_id,
-            p_batch: baseBatch,
-        });
+
+        // Assign the next readable code from this owner's existing batches.
+        // The unique-code conflict retry handles simultaneous creates without
+        // requiring any Supabase schema/function changes.
+        let newBatch;
+        let batchError;
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+            const existingBatches = await collectPages(() => supabase
+                .from('pig_batches')
+                .select('batch_code')
+                .eq('owner_id', owner_id));
+            const maxNumber = (existingBatches || []).reduce((max, batch) => {
+                const match = String(batch.batch_code || '').trim().match(/^(?:batch-?)?(\d+)$/i);
+                return match ? Math.max(max, Number(match[1])) : max;
+            }, 0);
+            const payload = {
+                ...baseBatch,
+                batch_code: `Batch-${String(maxNumber + 1).padStart(2, '0')}`,
+            };
+            const result = await supabase.rpc('create_batch_with_pigs', {
+                p_owner_id: owner_id,
+                p_batch: payload,
+            });
+            newBatch = result.data;
+            batchError = result.error;
+            if (!batchError) break;
+            const isCodeConflict = batchError.code === '23505'
+                && String(batchError.message || '').toLowerCase().includes('batch_code');
+            if (!isCodeConflict) break;
+        }
         if (batchError) throw batchError;
 
         res.status(201).json({
