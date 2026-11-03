@@ -7,7 +7,7 @@ const pigBatchRouter = express.Router();
 pigBatchRouter.use(authMiddleware);
 
 // Batch CRUD
-pigBatchRouter.post('/create', validateBody({ required: ['batch_code', 'pig_count'], nonNegative: ['start_weight', 'current_weight', 'sale_price_per_kg'], integers: ['pig_count', 'age_on_acquisition'], nullable: ['sale_price_per_kg'] }), pigBatchController.createBatch);
+pigBatchRouter.post('/create', validateBody({ required: ['pig_count'], nonNegative: ['start_weight', 'current_weight', 'sale_price_per_kg'], integers: ['pig_count', 'age_on_acquisition'], nullable: ['sale_price_per_kg'] }), pigBatchController.createBatch);
 pigBatchRouter.get('/all', pigBatchController.getAllBatches);
 pigBatchRouter.get('/financial-summary', pigBatchController.getBatchFinancialSummary);
 pigBatchRouter.get('/active', pigBatchController.getActiveBatches);

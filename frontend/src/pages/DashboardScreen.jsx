@@ -266,22 +266,6 @@ export default function DashboardScreen() {
     return day > vaccine.maxDay;
   };
 
-  // ---------- Generate unique batch code ----------
-  const generateBatchCode = () => {
-    const codes = batches.map((b) => b.batch_code).filter(Boolean);
-    if (codes.length === 0) return 'BATCH-001';
-    let maxNum = 0;
-    codes.forEach((code) => {
-      const parts = code.split('-');
-      if (parts.length === 2) {
-        const num = parseInt(parts[1], 10);
-        if (!isNaN(num) && num > maxNum) maxNum = num;
-      }
-    });
-    const nextNum = maxNum + 1;
-    return `BATCH-${String(nextNum).padStart(3, '0')}`;
-  };
-
   // ---------- Fetch notifications ----------
   const fetchNotifications = async () => {
     try {
@@ -592,15 +576,12 @@ export default function DashboardScreen() {
 
     const dateAcquired = newBatch.date_acquired || getTodayDate();
 
-    const batchCode = generateBatchCode();
-
     setIsAddingBatch(true);
     try {
       const res = await fetch(`${API_BASE}/pigs/create`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
-          batch_code: batchCode,
           pig_count: parseInt(newBatch.pig_count),
           breed: newBatch.breed || 'Unknown',
           start_weight: parseFloat(newBatch.start_weight),
@@ -622,7 +603,7 @@ export default function DashboardScreen() {
           const recordedPrice = Number(createdBatch.sale_price_per_kg);
           const dashboardBatch = {
             id: createdBatch.id,
-            name: `Batch-${String(batches.length + 1).padStart(2, '0')}`,
+            name: createdBatch.batch_code || 'Batch',
             batch_code: createdBatch.batch_code,
             pigCount: createdBatch.pig_count || 0,
             breed: createdBatch.breed || 'Unknown',
@@ -942,10 +923,7 @@ export default function DashboardScreen() {
 
               <div className="add-batch-modal-content p-5 space-y-4">
                 <div className="text-xs text-gray-700 mb-2">
-                  Batch code will be auto-generated:{' '}
-                  <span className="font-mono font-semibold text-gray-800">
-                    {generateBatchCode()}
-                  </span>
+                  Batch name will be assigned automatically when the batch is saved.
                 </div>
 
                 <div>
