@@ -717,7 +717,7 @@ textarea {
 
   .vaccination-schedule-card {
     position: absolute;
-    top: 166px;
+    top: calc(11rem + 1rem);
     left: 2.4rem;
     right: calc(50% + 0.55rem);
     min-height: 230px;
