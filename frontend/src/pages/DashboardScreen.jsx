@@ -18,7 +18,7 @@ import {
 
   Trash2,
   Pencil,
-  Users,
+  PawPrint,
   AlertTriangle,
 } from 'lucide-react';
 import pigImage from '../../src/assets/Gemini_Generated_Image_92oun292oun292ou-removebg-preview (1).webp';
@@ -805,7 +805,7 @@ export default function DashboardScreen() {
                   <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#777D8D]">Current batch</p>
                   <h2 className="text-3xl font-extrabold tracking-[-0.05em] text-[#252838] sm:text-4xl">{currentBatch.name}</h2>
                   <button onClick={() => navigate(`/batch/${currentBatch.id}/pigs`)} onPointerEnter={() => prefetchIndividualPigs(currentBatch.id)} onFocus={() => prefetchIndividualPigs(currentBatch.id)} onTouchStart={() => prefetchIndividualPigs(currentBatch.id)} className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-[#ff2f72] px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#ff2f72]/25 transition hover:-translate-y-0.5">
-                    <Users className="w-4 h-4" /> View individual pigs
+                    <PawPrint className="w-4 h-4" /> View individual pigs
                   </button>
                 </div>
                 <img src={getPigImageForBreed(currentBatch?.breed)} alt="Pig character" className="absolute -bottom-8 -right-10 h-[112%] w-[68%] object-contain drop-shadow-[0_18px_16px_rgba(72,74,90,0.18)]" />
