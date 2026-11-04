@@ -80,10 +80,24 @@ textarea {
 }
 
 @media (max-width: 640px) {
-  input,
+  input:not([type='checkbox']):not([type='radio']),
   select,
   textarea {
+    min-width: 44px;
+    min-height: 44px;
     font-size: 16px !important;
+  }
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  label:has(> input[type='checkbox']),
+  label:has(> input[type='radio']) {
+    min-height: 44px;
+    align-items: center;
   }
 
   button,
