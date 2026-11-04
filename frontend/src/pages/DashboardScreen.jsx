@@ -144,11 +144,20 @@ const getUserFromToken = () => {
   }
 };
 
+const getCachedBatchTotalWeights = () => {
+  try {
+    const cached = JSON.parse(localStorage.getItem(`prepapig:batch-total-weights:${getUserCacheKey()}`) || 'null');
+    return cached && typeof cached === 'object' && !Array.isArray(cached) ? cached : {};
+  } catch {
+    return {};
+  }
+};
+
 export default function DashboardScreen() {
   const navigate = useNavigate();
 
   const [batches, setBatches] = useState(getCachedDashboardBatches);
-  const [batchTotalWeights, setBatchTotalWeights] = useState({});
+  const [batchTotalWeights, setBatchTotalWeights] = useState(getCachedBatchTotalWeights);
   const [loading, setLoading] = useState(() => getCachedDashboardBatches().length === 0);
   const [error, setError] = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -186,7 +195,10 @@ export default function DashboardScreen() {
 
   const currentBatch = batches[currentBatchIndex];
   const currentBatchDay = getCurrentBatchDay(currentBatch);
-  const currentBatchTotalWeightKg = Number(batchTotalWeights[String(currentBatch?.id)]);
+  const currentBatchWeightSummary = batchTotalWeights[String(currentBatch?.id)];
+  const currentBatchTotalWeightKg = currentBatchWeightSummary === null || currentBatchWeightSummary === undefined
+    ? null
+    : Number(currentBatchWeightSummary);
 
   useEffect(() => {
     const timer = window.setInterval(() => setAgeTick(Date.now()), 60 * 1000);
@@ -316,12 +328,18 @@ export default function DashboardScreen() {
         throw new Error(json.message || 'Total batch weights unavailable');
       }
       if (!controller.signal.aborted) {
-        setBatchTotalWeights(Object.fromEntries(
+        const nextWeights = Object.fromEntries(
           json.data.map((row) => [String(row.batch_id), row.total_weight_kg])
-        ));
+        );
+        setBatchTotalWeights(nextWeights);
+        try {
+          localStorage.setItem(`prepapig:batch-total-weights:${getUserCacheKey()}`, JSON.stringify(nextWeights));
+        } catch {
+          // The in-memory summary remains usable when browser storage is full.
+        }
       }
     } catch {
-      if (!controller.signal.aborted) setBatchTotalWeights({});
+      // Keep the last successful owner-scoped summary visible if refresh fails.
     }
   };
 
@@ -414,7 +432,6 @@ export default function DashboardScreen() {
           batchRenderFrame.current = requestAnimationFrame(renderNextBatch);
         };
         batchRenderFrame.current = requestAnimationFrame(renderNextBatch);
-        void fetchBatchTotalWeights();
 
         // Load financial summaries after the dashboard is already usable.
         fetch(`${API_BASE}/pigs/financial-summary`, { headers: getAuthHeaders() })
@@ -491,6 +508,7 @@ export default function DashboardScreen() {
       const json = await res.json();
       if (json.success) {
         await fetchBatches();
+        void fetchBatchTotalWeights();
         setShowEditPigModal(false);
         setEditBatchId(null);
         setEditPigCount('');
@@ -504,6 +522,7 @@ export default function DashboardScreen() {
 
   // ---------- Load data ----------
   useEffect(() => {
+    void fetchBatchTotalWeights();
     fetchBatches();
     const fetchVaccinationRecords = async () => {
       try {
@@ -536,7 +555,10 @@ export default function DashboardScreen() {
   }, [vaccinationRecords]);
 
   useEffect(() => {
-    const refreshFinancials = () => fetchBatches();
+    const refreshFinancials = () => {
+      void fetchBatchTotalWeights();
+      void fetchBatches();
+    };
     window.addEventListener('prepapig:financial-data-changed', refreshFinancials);
     return () => window.removeEventListener('prepapig:financial-data-changed', refreshFinancials);
   }, []);
@@ -804,9 +826,9 @@ export default function DashboardScreen() {
                   <div className="dashboard-card col-span-1 min-w-0 overflow-hidden flex min-h-[128px] flex-col justify-center rounded-2xl p-3 text-left">
                     <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#555B6E]">Estimated Price</div>
                     <div className="text-[clamp(1.5rem,6vw,2.5rem)] leading-none font-extrabold tracking-[-0.05em] text-[#252838] whitespace-nowrap">
-                      {currentBatchTotalWeightKg > 0 && currentBatch?.pricePerKg > 0
+                      {Number.isFinite(currentBatchTotalWeightKg) && currentBatchTotalWeightKg >= 0 && currentBatch?.pricePerKg > 0
                         ? formatCurrency(currentBatchTotalWeightKg * currentBatch.pricePerKg)
-                        : 'Unavailable'}
+                        : '—'}
                     </div>
                   </div>
                 </div>
