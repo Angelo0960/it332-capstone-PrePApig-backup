@@ -1,6 +1,42 @@
 import { initializeApp } from "firebase/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 
+const waitForActiveServiceWorker = (registration) => {
+  if (registration.active) return Promise.resolve(registration);
+  return new Promise((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      cleanup();
+      reject(new Error('Firebase messaging service worker did not activate'));
+    }, 15000);
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      registration.removeEventListener('updatefound', checkForActivation);
+    };
+    const checkForActivation = () => {
+      if (registration.active) {
+        cleanup();
+        resolve(registration);
+        return;
+      }
+      const worker = registration.installing || registration.waiting;
+      if (!worker) return;
+      worker.addEventListener('statechange', () => {
+        if (registration.active) {
+          cleanup();
+          resolve(registration);
+        } else if (worker.state === 'redundant') {
+          cleanup();
+          reject(new Error('Firebase messaging service worker failed to activate'));
+        } else {
+          checkForActivation();
+        }
+      }, { once: true });
+    };
+    registration.addEventListener('updatefound', checkForActivation);
+    checkForActivation();
+  });
+};
+
 const firebaseConfig = {
   apiKey: "AIzaSyBGo85O6l3qUQQceLeOxzijJyCkVXAojm4",
   authDomain: "it332-capstone-prepapig.firebaseapp.com",
@@ -29,9 +65,10 @@ export const generateToken = async ({ requestPermission = false } = {}) => {
       return null;
     }
     const registration = await navigator.serviceWorker.register(
-      "/firebase-messaging-sw.js"
+      "/firebase-messaging-sw.js",
+      { scope: '/firebase-messaging/' }
     );
-    await navigator.serviceWorker.ready;
+    await waitForActiveServiceWorker(registration);
     const token = await getToken(messaging, {
       vapidKey: import.meta.env.VITE_VAPID_KEY,
       serviceWorkerRegistration: registration,
