@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertCircle, CheckCircle2, Lock, User } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Download, Lock, User } from 'lucide-react';
 import { api } from '../api.js';
 import pigImage from '../assets/2e388bda-a6fa-4911-bcea-0e3aaa26ed7f-removebg-preview.webp';
 import backgroundImage from '../assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.webp';
@@ -9,6 +9,30 @@ export function LoginScreen({ onLogin }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [installMessage, setInstallMessage] = useState('');
+  const [isInstalled, setIsInstalled] = useState(false);
+
+  useEffect(() => {
+    setIsInstalled(
+      window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
+    );
+    const handleBeforeInstallPrompt = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setInstallPrompt(null);
+      setInstallMessage('');
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
 
   useEffect(() => {
     const preload = () => {
@@ -46,6 +70,24 @@ export function LoginScreen({ onLogin }) {
 
   const updateFarmerId = (value) => { setFarmerId(value); setError(''); };
   const updatePassword = (value) => { setPassword(value); setError(''); };
+  const handleInstallApp = async () => {
+    setInstallMessage('');
+    if (!installPrompt) {
+      setInstallMessage(/iphone|ipad|ipod/i.test(window.navigator.userAgent)
+        ? 'To install on iPhone or iPad, tap Share, then Add to Home Screen.'
+        : 'Open your browser menu and choose Install PrepAPig or Add to Home Screen.');
+      return;
+    }
+    try {
+      await installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      if (choice?.outcome === 'accepted') setIsInstalled(true);
+    } catch {
+      setInstallMessage('Open your browser menu and choose Install PrepAPig or Add to Home Screen.');
+    } finally {
+      setInstallPrompt(null);
+    }
+  };
 
   return (
     <div className="relative min-h-[100dvh] w-full overflow-hidden text-white">
@@ -72,13 +114,15 @@ export function LoginScreen({ onLogin }) {
             <div className="relative z-10 rounded-[36px] border border-white/45 bg-white/25 px-8 pb-7 pt-9 shadow-[0_28px_70px_rgba(13,48,43,0.18)] backdrop-blur-2xl">
               <div className="text-center"><div className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-white/90"><CheckCircle2 className="size-5 text-[#4DE2B6]" />Farm Management Portal</div><h2 className="font-['Erica_One'] text-[28px] text-white drop-shadow-md">Welcome Back</h2><p className="mt-2 text-sm text-white/65">Sign in to your farm dashboard</p></div>
               <LoginForm farmerId={farmerId} password={password} error={error} loading={loading} onFarmerIdChange={updateFarmerId} onPasswordChange={updatePassword} onSubmit={handleLogin} />
+              <InstallAppButton isInstalled={isInstalled} installMessage={installMessage} onInstall={handleInstallApp} />
               <p className="mt-5 text-center text-xs text-white/60">Demo: enter any Farmer ID &amp; Access Key to continue</p><p className="mt-6 text-center text-xs text-white/45">PrepAPig © 2025 · Pig Farm Intelligence Platform</p>
             </div>
           </div>
         </section>
       </div>
 
-      <div className="relative z-10 flex min-h-[100dvh] items-center justify-center px-5 py-10 lg:hidden"><div className="w-full max-w-sm"><h1 className="login-erica-one mb-14 text-center text-5xl leading-none drop-shadow-sm"><span className="text-[#67C6E3]">PrepA</span><span className="text-[#FF78A4]">Pig</span></h1><div className="relative"><img src={pigImage} alt="Smiling PrepAPig mascot" className="pointer-events-none absolute left-1/2 top-0 z-0 h-52 w-52 -translate-x-1/2 -translate-y-[56%] object-contain drop-shadow-xl" /><div className="relative z-10 rounded-[38px] border border-white/45 bg-white/20 px-6 pb-7 pt-16 shadow-[0_24px_60px_rgba(13,48,43,0.2)] backdrop-blur-2xl"><div className="text-center"><div className="mb-3 inline-flex items-center gap-2 text-xs font-semibold text-white/80"><CheckCircle2 className="size-4 text-[#4DE2B6]" />Farm Management Portal</div><h2 className="font-['Erica_One'] text-3xl">Welcome Back</h2><p className="mt-1 text-sm text-white/65">Sign in to your farm dashboard</p></div><LoginForm farmerId={farmerId} password={password} error={error} loading={loading} onFarmerIdChange={updateFarmerId} onPasswordChange={updatePassword} onSubmit={handleLogin} /><p className="mt-5 text-center text-[11px] text-white/55">Demo: enter any Farmer ID &amp; Access Key</p></div></div></div></div>
+      <div className="relative z-10 flex min-h-[100dvh] items-center justify-center px-5 py-10 lg:hidden"><div className="w-full max-w-sm"><h1 className="login-erica-one mb-14 text-center text-5xl leading-none drop-shadow-sm"><span className="text-[#67C6E3]">PrepA</span><span className="text-[#FF78A4]">Pig</span></h1><div className="relative"><img src={pigImage} alt="Smiling PrepAPig mascot" className="pointer-events-none absolute left-1/2 top-0 z-0 h-52 w-52 -translate-x-1/2 -translate-y-[56%] object-contain drop-shadow-xl" /><div className="relative z-10 rounded-[38px] border border-white/45 bg-white/20 px-6 pb-7 pt-16 shadow-[0_24px_60px_rgba(13,48,43,0.2)] backdrop-blur-2xl"><div className="text-center"><div className="mb-3 inline-flex items-center gap-2 text-xs font-semibold text-white/80"><CheckCircle2 className="size-4 text-[#4DE2B6]" />Farm Management Portal</div><h2 className="font-['Erica_One'] text-3xl">Welcome Back</h2><p className="mt-1 text-sm text-white/65">Sign in to your farm dashboard</p></div><LoginForm farmerId={farmerId} password={password} error={error} loading={loading} onFarmerIdChange={updateFarmerId} onPasswordChange={updatePassword} onSubmit={handleLogin} />
+              <InstallAppButton isInstalled={isInstalled} installMessage={installMessage} onInstall={handleInstallApp} /><p className="mt-5 text-center text-[11px] text-white/55">Demo: enter any Farmer ID &amp; Access Key</p></div></div></div></div>
     </div>
   );
 }
@@ -89,6 +133,17 @@ function LoginForm({ farmerId, password, error, loading, onFarmerIdChange, onPas
     <div className="relative"><Lock aria-hidden="true" className="pointer-events-none absolute left-5 top-1/2 z-10 size-6 -translate-y-1/2 text-[#FF2F72]" /><input id="accessKey" type="password" value={password} onChange={(event) => onPasswordChange(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && onSubmit()} placeholder="Access Key ••••••" autoComplete="current-password" aria-invalid={Boolean(error)} aria-describedby={error ? 'login-error' : undefined} className={`w-full rounded-[22px] border bg-white/10 py-4 pl-14 pr-5 text-base text-white outline-none backdrop-blur-lg placeholder:text-white/40 focus:border-white/70 focus:ring-2 focus:ring-[#FF2F72]/25 ${error ? 'border-[#FFD1DF]/90' : 'border-white/45'}`} /></div>
     {error && <div id="login-error" role="alert" aria-live="polite" className="flex items-start gap-2 rounded-2xl border border-[#FFD1DF]/55 bg-[#7F1D3D]/35 px-4 py-3 text-xs font-semibold text-[#FFE4EC]"><AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span>{error}</span></div>}
     <button onClick={onSubmit} disabled={loading} className="w-full rounded-[22px] bg-[#F5125D] py-4 text-lg font-extrabold uppercase tracking-[0.08em] text-white shadow-[0_10px_0_#AD1457] transition hover:-translate-y-0.5 active:translate-y-1 active:shadow-[0_5px_0_#AD1457] disabled:cursor-wait disabled:opacity-70">{loading ? 'Signing In…' : 'Start Tracking'}</button>
+  </div>;
+}
+
+function InstallAppButton({ isInstalled, installMessage, onInstall }) {
+  if (isInstalled) return null;
+  return <div className="mt-4 text-center">
+    <button type="button" onClick={onInstall} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[18px] border border-white/45 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80">
+      <Download className="size-4" aria-hidden="true" />
+      Download App
+    </button>
+    {installMessage && <p role="status" className="mt-2 text-xs leading-5 text-white/85">{installMessage}</p>}
   </div>;
 }
 
