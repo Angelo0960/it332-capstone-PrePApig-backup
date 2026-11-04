@@ -53,6 +53,11 @@ const DEFAULT_PRICE_POINTS = [
   { location: 'Taal', pricePhpPerKg: null, unit: 'PHP/kg liveweight', source: 'Search unavailable', status: 'unavailable' },
 ];
 
+const getEstimatedBatchTotalWeightKg = (batch, weightTotals) => {
+  const totalWeight = Number(weightTotals[String(batch?.id)]);
+  return Number.isFinite(totalWeight) && totalWeight > 0 ? totalWeight : 0;
+};
+
 export default function AnalyticsReportsScreen() {
   const navigate = useNavigate();
   const { isOnline } = useOfflineStatus();
@@ -61,6 +66,9 @@ export default function AnalyticsReportsScreen() {
 
   // Data state
   const [batches, setBatches] = useState([]);
+  const [batchTotalWeights, setBatchTotalWeights] = useState({});
+  const [batchWeightLoading, setBatchWeightLoading] = useState(false);
+  const [batchWeightError, setBatchWeightError] = useState(null);
   const [sales, setSales] = useState([]);
   const [soldReportBatches, setSoldReportBatches] = useState([]);
   const [feedRecords, setFeedRecords] = useState([]);
@@ -114,7 +122,7 @@ export default function AnalyticsReportsScreen() {
     return `from=${start.toISOString().slice(0, 10)}&to=${end.toISOString().slice(0, 10)}`;
   };
 
-  // ---------- Fetch all data in one response ----------
+  // ---------- Fetch report data and supporting records ----------
   const fetchAllData = async (signal) => {
     const cacheKey = `analytics:${getUserCacheKey()}:${dateRange}`;
     const cached = null; // Reports must always reflect the latest sold-batch records.
@@ -179,6 +187,38 @@ export default function AnalyticsReportsScreen() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (batches.length === 0) {
+      setBatchTotalWeights({});
+      setBatchWeightError(null);
+      setBatchWeightLoading(false);
+      return undefined;
+    }
+    const controller = new AbortController();
+    setBatchWeightLoading(true);
+    setBatchWeightError(null);
+    fetch(`${API_BASE}/reports/batch-weight-summary`, {
+      headers: getAuthHeaders(),
+      signal: controller.signal,
+      cache: 'no-store',
+    }).then(async (response) => {
+      const result = await response.json();
+      if (!response.ok || !result.success || !Array.isArray(result.data)) {
+        throw new Error(result.message || 'Total batch weight data is unavailable.');
+      }
+      return result.data;
+    }).then((rows) => {
+      setBatchTotalWeights(Object.fromEntries(rows.map((row) => [String(row.batch_id), row.total_weight_kg])));
+    }).catch((err) => {
+      if (err.name === 'AbortError') return;
+      setBatchTotalWeights({});
+      setBatchWeightError('Total batch weights are unavailable. Refresh to try again.');
+    }).finally(() => {
+      if (!controller.signal.aborted) setBatchWeightLoading(false);
+    });
+    return () => controller.abort();
+  }, [batches]);
 
   const fetchFeedForecast = async (signal) => {
     let hasCachedForecast = false;
@@ -515,9 +555,9 @@ export default function AnalyticsReportsScreen() {
         : referencePrice > 0
           ? referencePrice
           : 0;
-    return price > 0 ? sum + (Number(batch.current_weight) || 0) * price : sum;
+    return price > 0 ? sum + getEstimatedBatchTotalWeightKg(batch, batchTotalWeights) * price : sum;
   }, 0);
-  const estimateAvailable = !loading && !error && selectedBatches.length > 0 && selectedBatches.every((batch) => Number(batch.current_weight) > 0 && (selectedPrice > 0 || Number(batch.sale_price_per_kg) > 0 || referencePrice > 0));
+  const estimateAvailable = !loading && !error && !batchWeightLoading && !batchWeightError && selectedBatches.length > 0 && selectedBatches.every((batch) => getEstimatedBatchTotalWeightKg(batch, batchTotalWeights) > 0 && (selectedPrice > 0 || Number(batch.sale_price_per_kg) > 0 || referencePrice > 0));
   const hasRecordedSalePrice = selectedBatches.some((batch) => Number(batch.sale_price_per_kg) > 0);
   const usesSelectedPrice = selectedPrice > 0 && selectedBatches.length > 0;
   const usesProvincialEstimate = !usesSelectedPrice && !hasRecordedSalePrice && referencePrice > 0 && selectedBatches.length > 0;
@@ -1182,10 +1222,12 @@ export default function AnalyticsReportsScreen() {
               <p className="text-xs text-gray-600">Ledger profit uses sales minus manual expenses by transaction date. Feed and vaccine usage costs are shown separately and included in total costs below.</p>
               {financialError && <p className="text-xs text-red-700">{financialError}</p>}
             </div>
-            <p className="text-xs text-gray-600 mb-3">Estimates below use current standing weight and explicitly selected or recorded prices, not historical revenue. Feed and vaccine usage costs use transaction-time snapshots when available. Manual expenses may be incomplete.</p>
+            <p className="text-xs text-gray-600 mb-3">Estimates below use the sum of recorded individual pig weights in each batch and explicitly selected or recorded prices, not historical revenue. Feed and vaccine usage costs use transaction-time snapshots when available. Manual expenses may be incomplete.</p>
+            {batchWeightError && <p className="text-xs text-amber-800 mb-2">{batchWeightError}</p>}
+            {batchWeightLoading && <p className="text-xs text-gray-600 mb-2">Calculating total batch weight…</p>}
             <div className="space-y-2 mb-3">
               <div className="analytics-cost-row flex items-center justify-between text-sm">
-                <span className="text-gray-700">Estimated standing pig value (current)</span>
+                <span className="text-gray-700">Estimated standing batch value (total recorded weight)</span>
                 <span className="analytics-financial-value font-bold text-green-600">
                   {estimateAvailable ? formatCurrency(salesRevenue) : 'Unavailable'}
                 </span>

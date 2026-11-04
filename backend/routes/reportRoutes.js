@@ -14,6 +14,7 @@ reportRouter.get('/feeds', reportController.getFeedReport);
 
 reportRouter.get('/expenses', reportController.getExpenseReport);
 reportRouter.get('/sold-batches', reportController.getSoldBatchesReport);
+reportRouter.get('/batch-weight-summary', reportController.getBatchWeightSummary);
 reportRouter.get('/analytics', reportController.getAnalyticsData);
 reportRouter.get('/analytics.proto', reportController.getAnalyticsDataProto);
 

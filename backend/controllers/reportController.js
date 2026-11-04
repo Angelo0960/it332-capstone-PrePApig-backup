@@ -36,6 +36,57 @@ export const getSoldBatchesReport = async (req, res) => {
     }
 };
 
+export const getBatchWeightSummary = async (req, res) => {
+    try {
+        const [batches, pigs] = await Promise.all([
+            collectPages(() => supabase.from('pig_batches')
+                .select('id,pig_count')
+                .eq('owner_id', req.user.id)
+                .order('id')),
+            collectPages(() => supabase.from('pigs')
+                .select('batch_id,weight')
+                .eq('owner_id', req.user.id)
+                .order('id')),
+        ]);
+        const batchIds = new Set((batches || []).map((batch) => String(batch.id)));
+        const totals = new Map();
+        for (const pig of pigs || []) {
+            const batchId = String(pig.batch_id || '');
+            if (!batchIds.has(batchId)) continue;
+            const summary = totals.get(batchId) || { count: 0, weightKg: 0, valid: true };
+            summary.count += 1;
+            const weight = pig.weight === null || pig.weight === undefined || pig.weight === ''
+                ? Number.NaN
+                : Number(pig.weight);
+            if (!Number.isFinite(weight) || weight < 0) {
+                summary.valid = false;
+            } else {
+                summary.weightKg += weight;
+            }
+            totals.set(batchId, summary);
+        }
+
+        res.json({
+            success: true,
+            data: (batches || []).map((batch) => {
+                const batchId = String(batch.id);
+                const summary = totals.get(batchId) || { count: 0, weightKg: 0, valid: true };
+                const expectedCount = Number(batch.pig_count);
+                const complete = Number.isSafeInteger(expectedCount)
+                    && expectedCount >= 0
+                    && summary.count === expectedCount
+                    && summary.valid;
+                return {
+                    batch_id: batch.id,
+                    total_weight_kg: complete ? Math.round(summary.weightKg * 100) / 100 : null,
+                };
+            }),
+        });
+    } catch (error) {
+        res.status(error.status || 500).json({ success: false, message: error.message });
+    }
+};
+
 // Dashboard Summary
 export const getDashboardReport = async (req, res) => {
     try {
