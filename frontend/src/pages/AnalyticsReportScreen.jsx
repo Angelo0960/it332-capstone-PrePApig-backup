@@ -1176,17 +1176,17 @@ export default function AnalyticsReportsScreen() {
           <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg mb-4">
             <h3 className="font-semibold text-gray-900 mb-3">Financial Summary</h3>
             <div className="space-y-2 mb-3 text-sm">
-              <div className="flex justify-between"><span>Actual recorded sales (period)</span><strong>{financial ? formatCurrency(financial.actualRevenue) : 'Unavailable'}</strong></div>
-              <div className="flex justify-between"><span>Manual expenses (period)</span><strong>{financial ? formatCurrency(financial.recordedExpenses) : 'Unavailable'}</strong></div>
-              <div className="flex justify-between"><span>Recorded ledger profit (sales minus manual expenses)</span><strong>{financial ? formatCurrency(financial.recordedProfit) : 'Unavailable'}</strong></div>
+              <div className="analytics-cost-row flex justify-between"><span>Actual recorded sales (period)</span><strong className="analytics-financial-value">{financial ? formatCurrency(financial.actualRevenue) : 'Unavailable'}</strong></div>
+              <div className="analytics-cost-row flex justify-between"><span>Manual expenses (period)</span><strong className="analytics-financial-value">{financial ? formatCurrency(financial.recordedExpenses) : 'Unavailable'}</strong></div>
+              <div className="analytics-cost-row flex justify-between"><span>Recorded ledger profit (sales minus manual expenses)</span><strong className="analytics-financial-value">{financial ? formatCurrency(financial.recordedProfit) : 'Unavailable'}</strong></div>
               <p className="text-xs text-gray-600">Ledger profit uses sales minus manual expenses by transaction date. Feed and vaccine usage costs are shown separately and included in total costs below.</p>
               {financialError && <p className="text-xs text-red-700">{financialError}</p>}
             </div>
             <p className="text-xs text-gray-600 mb-3">Estimates below use current standing weight and explicitly selected or recorded prices, not historical revenue. Feed and vaccine usage costs use transaction-time snapshots when available. Manual expenses may be incomplete.</p>
             <div className="space-y-2 mb-3">
-              <div className="flex items-center justify-between text-sm">
+              <div className="analytics-cost-row flex items-center justify-between text-sm">
                 <span className="text-gray-700">Estimated standing pig value (current)</span>
-                <span className="font-bold text-green-600">
+                <span className="analytics-financial-value font-bold text-green-600">
                   {estimateAvailable ? formatCurrency(salesRevenue) : 'Unavailable'}
                 </span>
               </div>
@@ -1202,36 +1202,36 @@ export default function AnalyticsReportsScreen() {
               )}
               <div className="border-t border-white/30 pt-2">
                 <div className="text-xs text-gray-600 mb-2">Expenses:</div>
-                <div className="flex items-center justify-between text-sm mb-1">
+                <div className="analytics-cost-row flex items-center justify-between text-sm mb-1">
                   <span className="text-gray-700 ml-2">Feeds (transaction-time cost)</span>
-                  <span className="text-gray-900">{formatCurrency(totalFeedCost)}</span>
+                  <span className="analytics-financial-value text-gray-900">{formatCurrency(totalFeedCost)}</span>
                 </div>
-                <div className="flex items-center justify-between text-sm mb-1">
+                <div className="analytics-cost-row flex items-center justify-between text-sm mb-1">
                   <span className="text-gray-700 ml-2">Vaccines (transaction-time cost)</span>
-                  <span className="text-gray-900">{formatCurrency(totalVaccineCost)}</span>
+                  <span className="analytics-financial-value text-gray-900">{formatCurrency(totalVaccineCost)}</span>
                 </div>
                 {expenseBreakdown.length > 0 && (
-                  <div className="flex items-center justify-between text-sm mb-1">
+                  <div className="analytics-cost-row flex items-center justify-between text-sm mb-1">
                     <span className="text-gray-700 ml-2">Recorded expenses</span>
-                    <span className="text-gray-900">
+                    <span className="analytics-financial-value text-gray-900">
                       {formatCurrency(
                         filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
                       )}
                     </span>
                   </div>
                 )}
-                <div className="flex items-center justify-between text-sm font-semibold border-t border-white/30 pt-2 mt-2">
+                <div className="analytics-cost-row flex items-center justify-between text-sm font-semibold border-t border-white/30 pt-2 mt-2">
                   <span className="text-gray-900">Total recorded costs (period)</span>
-                  <span className="text-red-600">{totalRecordedCosts == null ? 'Unavailable' : formatCurrency(totalRecordedCosts)}</span>
+                  <span className="analytics-financial-value text-red-600">{totalRecordedCosts == null ? 'Unavailable' : formatCurrency(totalRecordedCosts)}</span>
                 </div>
               </div>
-              <div className="flex items-center justify-between bg-green-100/60 rounded-lg p-3 mt-3">
-                <span className="font-bold text-gray-900">Estimated value less recorded costs</span>
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-green-600">
+              <div className="analytics-net-summary flex items-center justify-between bg-green-100/60 rounded-lg p-3 mt-3">
+                <span className="analytics-net-summary-label font-bold text-gray-900">Estimated value less recorded costs</span>
+                <div className="analytics-net-summary-details text-right">
+                  <div className="analytics-net-summary-amount text-2xl font-bold text-green-600">
                     {estimateAvailable && totalRecordedCosts != null ? formatCurrency(salesRevenue - totalRecordedCosts) : 'Unavailable'}
                   </div>
-                  <span className="px-2 py-0.5 bg-green-500 text-white rounded-full text-xs font-semibold">
+                  <span className="analytics-net-summary-badge px-2 py-0.5 bg-green-500 text-white rounded-full text-xs font-semibold">
                     {estimateAvailable
                       ? 'Estimate only'
                       : 'Estimate unavailable'}
