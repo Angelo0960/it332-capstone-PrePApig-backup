@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Home,
-  TrendingUp,
+  ChartNoAxesCombined,
   Tag,
 
   Bell,
@@ -12,8 +12,9 @@ import {
 
   User,
   LogOut,
-  Package,
+  Wheat,
   Syringe,
+  CalendarClock,
 
   Trash2,
   Pencil,
@@ -646,18 +647,18 @@ export default function DashboardScreen() {
   const getNotificationStyle = (type) => {
     switch (type) {
       case 'vaccination':
-        return { icon: '💉', bg: 'bg-blue-100/80' };
+        return { icon: Syringe, bg: 'bg-blue-100/80', color: 'text-blue-700' };
       case 'vaccination_reminder':
-        return { icon: '💉', bg: 'bg-yellow-100/80' };
+        return { icon: CalendarClock, bg: 'bg-yellow-100/80', color: 'text-amber-700' };
       case 'vaccination_overdue':
-        return { icon: '⚠️', bg: 'bg-red-100/80' };
+        return { icon: AlertTriangle, bg: 'bg-red-100/80', color: 'text-red-700' };
       case 'feed_reminder':
       case 'feed_stage_change':
-        return { icon: '🐖', bg: 'bg-green-100/80' };
+        return { icon: Wheat, bg: 'bg-green-100/80', color: 'text-green-700' };
       case 'feed':
-        return { icon: '🐖', bg: 'bg-green-100/80' };
+        return { icon: Wheat, bg: 'bg-green-100/80', color: 'text-green-700' };
       default:
-        return { icon: '📢', bg: 'bg-gray-100/80' };
+        return { icon: Bell, bg: 'bg-gray-100/80', color: 'text-gray-600' };
     }
   };
 
@@ -679,9 +680,9 @@ export default function DashboardScreen() {
           <p className="dashboard-sidebar-label">Workspace</p>
           <nav className="dashboard-sidebar-nav">
             <button className="active" onClick={() => navigate('/dashboard')}><Home size={19} /> Overview <span>•</span></button>
-            <button onClick={() => navigate('/feeds')}><Package size={19} /> Feed inventory</button>
+            <button onClick={() => navigate('/feeds')}><Wheat size={19} /> Feed inventory</button>
             <button onClick={() => navigate('/vaccination')}><Syringe size={19} /> Vaccinations</button>
-            <button onClick={() => navigate('/reports')}><TrendingUp size={19} /> Farm reports</button>
+            <button onClick={() => navigate('/reports')}><ChartNoAxesCombined size={19} /> Farm reports</button>
           </nav>
           <div className="dashboard-sidebar-footer">
             <button className="dashboard-sidebar-user" onClick={() => window.dispatchEvent(new CustomEvent('prepapig:logout'))}>
@@ -1201,6 +1202,7 @@ export default function DashboardScreen() {
                 ) : (
                   notifications.map((notif) => {
                     const style = getNotificationStyle(notif.type);
+                    const NotificationIcon = style.icon;
                     return (
                       <div
                         key={notif.id}
@@ -1212,7 +1214,7 @@ export default function DashboardScreen() {
                           <div
                             className={`w-10 h-10 ${style.bg} rounded-full flex items-center justify-center flex-shrink-0`}
                           >
-                            <span className="text-xl">{style.icon}</span>
+                            <NotificationIcon className={`h-5 w-5 ${style.color}`} strokeWidth={1.8} aria-hidden="true" />
                           </div>
                           <div className="flex-1">
                             <h3 className="font-bold text-sm text-gray-900">{notif.title}</h3>

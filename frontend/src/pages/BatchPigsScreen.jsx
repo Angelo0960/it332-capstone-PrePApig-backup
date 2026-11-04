@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Pencil, X, Check, Home, Package, Syringe, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Pencil, X, Check, CircleDollarSign } from 'lucide-react';
 import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.webp';
 import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
@@ -293,7 +293,7 @@ export default function BatchPigsScreen() {
             disabled={pigs.length === 0}
             className="bg-gradient-to-r from-pink-500 to-pink-600 text-white font-bold px-4 py-2 rounded-xl shadow-lg active:scale-95 transition-transform flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <TrendingUp className="w-4 h-4" /> Sell Batch
+            <CircleDollarSign className="w-4 h-4" /> Sell Batch
           </button>
         </div>
 

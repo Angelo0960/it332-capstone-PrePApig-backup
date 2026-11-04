@@ -1,11 +1,11 @@
 import { useNavigate } from 'react-router-dom';
-import { Home, Package, Syringe, TrendingUp } from 'lucide-react';
+import { Home, Wheat, Syringe, ChartNoAxesCombined } from 'lucide-react';
 
 const navItems = [
   { path: '/dashboard', label: 'Home', icon: Home, activeColor: 'pink' },
-  { path: '/feeds', label: 'Feeds', icon: Package, activeColor: 'blue' },
+  { path: '/feeds', label: 'Feeds', icon: Wheat, activeColor: 'blue' },
   { path: '/vaccination', label: 'Vaccination', icon: Syringe, activeColor: 'pink' },
-  { path: '/reports', label: 'Reports', icon: TrendingUp, activeColor: 'green' },
+  { path: '/reports', label: 'Reports', icon: ChartNoAxesCombined, activeColor: 'green' },
 ];
 
 export default function BottomNav({ active = '', className = '' }) {

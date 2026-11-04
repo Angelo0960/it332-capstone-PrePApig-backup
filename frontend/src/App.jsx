@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Package, Syringe, TrendingUp, LogOut } from 'lucide-react';
+import { Home, Wheat, Syringe, ChartNoAxesCombined, LogOut } from 'lucide-react';
 import LoginScreen from './pages/LoginScreen.jsx';
 const DashboardScreen = lazy(() => import('./pages/DashboardScreen.jsx'));
 const FeedsInventoryScreen = lazy(() => import('./pages/FeedsInventoryScreen.jsx'));
@@ -20,9 +20,9 @@ function DesktopSidebar() {
   const isActive = (paths) => paths.some((path) => location.pathname === path || location.pathname.startsWith(`${path}/`));
   const items = [
     { paths: ['/dashboard'], label: 'Overview', icon: Home, path: '/dashboard' },
-    { paths: ['/feeds'], label: 'Feed inventory', icon: Package, path: '/feeds' },
+    { paths: ['/feeds'], label: 'Feed inventory', icon: Wheat, path: '/feeds' },
     { paths: ['/vaccination'], label: 'Vaccinations', icon: Syringe, path: '/vaccination' },
-    { paths: ['/reports'], label: 'Farm reports', icon: TrendingUp, path: '/reports' },
+    { paths: ['/reports'], label: 'Farm reports', icon: ChartNoAxesCombined, path: '/reports' },
   ];
   return (
     <aside className="desktop-app-sidebar" aria-label="Farm navigation">
