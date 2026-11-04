@@ -118,6 +118,7 @@ export default function BatchPigsScreen() {
         } else {
           await fetchPigs();
         }
+        if (!json.queued) window.dispatchEvent(new Event('prepapig:financial-data-changed'));
         setShowAddModal(false);
         setNewPig({ weight: '', health_status: 'Healthy', notes: '' });
       } else {
@@ -171,6 +172,7 @@ export default function BatchPigsScreen() {
           const cachedBatch = JSON.parse(localStorage.getItem(batchCacheKey) || '{}');
           localStorage.setItem(batchCacheKey, JSON.stringify({ ...cachedBatch, ...json.batch, displayName: batchName }));
         }
+        if (!json.queued) window.dispatchEvent(new Event('prepapig:financial-data-changed'));
         setShowEditModal(false);
         setEditingPig(null);
         setEditPig({ weight: '', health_status: '', notes: '' });
@@ -204,6 +206,7 @@ export default function BatchPigsScreen() {
         } else {
           await fetchPigs();
         }
+        if (!json.queued) window.dispatchEvent(new Event('prepapig:financial-data-changed'));
       } else {
         throw new Error(json.message);
       }

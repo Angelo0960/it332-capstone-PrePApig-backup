@@ -148,6 +148,7 @@ export default function DashboardScreen() {
   const navigate = useNavigate();
 
   const [batches, setBatches] = useState(getCachedDashboardBatches);
+  const [batchTotalWeights, setBatchTotalWeights] = useState({});
   const [loading, setLoading] = useState(() => getCachedDashboardBatches().length === 0);
   const [error, setError] = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -161,6 +162,7 @@ export default function DashboardScreen() {
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
   const batchRenderFrame = useRef(null);
+  const batchWeightFetchController = useRef(null);
 
 
   // Edit pig count state
@@ -184,6 +186,7 @@ export default function DashboardScreen() {
 
   const currentBatch = batches[currentBatchIndex];
   const currentBatchDay = getCurrentBatchDay(currentBatch);
+  const currentBatchTotalWeightKg = Number(batchTotalWeights[String(currentBatch?.id)]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setAgeTick(Date.now()), 60 * 1000);
@@ -298,6 +301,30 @@ export default function DashboardScreen() {
   };
 
   // ---------- Fetch batches ----------
+  const fetchBatchTotalWeights = async () => {
+    batchWeightFetchController.current?.abort();
+    const controller = new AbortController();
+    batchWeightFetchController.current = controller;
+    try {
+      const response = await fetch(`${API_BASE}/reports/batch-weight-summary`, {
+        headers: getAuthHeaders(),
+        signal: controller.signal,
+        cache: 'no-store',
+      });
+      const json = await response.json();
+      if (!response.ok || !json.success || !Array.isArray(json.data)) {
+        throw new Error(json.message || 'Total batch weights unavailable');
+      }
+      if (!controller.signal.aborted) {
+        setBatchTotalWeights(Object.fromEntries(
+          json.data.map((row) => [String(row.batch_id), row.total_weight_kg])
+        ));
+      }
+    } catch {
+      if (!controller.signal.aborted) setBatchTotalWeights({});
+    }
+  };
+
   const fetchBatches = async () => {
     if (batches.length === 0) setLoading(true);
     setError(null);
@@ -387,6 +414,7 @@ export default function DashboardScreen() {
           batchRenderFrame.current = requestAnimationFrame(renderNextBatch);
         };
         batchRenderFrame.current = requestAnimationFrame(renderNextBatch);
+        void fetchBatchTotalWeights();
 
         // Load financial summaries after the dashboard is already usable.
         fetch(`${API_BASE}/pigs/financial-summary`, { headers: getAuthHeaders() })
@@ -492,6 +520,7 @@ export default function DashboardScreen() {
     void fetchVaccinationRecords();
     return () => {
       if (batchRenderFrame.current) cancelAnimationFrame(batchRenderFrame.current);
+      batchWeightFetchController.current?.abort();
     };
   }, []);
 
@@ -627,6 +656,7 @@ export default function DashboardScreen() {
             return next;
           });
           setCurrentBatchIndex(0);
+          if (!json.queued) void fetchBatchTotalWeights();
         }
         setShowAddBatch(false);
         setShowBreedOptions(false);
@@ -774,8 +804,8 @@ export default function DashboardScreen() {
                   <div className="dashboard-card col-span-1 min-w-0 overflow-hidden flex min-h-[128px] flex-col justify-center rounded-2xl p-3 text-left">
                     <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#555B6E]">Estimated Price</div>
                     <div className="text-[clamp(1.5rem,6vw,2.5rem)] leading-none font-extrabold tracking-[-0.05em] text-[#252838] whitespace-nowrap">
-                      {currentBatch?.pricePerKg > 0
-                        ? formatCurrency(currentBatch.weight * currentBatch.pricePerKg)
+                      {currentBatchTotalWeightKg > 0 && currentBatch?.pricePerKg > 0
+                        ? formatCurrency(currentBatchTotalWeightKg * currentBatch.pricePerKg)
                         : 'Unavailable'}
                     </div>
                   </div>
