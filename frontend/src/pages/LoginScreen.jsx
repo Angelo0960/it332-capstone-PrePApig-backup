@@ -9,7 +9,7 @@ export function LoginScreen({ onLogin }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [installPrompt, setInstallPrompt] = useState(null);
+  const [installPrompt, setInstallPrompt] = useState(() => window.__PREPAPIG_INSTALL_PROMPT__ || null);
   const [installMessage, setInstallMessage] = useState('');
   const [isInstalled, setIsInstalled] = useState(false);
 
@@ -17,20 +17,20 @@ export function LoginScreen({ onLogin }) {
     setIsInstalled(
       window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
     );
-    const handleBeforeInstallPrompt = (event) => {
-      event.preventDefault();
-      setInstallPrompt(event);
+    const handleInstallPromptAvailable = () => {
+      setInstallPrompt(window.__PREPAPIG_INSTALL_PROMPT__ || null);
     };
     const handleAppInstalled = () => {
       setIsInstalled(true);
       setInstallPrompt(null);
       setInstallMessage('');
     };
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    window.addEventListener('appinstalled', handleAppInstalled);
+    window.addEventListener('prepapig:install-prompt-available', handleInstallPromptAvailable);
+    window.addEventListener('prepapig:appinstalled', handleAppInstalled);
+    handleInstallPromptAvailable();
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
+      window.removeEventListener('prepapig:install-prompt-available', handleInstallPromptAvailable);
+      window.removeEventListener('prepapig:appinstalled', handleAppInstalled);
     };
   }, []);
 
@@ -141,7 +141,7 @@ function InstallAppButton({ isInstalled, installMessage, onInstall }) {
   return <div className="mt-4 text-center">
     <button type="button" onClick={onInstall} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[18px] border border-white/45 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80">
       <Download className="size-4" aria-hidden="true" />
-      Download App
+      Install App
     </button>
     {installMessage && <p role="status" className="mt-2 text-xs leading-5 text-white/85">{installMessage}</p>}
   </div>;
