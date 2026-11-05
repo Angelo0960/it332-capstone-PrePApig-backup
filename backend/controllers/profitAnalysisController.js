@@ -83,9 +83,11 @@ export const generateAiProfitAnalysis = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Price assumptions must be positive values no greater than 100000 per kg' });
     }
 
-    const batchQuery = () => {
+    const batchQuery = (includeWeightHistory = true) => {
+      const fields = 'id,batch_code,pig_count,breed,age_on_acquisition,start_weight,current_weight,sale_price_per_kg,date_acquired,status'
+        + (includeWeightHistory ? ',weight_history' : '');
       let query = supabase.from('pig_batches')
-        .select('id,batch_code,pig_count,breed,age_on_acquisition,start_weight,current_weight,sale_price_per_kg,date_acquired,status,weight_history')
+        .select(fields)
         .eq('owner_id', req.user.id)
         .order('id');
       if (batchId) query = query.eq('id', batchId);
@@ -101,7 +103,15 @@ export const generateAiProfitAnalysis = async (req, res) => {
       if (batchId) query = query.eq('batch_id', batchId);
       return query;
     };
-    let batches = await collectPages(batchQuery);
+    let weightHistoryAvailable = true;
+    let batches;
+    try {
+      batches = await collectPages(() => batchQuery(true));
+    } catch (error) {
+      if (error.code !== '42703' && error.code !== 'PGRST204') throw error;
+      weightHistoryAvailable = false;
+      batches = await collectPages(() => batchQuery(false));
+    }
     if (!batchId) batches = batches.filter((batch) => String(batch.status || '').trim().toLowerCase() === 'active');
     const [pigs, expenses, feeds, vaccinations] = await Promise.all([
       collectPages(pigQuery),
@@ -139,6 +149,7 @@ export const generateAiProfitAnalysis = async (req, res) => {
     const estimatedStandingValuePhp = allValuationsAvailable ? round(valuation.reduce((sum, row) => sum + row.estimatedStandingValue, 0)) : null;
     const estimatedStandingValueLessSelectedPeriodCostsPhp = estimatedStandingValuePhp === null ? null : round(estimatedStandingValuePhp - totalRecordedCostsPhp);
     const limitations = [];
+    if (!weightHistoryAvailable) limitations.push('Stored weight-history snapshots are not available in the database; growth rates use the recorded batch start weight and the current individual-pig weights when those dates are consistent.');
     if (growth.some((row) => !row.weightDataComplete)) limitations.push('At least one batch is missing a complete individual-pig weight total; its standing value and growth are unavailable.');
     if (growth.some((row) => !row.growth)) limitations.push('Some batches do not have two dated weight points to calculate recent recorded growth.');
     if (growth.some((row) => row.ageDays === null)) limitations.push('Some batches are missing acquisition date or age-at-acquisition data.');
@@ -182,7 +193,7 @@ export const generateAiProfitAnalysis = async (req, res) => {
     const missingMigration = error.code === '42703' || error.code === 'PGRST204';
     res.status(missingKey ? 503 : missingMigration ? 503 : 502).json({
       success: false,
-      message: missingKey ? 'AI profit analysis is not configured' : missingMigration ? 'Growth history is unavailable; apply the growth-history database migration first' : 'AI profit analysis is temporarily unavailable',
+      message: missingKey ? 'AI profit analysis is not configured' : missingMigration ? 'Required growth or expense fields are unavailable; verify the database schema migrations' : 'AI profit analysis is temporarily unavailable',
     });
   }
 };
