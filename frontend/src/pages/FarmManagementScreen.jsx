@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { API_BASE, getAuthHeaders, registerFcmToken } from '../api.js';
 import BottomNav from '../components/BottomNav.jsx';
+import { useConfirmation } from '../components/ConfirmationDialog.jsx';
 
 const glass = 'bg-white/30 backdrop-blur-xl rounded-2xl border border-white/40 p-4 shadow-lg';
 const input = 'w-full rounded-xl bg-white/60 border border-white/50 p-2 text-gray-900';
@@ -29,6 +30,7 @@ function Field({ name, value, onChange, required = false }) {
  return <label className="block text-sm text-gray-700">{name.replaceAll('_', ' ')}<input className={input} name={name} value={value ?? ''} onChange={onChange} required={required} type={name.endsWith('_date') ? 'date' : ['count', 'amount'].includes(name) ? 'number' : 'text'} min={name === 'count' ? 1 : 0} step={name === 'count' ? 1 : name === 'amount' ? '0.01' : undefined} maxLength={2000} /></label>;
 }
 export default function FarmManagementScreen({ section = 'mortality' }) {
+ const confirm = useConfirmation();
  const config = configs[section];
  const [rows, setRows] = useState([]);
  const [batches, setBatches] = useState([]);
@@ -94,7 +96,7 @@ export default function FarmManagementScreen({ section = 'mortality' }) {
   });
  }
  async function remove(row) {
-  if (!window.confirm(section === 'mortality' ? 'Delete this mistaken mortality entry and restore its count to the batch?' : 'Delete this record?')) return;
+  if (!await confirm({ title: 'Delete record?', message: section === 'mortality' ? 'Delete this mistaken mortality entry and restore its count to the batch?' : 'Delete this record?', confirmLabel: 'Delete', destructive: true })) return;
   await act(async () => {
    const result = await request(section === 'expenses' ? `/expenses/${row.id}` : `${config.endpoint}/${row.id}`, 'DELETE');
    if (result.queued) {

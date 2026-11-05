@@ -7,11 +7,13 @@ import BottomNav from '../components/BottomNav';
 import { API_BASE, getAuthHeaders } from '../api.js';
 import { getUserCacheKey } from '../utils/cache.js';
 import { buildBatchDisplayNames } from '../utils/batchNames.js';
+import { useConfirmation } from '../components/ConfirmationDialog.jsx';
 // ────────────────────────────────────────────────────────────────
 
 const DEFAULT_LIVEWEIGHT_PRICE_PER_KG = 170;
 
 export default function BatchPigsScreen() {
+  const confirm = useConfirmation();
   const navigate = useNavigate();
   const { batchId } = useParams();
   const [loading, setLoading] = useState(true);
@@ -188,7 +190,7 @@ export default function BatchPigsScreen() {
 
   // Delete pig
   const handleDeletePig = async (pigId) => {
-    if (!window.confirm('Are you sure you want to delete this pig?')) return;
+    if (!await confirm({ title: 'Delete pig?', message: 'Are you sure you want to delete this pig?', confirmLabel: 'Delete pig', destructive: true })) return;
     try {
       const res = await fetch(`${API_BASE}/pigs/pig/${pigId}`, {
         method: 'DELETE',

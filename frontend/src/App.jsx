@@ -10,6 +10,7 @@ const BatchPigsScreen = lazy(() => import('./pages/BatchPigsScreen.jsx'));
 const FarmManagementScreen = lazy(() => import('./pages/FarmManagementScreen.jsx'));
 import { registerFcmToken, API_BASE, getAuthHeaders, preloadInitialData } from './api.js';
 import { recoverInterruptedSync, syncOfflineQueue, getOfflineStatus, retryOfflineItem, discardOfflineItem, offlineEvents, getOwnerId, handleOfflineFetch } from './services/offlineSync.js';
+import { ConfirmationProvider, useConfirmation } from './components/ConfirmationDialog.jsx';
 import './App.css';
 
 const tabKeys = ['/dashboard', '/feeds', '/reports', '/vaccination'];
@@ -85,6 +86,7 @@ function PersistentTabs() {
 }
 
 function OfflineSyncNotice({ isLoggedIn }) {
+  const confirm = useConfirmation();
   const [online, setOnline] = useState(() => navigator.onLine !== false);
   const [status, setStatus] = useState({ pending: 0, failed: 0, needsReview: 0, items: [], usingCachedData: false, staleCacheCount: 0 });
   const [expanded, setExpanded] = useState(false);
@@ -134,13 +136,13 @@ function OfflineSyncNotice({ isLoggedIn }) {
   }, [isLoggedIn]);
 
   const discard = async (item) => {
-    if (!window.confirm('Permanently remove this unsynced local change? This does not delete any server record.')) return;
+    if (!await confirm({ title: 'Discard local change?', message: 'Permanently remove this unsynced local change? This does not delete any server record.', confirmLabel: 'Discard', destructive: true })) return;
     await discardOfflineItem(item.id);
     if (navigator.onLine !== false) await syncOfflineQueue({ apiBase: API_BASE }).catch(() => {});
     setStatus(await getOfflineStatus());
   };
   const retry = async (item) => {
-    if (!window.confirm('Retry this save? If the server already accepted it, retrying may create a duplicate. Check the server first when the outcome is unclear.')) return;
+    if (!await confirm({ title: 'Retry this save?', message: 'If the server already accepted it, retrying may create a duplicate. Check the server first when the outcome is unclear.', confirmLabel: 'Retry' })) return;
     if (await retryOfflineItem(item.id)) await syncOfflineQueue({ apiBase: API_BASE });
     setStatus(await getOfflineStatus());
   };
@@ -172,7 +174,8 @@ function OfflineSyncNotice({ isLoggedIn }) {
   </section>;
 }
 
-function App() {
+function AppContent() {
+  const confirm = useConfirmation();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -198,7 +201,7 @@ function App() {
     window.fetch = interceptedFetch;
     const handleAuthExpired = () => logoutExpiredSession();
     const handleManualLogout = async () => {
-      if (!window.confirm('Are you sure you want to log out?')) return;
+      if (!await confirm({ title: 'Log out?', message: 'Are you sure you want to log out?', confirmLabel: 'Log out' })) return;
       try {
         await originalFetch(`${API_BASE}/auth/logout`, {
           method: 'POST',
@@ -217,7 +220,7 @@ function App() {
       window.removeEventListener('prepapig:logout', handleManualLogout);
       if (window.fetch === interceptedFetch) window.fetch = originalFetch;
     };
-  }, []);
+  }, [confirm]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -394,4 +397,6 @@ function App() {
   );
 }
 
-export default App;
+export default function App() {
+  return <ConfirmationProvider><AppContent /></ConfirmationProvider>;
+}

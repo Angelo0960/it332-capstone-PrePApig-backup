@@ -32,6 +32,7 @@ import { formatCurrency } from '../utils/formatters.js';
 import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 import { PIG_BREEDS } from '../utils/breeds.js';
 import { buildBatchDisplayNames } from '../utils/batchNames.js';
+import { useConfirmation } from '../components/ConfirmationDialog.jsx';
 import { getAgeOnDate, getVaccinationScheduleForAge, getCompletedVaccinationScheduleKeys } from '../utils/vaccinationSchedule.js';
 // ────────────────────────────────────────────────────────────────
 
@@ -160,6 +161,7 @@ const getCachedBatchTotalWeights = () => {
 };
 
 export default function DashboardScreen() {
+  const confirm = useConfirmation();
   const navigate = useNavigate();
 
   const [batches, setBatches] = useState(getCachedDashboardBatches);
@@ -444,9 +446,7 @@ export default function DashboardScreen() {
 
   // ---------- Delete batch ----------
   const handleDeleteBatch = async (batchId, batchName) => {
-    if (!window.confirm(`Are you sure you want to delete "${batchName}"? This will also delete all its pigs.`)) {
-      return;
-    }
+    if (!await confirm({ title: 'Delete batch?', message: `Are you sure you want to delete "${batchName}"? This will also delete all its pigs.`, confirmLabel: 'Delete batch', destructive: true })) return;
     try {
       const res = await fetch(`${API_BASE}/pigs/${batchId}`, {
         method: 'DELETE',
