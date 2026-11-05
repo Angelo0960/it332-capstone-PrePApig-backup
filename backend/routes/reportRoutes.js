@@ -1,12 +1,17 @@
 import { getFinancialReport } from '../controllers/financialController.js';
 import * as reportController from '../controllers/reportController.js';
+import { generateAiProfitAnalysis } from '../controllers/profitAnalysisController.js';
 import express from 'express';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
+import { rateLimit } from '../middlewares/rateLimit.js';
+
+const profitAiRateLimit = rateLimit({ limit: 10, windowMs: 15 * 60 * 1000, key: (req) => req.user?.id || req.ip });
 
 const reportRouter = express.Router();
 reportRouter.use(authMiddleware);
 
 reportRouter.get('/financial', getFinancialReport);
+reportRouter.post('/ai-profit-analysis', profitAiRateLimit, generateAiProfitAnalysis);
 
 reportRouter.get('/dashboard', reportController.getDashboardReport);
 

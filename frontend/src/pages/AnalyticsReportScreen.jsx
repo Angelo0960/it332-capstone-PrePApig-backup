@@ -84,6 +84,9 @@ export default function AnalyticsReportsScreen() {
   const [expenseAiAnalysis, setExpenseAiAnalysis] = useState(null);
   const [expenseAiLoading, setExpenseAiLoading] = useState(false);
   const [expenseAiError, setExpenseAiError] = useState(null);
+  const [profitAiResult, setProfitAiResult] = useState(null);
+  const [profitAiLoading, setProfitAiLoading] = useState(false);
+  const [profitAiError, setProfitAiError] = useState(null);
   const [pigPriceLocations, setPigPriceLocations] = useState(DEFAULT_PRICE_POINTS.map((point) => point.location));
   const [pigPriceReference, setPigPriceReference] = useState(null);
 
@@ -682,6 +685,57 @@ export default function AnalyticsReportsScreen() {
     }).finally(() => setExpenseAiLoading(false));
     return () => controller.abort();
   }, [filteredExpenses, expenseBreakdown, dateRange, selectedBatch]);
+
+  useEffect(() => {
+    if (loading || error || batchWeightLoading) {
+      setProfitAiResult(null);
+      setProfitAiLoading(false);
+      return undefined;
+    }
+    const selectedBatchRow = selectedBatch === 'All Batches'
+      ? null
+      : batches.find((row) => row.batch_code === selectedBatch);
+    if (selectedBatch !== 'All Batches' && !selectedBatchRow) {
+      setProfitAiResult(null);
+      setProfitAiLoading(false);
+      return undefined;
+    }
+    const controller = new AbortController();
+    setProfitAiResult(null);
+    setProfitAiError(null);
+    setProfitAiLoading(true);
+    const query = new URLSearchParams(getDateQuery());
+    if (selectedBatchRow?.id) query.set('batch_id', selectedBatchRow.id);
+    const selectedPriceForAnalysis = Number(selectedPrice) > 0 ? Number(selectedPrice) : null;
+    const referencePriceForAnalysis = Number(referencePrice) > 0 ? Number(referencePrice) : null;
+    fetch(`${API_BASE}/reports/ai-profit-analysis`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      cache: 'no-store',
+      signal: controller.signal,
+      body: JSON.stringify({
+        from: query.get('from'),
+        to: query.get('to'),
+        batch_id: selectedBatchRow?.id || null,
+        selected_price_per_kg: selectedPriceForAnalysis,
+        reference_price_per_kg: referencePriceForAnalysis,
+        price_source: selectedPriceForAnalysis ? selectedPriceLocation : referencePriceForAnalysis ? 'Batangas provincial farmgate reference' : null,
+      }),
+    }).then(async (response) => {
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || 'AI estimated-profit analysis unavailable');
+      if (!controller.signal.aborted) {
+        setProfitAiResult(result);
+        setProfitAiError(result.aiAnalysisError || null);
+      }
+    }).catch((requestError) => {
+      if (!controller.signal.aborted) setProfitAiError(requestError.message || 'AI estimated-profit analysis unavailable');
+    }).finally(() => {
+      if (!controller.signal.aborted) setProfitAiLoading(false);
+    });
+    return () => controller.abort();
+  }, [loading, error, batchWeightLoading, batches, selectedBatch, dateRange, selectedPrice, selectedPriceLocation, referencePrice]);
+
   const pricingActionSuggestion = aiAnalysis?.suggestion
     || (pricePoints.length > 0
       ? 'Before selling, compare the buyer\'s liveweight offer with these local reference prices, confirm the price date and unit, and negotiate using the closest verified location rather than a retail price.'
@@ -1282,6 +1336,43 @@ export default function AnalyticsReportsScreen() {
                   </span>
                 </div>
               </div>
+            </div>
+
+            <div className="bg-white/55 border border-[#ffd1df] rounded-xl p-4 mt-4 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <h4 className="text-sm font-bold text-[#ad1457]">AI Estimated Profit Analysis</h4>
+                {profitAiResult?.aiAnalysis && <span className="text-[10px] uppercase font-bold text-[#f5125d]">{profitAiResult.aiAnalysis.riskLevel || 'unknown'} risk</span>}
+              </div>
+              <p className="text-[10px] text-[#6B7280] mb-3">AI interprets recorded weight and expense data. Amounts below are calculated from records and labeled price assumptions; this is not realized or full lifecycle profit.</p>
+              {profitAiLoading && <p className="text-sm text-gray-600">Analyzing recorded growth and expenses…</p>}
+              {profitAiError && <p className="text-sm text-amber-800">AI estimated-profit analysis unavailable: {profitAiError}</p>}
+              {profitAiResult?.available === false && <p className="text-sm text-gray-600">{profitAiResult.message}</p>}
+              {profitAiResult?.available && (() => {
+                const context = profitAiResult.deterministic;
+                const analysis = profitAiResult.aiAnalysis;
+                return (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3 text-xs">
+                      <div className="rounded-lg bg-white/70 p-2"><span className="block text-gray-600">Estimated standing value</span><strong>{context.estimatedStandingValuePhp == null ? 'Unavailable' : formatCurrency(context.estimatedStandingValuePhp)}</strong></div>
+                      <div className="rounded-lg bg-white/70 p-2"><span className="block text-gray-600">Recorded costs ({context.period.from} to {context.period.to})</span><strong>{formatCurrency(context.totalRecordedCostsPhp)}</strong></div>
+                      <div className="rounded-lg bg-white/70 p-2"><span className="block text-gray-600">Standing value less selected-period costs</span><strong>{context.estimatedStandingValueLessSelectedPeriodCostsPhp == null ? 'Unavailable' : formatCurrency(context.estimatedStandingValueLessSelectedPeriodCostsPhp)}</strong></div>
+                    </div>
+                    <div className="space-y-2 mb-3 text-xs text-[#555B6E]">
+                      {(context.growth || []).map((row) => (
+                        <p key={row.batchCode}>
+                          <strong>{row.batchCode}</strong>{row.ageDays == null ? ' · age unavailable' : ` · age ${row.ageDays} days`}{row.currentAverageWeightKg == null ? ' · weight unavailable' : ` · current average ${row.currentAverageWeightKg} kg/pig`}{row.growth ? ` · weight gain ${row.growth.gainKg} kg/pig (${row.growth.previousSnapshotDate}–${row.growth.currentSnapshotDate}; ${row.growth.previousSnapshotSource}; ${row.growth.gainKgPerDay} kg/day)` : ' · recent dated growth unavailable'}
+                        </p>
+                      ))}
+                    </div>
+                    {analysis && <>
+                      <p className="text-sm leading-6 text-[#252838]">{analysis.analysis}</p>
+                      <p className="text-sm leading-6 text-[#252838] mt-2"><strong className="text-[#ad1457]">Suggestion:</strong> {analysis.suggestion}</p>
+                      {analysis.actions?.length > 0 && <ul className="list-disc pl-4 mt-2 text-xs text-[#555B6E]">{analysis.actions.map((action) => <li key={action}>{action}</li>)}</ul>}
+                    </>}
+                    {[...(context.limitations || []), ...(analysis?.limitations || [])].filter((item, index, list) => item && list.indexOf(item) === index).length > 0 && <p className="text-[10px] text-[#6B7280] mt-3">Limitations: {[...(context.limitations || []), ...(analysis?.limitations || [])].filter((item, index, list) => item && list.indexOf(item) === index).join(' ')}</p>}
+                  </>
+                );
+              })()}
             </div>
 
             {/* Expense Breakdown Chart (manual expenses) */}
