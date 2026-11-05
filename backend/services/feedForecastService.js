@@ -42,17 +42,26 @@ const readCsv = (filename) => {
   });
 };
 
+const UPLOADED_BATCH_ALIASES = Object.freeze({
+  'BATCH-01': 'BATCH-2026-01',
+  'BATCH-02': 'BATCH-2025-01',
+  'BATCH-03': 'BATCH-2025-02',
+  'BATCH-04': 'BATCH-2025-03',
+  'BATCH-05': 'BATCH-2024-01',
+});
+
 const loadUploadedHistoricalData = ({ batchId } = {}) => {
+  const sourceBatchId = !batchId || batchId === 'all' ? null : UPLOADED_BATCH_ALIASES[batchId] || batchId;
   const dailyRows = readCsv('PrepAPig_5Y_Daily_Feed_Usage.csv')
     .filter((row) => row.date <= MAX_SOURCE_DATE)
-    .filter((row) => !batchId || batchId === 'all' || row.batch_id === batchId)
+    .filter((row) => !sourceBatchId || row.batch_id === sourceBatchId)
     .map((row) => ({ feeding_date: row.date, quantity_kg: Number(row.actual_feed_kg), planned_kg: Number(row.planned_daily_kg_per_pig) * Number(row.active_pigs), dataType: row.data_type }));
   const weeklyRows = readCsv('PrepAPig_5Y_Weekly_Forecast.csv')
     .filter((row) => row.week_start <= MAX_SOURCE_DATE)
-    .filter((row) => !batchId || batchId === 'all' || row.batch_id === batchId)
+    .filter((row) => !sourceBatchId || row.batch_id === sourceBatchId)
     .map((row) => ({ ...row, ration_code: String(row.ration_code || '').trim() || 'Unspecified ration' }))
     .sort((a, b) => a.week_start.localeCompare(b.week_start) || a.batch_id.localeCompare(b.batch_id));
-  return { dailyRows, weeklyRows };
+  return { dailyRows, weeklyRows, sourceBatchId: sourceBatchId || 'all' };
 };
 
 const summarizeUploadedHistory = (dailyRows, weeklyRows) => {
@@ -153,7 +162,7 @@ const forecastFeedConsumption = (dailyRows, horizonDays = 7, windowDays = DEFAUL
 
 export const getFeedConsumptionForecast = async ({ ownerId, batchId, horizonDays = 7, horizonWeeks = 1, windowDays = DEFAULT_WINDOW_DAYS, source = 'recorded' } = {}) => {
   if (source === 'uploaded_historical') {
-    const { dailyRows, weeklyRows } = loadUploadedHistoricalData({ batchId });
+    const { dailyRows, weeklyRows, sourceBatchId } = loadUploadedHistoricalData({ batchId });
     const historicalSummary = summarizeUploadedHistory(dailyRows, weeklyRows);
     const grouped = new Map();
     weeklyRows.forEach((row) => {
@@ -170,7 +179,11 @@ export const getFeedConsumptionForecast = async ({ ownerId, batchId, horizonDays
       success: true,
       batchId: batchId || 'all',
       dataType: 'uploaded_historical_feed_usage',
-      provenance: { files: ['PrepAPig_5Y_Daily_Feed_Usage.csv', 'PrepAPig_5Y_Weekly_Forecast.csv', 'PrepAPig_5_Year_Synthetic_Feed_Dataset.xlsx'], label: 'Uploaded historical feed data' },
+      provenance: {
+        files: ['PrepAPig_5Y_Daily_Feed_Usage.csv', 'PrepAPig_5Y_Weekly_Forecast.csv', 'PrepAPig_5_Year_Synthetic_Feed_Dataset.xlsx'],
+        label: 'Uploaded historical feed data',
+        selectedSourceBatchId: sourceBatchId === 'all' ? null : sourceBatchId,
+      },
       historicalSummary,
       ...aggregate,
       rationForecasts,
