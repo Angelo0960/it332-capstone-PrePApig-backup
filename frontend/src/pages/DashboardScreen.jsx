@@ -1023,7 +1023,7 @@ export default function DashboardScreen() {
                     </button>
                     {batchFieldErrors.breed && <AlertTriangle className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
                     {showBreedOptions && (
-                      <div className="add-batch-breed-options absolute left-0 right-0 top-full mt-2 z-30 rounded-xl p-1">
+                      <div className="add-batch-breed-options absolute left-0 right-0 top-full mt-2 z-30 rounded-xl p-1" role="listbox" aria-label="Breed options">
                         <button
                           type="button"
                           role="option"
