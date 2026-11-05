@@ -8,12 +8,24 @@ export const runReminders = async () => {
   workerStatus.running = true;
   workerStatus.lastStartedAt = new Date().toISOString();
   try {
-    await sendDailyFeedReminders();
-    await sendFeedChangeReminders();
-    await sendVaccinationReminders();
-    workerStatus.lastOutcome = 'scan_completed';
+    const jobs = [
+      ['daily_feed_reminders', sendDailyFeedReminders],
+      ['feed_stage_change_reminders', sendFeedChangeReminders],
+      ['vaccination_reminders', sendVaccinationReminders],
+    ];
+    const failures = [];
+    for (const [name, run] of jobs) {
+      try {
+        await run();
+      } catch (error) {
+        failures.push(name);
+        console.error(JSON.stringify({ event: 'reminder_job_failed', job: name, message: error.message }));
+      }
+    }
+    workerStatus.lastOutcome = failures.length ? `partial_failure:${failures.join(',')}` : 'scan_completed';
+    if (failures.length) throw new Error(`Reminder jobs failed: ${failures.join(', ')}`);
   } catch (error) {
-    workerStatus.lastOutcome = 'failed';
+    if (workerStatus.lastOutcome === 'running' || !workerStatus.lastOutcome) workerStatus.lastOutcome = 'failed';
     throw error;
   } finally {
     workerStatus.running = false;

@@ -896,7 +896,7 @@ export default function FeedsInventoryScreen() {
                 <div className="space-y-3">
                   {batches
                     .filter((batch) => (selectedBatch === 'all' ? true : String(batch.id) === String(selectedBatch)))
-                    .map((batch, index) => {
+                    .map((batch) => {
                       const feedType = getFeedTypeForAge(batch.day);
                       const feedName = getFeedTypeName(feedType);
                       const dailyAmount = getDailyFeedForBatch(batch.day);
@@ -910,12 +910,7 @@ export default function FeedsInventoryScreen() {
                       const isDone = existingToday || isPending;
 
                       const status = isPending ? 'saving' : isDone ? 'completed' : 'pending';
-                      const scheduleTime =
-                        index === 0
-                          ? 'Today, 5:00 PM'
-                          : index === 1
-                          ? 'Tomorrow, 7:00 AM'
-                          : 'Tomorrow, 6:00 PM';
+                      const scheduleTime = '5:00 PM';
 
                       return (
                         <div
@@ -928,7 +923,7 @@ export default function FeedsInventoryScreen() {
                                 {batch.name} – {batch.pigCount ?? 0} pigs · Day {batch.day}
                               </div>
                               <div className="text-xs text-gray-600 mt-1">
-                                {isPending ? 'Saving...' : isDone ? 'Completed today' : `Next feeding: ${scheduleTime}`}
+                                {isPending ? 'Saving...' : isDone ? 'Completed today' : `Scheduled daily at ${scheduleTime}`}
                               </div>
                               <div className="text-xs text-gray-600">
                                 {feedName}, {dailyAmount} kg

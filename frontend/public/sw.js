@@ -1,4 +1,4 @@
-const CACHE_NAME = 'prepapig-shell-v5';
+const CACHE_NAME = 'prepapig-shell-v6';
 const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/pwa-install.js', '/prepapig-logo.png', '/prepapig-logo-192.png', '/prepapig-logo-512.png', '/favicon.svg'];
 
 self.addEventListener('install', (event) => {
@@ -70,5 +70,19 @@ self.addEventListener('fetch', (event) => {
 });
 
 self.addEventListener('message', (event) => {
-  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+    return;
+  }
+  if (event.data?.type === 'SHOW_NOTIFICATION') {
+    const title = event.data.title || 'PrepAPig Notification';
+    const body = event.data.body || 'You have a new update.';
+    const notificationId = event.data.notificationId || `${title}:${body}`;
+    event.waitUntil(self.registration.showNotification(title, {
+      body,
+      icon: event.data.icon || '/prepapig-logo-192.png',
+      tag: `prepapig-${notificationId}`,
+      renotify: false,
+    }));
+  }
 });

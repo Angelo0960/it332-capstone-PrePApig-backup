@@ -705,6 +705,7 @@ export default function DashboardScreen() {
       case 'vaccination_overdue':
         return { icon: AlertTriangle, bg: 'bg-red-100/80', color: 'text-red-700' };
       case 'feed_reminder':
+      case 'feed_delayed':
       case 'feed_stage_change':
         return { icon: Wheat, bg: 'bg-green-100/80', color: 'text-green-700' };
       case 'feed':
