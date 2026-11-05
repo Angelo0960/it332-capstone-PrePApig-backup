@@ -841,7 +841,7 @@ export default function DashboardScreen() {
 
 
 
-                  className="dashboard-progress-stack grid grid-cols-3 gap-2 sm:gap-4 mb-4"
+                  className="dashboard-progress-stack grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4"
                 >
                   {/* Vaccination */}
                   <div className="dashboard-card flex min-h-[150px] flex-col items-center justify-center rounded-2xl p-2 text-center sm:p-3">
@@ -889,6 +889,17 @@ export default function DashboardScreen() {
                     </div>
                     <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.06em] text-[#555B6E]">Feed Level</div>
                     <div className="truncate text-[10px] text-orange-700">{getFeedTypeName(getFeedTypeForAge(currentBatchDay))}</div>
+                  </div>
+
+                  {/* Breed */}
+                  <div className="dashboard-card flex min-h-[150px] min-w-0 flex-col items-center justify-center rounded-2xl p-2 text-center sm:p-3">
+                    <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[#ff2f72]/10 sm:h-24 sm:w-24">
+                      <Tag className="h-8 w-8 text-[#ff2f72]" aria-hidden="true" />
+                    </div>
+                    <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.06em] text-[#555B6E]">Breed</div>
+                    <div className="max-w-full truncate text-[10px] font-semibold text-[#ad1457]" title={currentBatch.breed && currentBatch.breed !== 'Unknown' ? currentBatch.breed : 'Not recorded'}>
+                      {currentBatch.breed && currentBatch.breed !== 'Unknown' ? currentBatch.breed : 'Not recorded'}
+                    </div>
                   </div>
                 </div>
               </>

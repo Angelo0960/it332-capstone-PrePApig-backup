@@ -596,7 +596,7 @@ textarea {
   .dashboard-screen .dashboard-batch-hero { grid-area: hero; min-height: 340px; margin-bottom: 0; }
   .dashboard-screen .dashboard-summary-grid { grid-area: summary; display: grid; grid-template-columns: 1fr; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-bottom: 0; }
   .dashboard-screen .dashboard-summary-grid > div { min-height: 0; padding: 1.25rem; }
-  .dashboard-screen .dashboard-progress-stack { grid-area: progress; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-bottom: 0; padding: 1rem; border: 1px solid rgba(255,255,255,0.5); border-radius: 1.75rem; background: rgba(255,255,255,0.2); }
+  .dashboard-screen .dashboard-progress-stack { grid-area: progress; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin-bottom: 0; padding: 1rem; border: 1px solid rgba(255,255,255,0.5); border-radius: 1.75rem; background: rgba(255,255,255,0.2); }
   .dashboard-screen .dashboard-progress-stack > div { min-height: 168px; padding: 1rem; }
   .dashboard-screen .dashboard-bottom-nav { display: none; }
   .dashboard-screen .floating-action-button { display: none; }
