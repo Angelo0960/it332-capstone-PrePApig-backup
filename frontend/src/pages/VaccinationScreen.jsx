@@ -565,7 +565,7 @@ export default function VaccinationScreen() {
               {/* Vaccine Stock Table */}
               <div className="vaccination-stock-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg mb-4">
                 <div className="p-4 border-b border-white/20">
-                  <h3 className="font-semibold text-gray-900">Scheduled Vaccine / Medication Stock</h3>
+                  <h3 className="font-semibold text-gray-900">Scheduled Vaccine Stock</h3>
                 </div>
                 <div className="divide-y divide-white/20">
                   {scheduledVaccineStock.length === 0 ? (
