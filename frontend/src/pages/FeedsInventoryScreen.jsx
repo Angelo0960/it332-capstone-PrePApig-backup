@@ -619,121 +619,52 @@ export default function FeedsInventoryScreen() {
           </div>
         </div>
 
-        <div className="feeds-desktop-content">
-        {/* Summary Cards */}
-        <div className="px-4 md:px-8 lg:px-12 mb-4">
-          <div className="flex flex-nowrap overflow-x-auto gap-3 pb-2">
-            <div className="feeds-summary-card flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs text-gray-700 font-semibold uppercase tracking-wide">
-                  {selectedBatch === 'all' ? 'Current Stock' : 'Feed Consumed'}
-                </span>
+        <div className={`feeds-desktop-content ${selectedBatch === 'all' ? 'feeds-all-batches' : 'feeds-selected-batch'} flex-1 min-h-0 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24`}>
+          {/* Summary Cards */}
+          <div className="feeds-summary-cards grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
+            <div className="feeds-summary-card bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
+              <div className="feeds-summary-label mb-2 text-xs text-gray-700 font-semibold uppercase tracking-wide">
+                {selectedBatch === 'all' ? 'Current Stock' : 'Feed Consumed'}
               </div>
-              <div className="feeds-hero-number text-4xl font-extrabold tracking-[-0.05em] text-gray-900 mb-1">
+              <div className="feeds-hero-number mb-1 font-extrabold text-gray-900">
                 {formatKgQuantity(selectedBatch === 'all' ? totalStock : totalFeedConsumed)} <span className="whitespace-nowrap">kg</span>
               </div>
-              <div className="text-xs text-gray-600 mb-3">
+              <div className="feeds-summary-caption mt-2 text-xs text-gray-600 font-semibold">
                 {selectedBatch === 'all'
                   ? `${feedStocks.length} feed types · ${totalStockValue == null ? 'Unavailable' : `₱${totalStockValue.toFixed(2)}`} value`
                   : `From ${selectedBatchFeedRecords.length} feeding records`}
               </div>
-              <div className="h-2 bg-white/30 rounded-full overflow-hidden mb-2">
-                <div
-                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full"
-                  style={{
-                    width:
-                      selectedBatch === 'all'
-                        ? Math.min(100, (totalStock / 500) * 100)
-                        : Math.min(100, (totalFeedConsumed / 500) * 100),
-                  }}
-                />
-              </div>
             </div>
 
-            <div className="feeds-summary-card flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
-              <div className="mb-3">
-                <span className="text-xs text-gray-700 font-semibold uppercase tracking-wide">
-                  {selectedBatch === 'all' ? 'Total Feed Expenses' : selectedBatchData?.name}
-                </span>
+            <div className="feeds-summary-card bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
+              <div className="feeds-summary-label mb-2 text-xs text-gray-700 font-semibold uppercase tracking-wide">
+                {selectedBatch === 'all' ? 'Total Feed Expenses' : selectedBatchData?.name || 'Unknown'}
               </div>
-              <div className="feeds-hero-number text-4xl font-extrabold tracking-[-0.05em] text-gray-900 mb-1">
+              <div className="feeds-hero-number mb-1 font-extrabold text-gray-900">
                 {displayedFeedExpense == null ? 'Unavailable' : `₱${displayedFeedExpense.toLocaleString('en-PH', { maximumFractionDigits: 0 })}`}
               </div>
-              <div className="text-xs text-gray-600">
+              <div className="feeds-summary-caption mt-2 text-xs text-gray-600">
                 {selectedBatch === 'all' ? 'Across all batches' : 'Feed expenses for this batch'}
               </div>
             </div>
 
-            {selectedBatch === 'all'
-              ? feedStocks.map((feed) => {
-                  const stockLevel = Math.min(100, (feed.stock_quantity / 200) * 100);
-                  const isLow = feed.stock_quantity < 50;
-                  return (
-                    <div
-                      key={feed.feed_type}
-                      className="feeds-summary-card flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg"
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">{getFeedTypeName(feed.feed_type)}</span>
-                      </div>
-                      <div className="feeds-hero-number text-4xl font-extrabold tracking-[-0.05em] text-gray-900 mb-1">
-                        {formatKgQuantity(feed.stock_quantity)} <span className="whitespace-nowrap">kg</span>
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        {feed.unit_price == null ? 'Unavailable' : `₱${Number(feed.unit_price).toFixed(2)}/kg`}
-                      </div>
-                      <div className="mt-2 h-1.5 bg-white/30 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${isLow ? 'bg-red-500' : 'bg-blue-500'}`}
-                          style={{ width: `${Math.min(100, stockLevel)}%` }}
-                        />
-                      </div>
-                      {isLow && (
-                        <div className="mt-1 text-xs text-red-600 font-semibold">Low stock</div>
-                      )}
-                    </div>
-                  );
-                })
-              : Object.entries(consumptionByFeedType).map(([feedType, totalKg]) => {
-                  const maxConsumption = 200;
-                  const level = Math.min(100, (totalKg / maxConsumption) * 100);
-                  return (
-                    <div
-                      key={feedType}
-                      className="feeds-summary-card flex-shrink-0 w-64 bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg"
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">{feedType}</span>
-                      </div>
-                      <div className="feeds-hero-number text-4xl font-extrabold tracking-[-0.05em] text-gray-900 mb-1">{formatKgQuantity(totalKg)} <span className="whitespace-nowrap">kg</span></div>
-                      <div className="text-xs text-gray-600">Consumed</div>
-                      <div className="mt-2 h-1.5 bg-white/30 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-orange-500"
-                          style={{ width: `${Math.min(100, level)}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
           </div>
-        </div>
 
-        {/* Main Content */}
-        <div className="feeds-main-content flex-1 min-h-0 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24">
+          {/* Main Content */}
+          <div className="feeds-main-content">
           {loading ? (
-            <div className="flex items-center justify-center h-40">
+            <div className="feeds-state-message flex items-center justify-center h-40">
               <div className="text-gray-600">Loading...</div>
             </div>
           ) : error ? (
-            <div className="bg-red-100/20 border border-red-300/50 rounded-xl p-4 text-red-700">
+            <div className="feeds-state-message bg-red-100/20 border border-red-300/50 rounded-xl p-4 text-red-700">
               <p>Error: {error}</p>
               <button onClick={fetchFeedRecords} className="mt-2 underline">
                 Retry
               </button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="feeds-main-sections">
               {/* Stock / Consumption Table */}
               <div className="feeds-stock-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg">
                 <div className="p-4 border-b border-white/20">
@@ -757,11 +688,16 @@ export default function FeedsInventoryScreen() {
                         >
                           <div className="flex-1">
                             <div className="font-medium text-gray-900">{getFeedTypeName(feed.feed_type)}</div>
-                            <div className="flex items-center gap-2 mt-1">
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
                               <span className="text-xs text-gray-600">
                                 {feed.unit_price == null ? 'Unavailable' : `₱${Number(feed.unit_price).toFixed(2)}/kg`} ·{' '}
                                 {feed.last_updated || 'N/A'}
                               </span>
+                              {feed.stock_quantity < 50 && (
+                                <span className="px-2 py-1 bg-orange-100/80 border border-orange-300/50 rounded-full text-xs text-orange-700 font-semibold">
+                                  Low stock
+                                </span>
+                              )}
                               <button
                                 onClick={() => handleEditPrice(feed.feed_type, feed.unit_price || 0)}
                                 className="w-6 h-6 rounded-full bg-white/40 backdrop-blur-sm flex items-center justify-center hover:bg-white/60 transition-all"
@@ -802,7 +738,7 @@ export default function FeedsInventoryScreen() {
               </div>
 
               {selectedBatch === 'all' && (
-                <div className="feeds-history-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg">
+                <div className="feeds-history-type-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg">
                   <div className="p-4 border-b border-white/20">
                     <h3 className="font-semibold text-gray-900">Feed Consumption History by Type</h3>
                   </div>
@@ -838,7 +774,7 @@ export default function FeedsInventoryScreen() {
               </div>
 
               {/* Chart */}
-                            <div className="feeds-chart-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg">
+              <div className="feeds-chart-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg">
                 <h3 className="font-semibold text-gray-900 mb-2">Feed Consumption & Forecast</h3>
                 <ResponsiveContainer width="100%" height={220}>
                   <LineChart
@@ -972,7 +908,7 @@ export default function FeedsInventoryScreen() {
               </div>
 
               {/* History */}
-                            <div className="feeds-history-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg">
+              <div className="feeds-history-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg">
                 <div className="p-4 border-b border-white/20">
                   <h3 className="font-semibold text-gray-900">
                     Feed Consumption History
@@ -1023,7 +959,7 @@ export default function FeedsInventoryScreen() {
               </div>
             </div>
           )}
-        </div>
+          </div>
         </div>
 
         {/* Modals */}

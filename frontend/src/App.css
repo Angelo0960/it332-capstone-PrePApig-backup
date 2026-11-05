@@ -483,72 +483,49 @@ textarea {
 @media (max-width: 1023px) {
   .feeds-desktop-content {
     display: block;
-    padding: 0 1rem;
+    padding: 0 1rem calc(6rem + env(safe-area-inset-bottom));
   }
 
-  .feeds-desktop-content > .px-4:first-child {
-    padding: 0;
-    margin-bottom: 0.75rem;
-  }
-
-  .feeds-desktop-content > .px-4:first-child > .flex.flex-nowrap {
+  .feeds-summary-cards {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
-    overflow: visible;
-    padding-bottom: 0;
+    margin-bottom: 0.75rem;
   }
 
   .feeds-desktop-content .feeds-summary-card {
     width: auto !important;
     min-width: 0;
-    min-height: 8.5rem;
-    padding: 0.9rem !important;
-    border-radius: 1.25rem !important;
-    background: rgba(255, 255, 255, 0.28);
-    box-shadow: 0 10px 24px rgba(31, 64, 49, 0.12);
-  }
-
-  .feeds-desktop-content .feeds-summary-card:first-child {
-    grid-column: 1 / -1;
-    min-height: 9.5rem;
-  }
-
-  .feeds-desktop-content .feeds-summary-card .feeds-hero-number {
-    font-size: clamp(1.75rem, 8vw, 2.25rem);
   }
 
   .feeds-main-content {
-    padding: 0 0 calc(6rem + env(safe-area-inset-bottom)) !important;
+    padding: 0 !important;
     overflow: visible !important;
   }
 
-  .feeds-main-content > .space-y-4 {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .feeds-main-sections {
+    display: flex;
+    flex-direction: column;
     gap: 0.75rem;
   }
 
-  .feeds-main-content > .space-y-4 > .feeds-stock-card,
-  .feeds-main-content > .space-y-4 > .feeds-action-buttons,
-  .feeds-main-content > .space-y-4 > .feeds-chart-card,
-  .feeds-main-content > .space-y-4 > .feeds-schedule-card,
-  .feeds-main-content > .space-y-4 > .feeds-history-card {
-    grid-column: 1 / -1;
-    min-width: 0;
-  }
+  .feeds-stock-card { order: 1; }
+  .feeds-action-buttons { order: 2; }
+  .feeds-schedule-card { order: 3; }
+  .feeds-chart-card { order: 4; }
+  .feeds-history-type-card { order: 5; }
+  .feeds-history-card { order: 6; }
 
   .feeds-main-content .feeds-stock-card,
   .feeds-main-content .feeds-chart-card,
   .feeds-main-content .feeds-schedule-card,
+  .feeds-main-content .feeds-history-type-card,
   .feeds-main-content .feeds-history-card {
+    width: 100%;
+    min-width: 0;
     border-radius: 1.25rem !important;
     background: rgba(255, 255, 255, 0.28);
     box-shadow: 0 10px 24px rgba(31, 64, 49, 0.12);
-  }
-
-  .feeds-main-content > .space-y-4 > .feeds-history-card {
-    margin-top: 0;
   }
 
   .feeds-main-content .feeds-action-buttons {
@@ -569,8 +546,8 @@ textarea {
     padding-right: 0.75rem;
   }
 
-  .feeds-desktop-content > .px-4:first-child > .flex.flex-nowrap,
-  .feeds-main-content > .space-y-4 {
+  .feeds-summary-cards,
+  .feeds-main-sections {
     gap: 0.55rem;
   }
 
@@ -626,38 +603,103 @@ textarea {
 }
 
 @media (min-width: 1024px) {
-  .feeds-desktop-content { display: grid; grid-template-columns: minmax(0, 1.22fr) minmax(320px, 0.9fr); grid-template-areas: "summary stock" "schedule stock" "chart stock" "actions history"; gap: 1rem 1.1rem; align-items: start; padding: 0 2.4rem 2rem; }
-  .feeds-desktop-content > .px-4:first-child { grid-area: summary; padding: 0; margin: 0; }
-  .feeds-desktop-content > .feeds-main-content { display: contents; }
-  .feeds-main-content > .space-y-4 { display: contents; }
-  .feeds-summary-card { width: auto !important; min-height: 150px; padding: 1.25rem !important; border-radius: 1.5rem !important; }
-  .feeds-stock-card { grid-area: stock; min-height: 330px; border-radius: 1.5rem !important; }
-  .feeds-schedule-card { grid-area: schedule; min-height: 230px; border-radius: 1.5rem !important; }
-  .feeds-chart-card { grid-area: chart; border-radius: 1.5rem !important; }
-  .feeds-action-buttons { grid-area: actions; }
-  .feeds-history-card { grid-area: history; border-radius: 1.5rem !important; }
-  .feeds-main-content { overflow: visible; padding: 0 !important; }
-  .feeds-header-actions { margin-right: 0.2rem; }
-  .feeds-desktop-content .flex.flex-nowrap { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; overflow: visible; }
-  .feeds-desktop-content .feeds-summary-card:nth-child(n+3) { display: none; }
-  .feeds-desktop-content .feeds-stock-card .divide-y > div { min-height: 86px; }
-  .feeds-desktop-content .feeds-schedule-card button { border-radius: 999px; }
-  .feeds-desktop-content .flex.flex-nowrap,
-  .feeds-desktop-content > .px-4:first-child,
-  .feeds-desktop-content > .feeds-main-content,
-  .feeds-main-content > .space-y-4 { display: contents; }
-  .feeds-desktop-content { grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-areas: none; }
-  .feeds-desktop-content .feeds-summary-card { grid-area: auto; min-height: 150px; }
-  .feeds-desktop-content .feeds-summary-card:nth-child(1) { grid-column: 1 / span 3; }
-  .feeds-desktop-content .feeds-summary-card:nth-child(2) { grid-column: 4 / span 3; }
-  .feeds-desktop-content .feeds-summary-card:nth-child(n+3) { display: none; }
-  .feeds-desktop-content .feeds-stock-card { grid-column: 7 / span 6; grid-row: 1; min-height: 330px; }
-  .feeds-desktop-content .feeds-schedule-card { grid-column: 1 / span 6; grid-row: 1; min-height: 230px; margin: calc(12rem + 1rem) 0 0; }
-  .feeds-desktop-content .feeds-action-buttons { display: none; }
-  .feeds-desktop-content .feeds-chart-card { grid-column: 1 / span 6; grid-row: 2; }
-  .feeds-desktop-content .feeds-history-card { grid-column: 7 / span 6; grid-row: 2 / span 2; }
-  .feeds-batch-selector > div { scrollbar-width: none; }
-  .feeds-batch-selector > div::-webkit-scrollbar { display: none; }
+  .feeds-desktop-content {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 1rem 1.1rem;
+    align-items: start;
+    padding: 0 2.4rem 2rem;
+    overflow: visible;
+  }
+
+  .feeds-main-content,
+  .feeds-main-sections {
+    display: contents;
+  }
+
+  .feeds-summary-cards {
+    grid-column: 1 / span 6;
+    grid-row: 1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 0;
+  }
+
+  .feeds-summary-card {
+    width: auto !important;
+    min-width: 0;
+    min-height: 150px;
+    padding: 1.25rem !important;
+    border-radius: 1.5rem !important;
+  }
+
+  .feeds-stock-card {
+    grid-column: 7 / span 6;
+    grid-row: 1;
+    min-height: 330px;
+    border-radius: 1.5rem !important;
+  }
+
+  .feeds-stock-card .divide-y > div {
+    min-height: 86px;
+  }
+
+  .feeds-schedule-card {
+    grid-column: 1 / span 6;
+    grid-row: 2;
+    min-height: 230px;
+    margin: 0;
+    border-radius: 1.5rem !important;
+  }
+
+  .feeds-chart-card {
+    grid-column: 1 / span 6;
+    grid-row: 3;
+    border-radius: 1.5rem !important;
+  }
+
+  .feeds-history-type-card {
+    grid-column: 7 / span 6;
+    grid-row: 2;
+    margin: 0;
+    border-radius: 1.5rem !important;
+  }
+
+  .feeds-history-card {
+    grid-column: 7 / span 6;
+    grid-row: 3;
+    margin: 0;
+    border-radius: 1.5rem !important;
+  }
+
+  .feeds-selected-batch .feeds-history-card {
+    grid-row: 2 / span 2;
+  }
+
+  .feeds-action-buttons {
+    display: none;
+  }
+
+  .feeds-state-message {
+    grid-column: 1 / -1;
+  }
+
+  .feeds-header-actions {
+    margin-right: 0.2rem;
+  }
+
+  .feeds-desktop-content .feeds-schedule-card button {
+    border-radius: 999px;
+  }
+
+  .feeds-batch-selector > div {
+    scrollbar-width: none;
+  }
+
+  .feeds-batch-selector > div::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* Shared dashboard palette for non-overview screens. */
@@ -696,8 +738,9 @@ textarea {
 .dashboard-theme [class*="focus:ring-pink-"]:focus { --tw-ring-color: rgba(255, 47, 114, 0.5) !important; }
 .dashboard-theme .desktop-app-content { color: var(--dashboard-ink); }
 
-/* Match feed summary tiles to the clean, oversized vaccination metric cards. */
-.feeds-desktop-content .feeds-summary-card {
+/* Keep feed and vaccination summary cards visually aligned. */
+.feeds-desktop-content .feeds-summary-card,
+.vaccination-desktop-content .vaccination-summary-card {
   min-height: 11rem;
   padding: 1.25rem !important;
   border: 1px solid rgba(255, 255, 255, 0.82) !important;
@@ -706,22 +749,16 @@ textarea {
   box-shadow: 0 10px 24px rgba(37, 40, 56, 0.1) !important;
 }
 
-.feeds-desktop-content .feeds-summary-card .feeds-hero-number {
+.feeds-desktop-content .feeds-summary-card .feeds-hero-number,
+.vaccination-desktop-content .vaccination-summary-value {
   font-size: clamp(1.75rem, 4vw, 3rem);
   line-height: 1;
   letter-spacing: -0.06em;
 }
 
 @media (max-width: 1023px) {
-  .feeds-desktop-content .feeds-summary-card:first-child {
-    min-height: 12rem;
-  }
-
-  .feeds-desktop-content .feeds-summary-card:first-child .feeds-hero-number {
-    font-size: clamp(1.65rem, 8vw, 2.5rem);
-  }
-
-  .feeds-desktop-content .feeds-summary-card:not(:first-child) .feeds-hero-number {
+  .feeds-desktop-content .feeds-summary-card .feeds-hero-number,
+  .vaccination-desktop-content .vaccination-summary-value {
     font-size: clamp(1.65rem, 8vw, 2.5rem);
   }
 }
