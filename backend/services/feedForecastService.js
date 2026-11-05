@@ -50,7 +50,8 @@ const loadUploadedHistoricalData = ({ batchId } = {}) => {
   const weeklyRows = readCsv('PrepAPig_5Y_Weekly_Forecast.csv')
     .filter((row) => row.week_start <= MAX_SOURCE_DATE)
     .filter((row) => !batchId || batchId === 'all' || row.batch_id === batchId)
-    .map((row) => ({ ...row, ration_code: String(row.ration_code || '').trim() || 'Unspecified ration' }));
+    .map((row) => ({ ...row, ration_code: String(row.ration_code || '').trim() || 'Unspecified ration' }))
+    .sort((a, b) => a.week_start.localeCompare(b.week_start) || a.batch_id.localeCompare(b.batch_id));
   return { dailyRows, weeklyRows };
 };
 

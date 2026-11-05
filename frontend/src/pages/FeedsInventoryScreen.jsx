@@ -527,17 +527,23 @@ export default function FeedsInventoryScreen() {
   }, [feedRecords, feedStocks, selectedBatch]);
 
   const chartData = useMemo(() => {
-    const actual = feedRecords.map((r) => ({
-      date: new Date(r.feeding_date).toLocaleDateString(),
-      actual: Number(r.quantity_kg),
-    }));
-    const forecast = (feedForecast?.forecast || []).map((row) => ({
-      date: new Date(`${row.date}T00:00:00`).toLocaleDateString(),
-      forecast: row.predictedKg,
-      lower: row.lowerKg,
-      upper: row.upperKg,
-    }));
-    return [...actual.slice(-30), ...forecast];
+    const actualByDate = new Map();
+    feedRecords.forEach((record) => {
+      const date = String(record.feeding_date || '').slice(0, 10);
+      const quantity = Number(record.quantity_kg);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(quantity) || quantity < 0) return;
+      actualByDate.set(date, (actualByDate.get(date) || 0) + quantity);
+    });
+    const actual = [...actualByDate.entries()]
+      .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
+      .slice(-30)
+      .map(([date, quantity]) => ({ date, actual: Number(quantity.toFixed(3)) }));
+    const lastActualDate = actual.at(-1)?.date;
+    const forecast = (feedForecast?.forecast || [])
+      .filter((row) => /^\d{4}-\d{2}-\d{2}$/.test(String(row.date || '')) && (!lastActualDate || row.date > lastActualDate))
+      .map((row) => ({ date: row.date, forecast: row.predictedKg, lower: row.lowerKg, upper: row.upperKg }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    return [...actual, ...forecast];
   }, [feedRecords, feedForecast]);
 
   // ----- Today's date for checking existing feedings -----
@@ -839,7 +845,7 @@ export default function FeedsInventoryScreen() {
                     data={chartData}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis dataKey="date" tick={{ fill: '#4B5563', fontSize: 10 }} />
+                    <XAxis dataKey="date" tick={{ fill: '#4B5563', fontSize: 10 }} tickFormatter={(value) => new Date(`${value}T12:00:00`).toLocaleDateString()} />
                     <YAxis
                       tick={{ fill: '#4B5563', fontSize: 10 }}
                       label={{ value: 'kg', angle: -90, position: 'insideLeft', style: { fontSize: 10 } }}
