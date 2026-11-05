@@ -13,6 +13,10 @@ const MONTHLY_VACCINATION_SCHEDULE = [
   { key: 'ivermectin-monthly', vaccine: 'Ivermectin', label: 'Ivermectin (Monthly)', firstDay: 65, intervalDays: 30, dosesPerPig: 1, doseMlPerPig: 1 },
 ];
 
+export const getScheduledVaccineNames = () => Array.from(new Set(
+  [...FIXED_VACCINATION_SCHEDULE, ...MONTHLY_VACCINATION_SCHEDULE].map(({ vaccine }) => vaccine)
+));
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const dateOnly = (value) => {

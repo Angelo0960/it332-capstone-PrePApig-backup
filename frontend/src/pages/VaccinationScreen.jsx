@@ -21,7 +21,7 @@ import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 import { buildBatchDisplayNames } from '../utils/batchNames.js';
 import { formatLocalDate } from '../utils/dates.js';
 import useOfflineStatus from '../hooks/useOfflineStatus.js';
-import { getAgeOnDate, getVaccinationScheduleForAge, getCompletedVaccinationScheduleKeys } from '../utils/vaccinationSchedule.js';
+import { getAgeOnDate, getVaccinationScheduleForAge, getCompletedVaccinationScheduleKeys, getScheduledVaccineNames } from '../utils/vaccinationSchedule.js';
 
 // Helpers
 const isVaccinationDue = (day, vaccine) => {
@@ -48,16 +48,8 @@ const getNextScheduledDate = (batch, vaccinationDate) => {
 const InlineFieldError = ({ id, message }) => (
   message ? <p id={id} className="mt-1 text-xs font-semibold text-red-700" role="alert">{message}</p> : null
 );
-// Map select value to vaccine name
-const VACCINE_NAME_MAP = {
-  'swine-fever': 'Swine Fever',
-  ecoli: 'E. Coli',
-  prrs: 'PRRS',
-  'iron': 'Iron',
-  'mycoplasma-vaccine': 'Mycoplasma Vaccine',
-  'vitamin-b-complex': 'Vitamin B-Complex',
-  ivermectin: 'Ivermectin',
-};
+const SCHEDULED_VACCINE_NAMES = getScheduledVaccineNames();
+const SCHEDULED_VACCINE_NAME_SET = new Set(SCHEDULED_VACCINE_NAMES.map((name) => name.trim().toLowerCase()));
 
 export default function VaccinationScreen() {
   const navigate = useNavigate();
@@ -93,6 +85,9 @@ export default function VaccinationScreen() {
   });
   const [vaccinationErrors, setVaccinationErrors] = useState({});
   const [restockErrors, setRestockErrors] = useState({});
+  const scheduledVaccineStock = vaccineStock.filter((item) =>
+    SCHEDULED_VACCINE_NAME_SET.has(String(item.vaccine_name || '').trim().toLowerCase())
+  );
 
   // Fetch batches
   const fetchBatches = async () => {
@@ -359,7 +354,7 @@ export default function VaccinationScreen() {
   // Restock vaccine
   const handleRestock = async () => {
     const errors = {};
-    const vaccineName = VACCINE_NAME_MAP[restockForm.vaccineType];
+    const vaccineName = String(restockForm.vaccineType || '').trim();
     const quantity = Number(restockForm.doses);
     const price = Number(restockForm.cost);
     const expiryDate = String(restockForm.expiryDate || '').trim();
@@ -570,15 +565,15 @@ export default function VaccinationScreen() {
               {/* Vaccine Stock Table */}
               <div className="vaccination-stock-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg mb-4">
                 <div className="p-4 border-b border-white/20">
-                  <h3 className="font-semibold text-gray-900">Vaccine Stock</h3>
+                  <h3 className="font-semibold text-gray-900">Scheduled Vaccine / Medication Stock</h3>
                 </div>
                 <div className="divide-y divide-white/20">
-                  {vaccineStock.length === 0 ? (
+                  {scheduledVaccineStock.length === 0 ? (
                     <div className="p-4 text-center text-gray-500 text-sm">
-                      No stock data available
+                      No stock recorded for the scheduled vaccines or medications.
                     </div>
                   ) : (
-                    vaccineStock.map((item) => {
+                    scheduledVaccineStock.map((item) => {
                       const isLow = item.stock_quantity < 10;
                       const isExpiringSoon =
                         item.expiry_date &&
@@ -931,14 +926,9 @@ export default function VaccinationScreen() {
                       className={`w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${vaccinationErrors.vaccineType ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
                     >
                       <option value="">Select vaccine...</option>
-                      <option value="Swine Fever">Swine Fever</option>
-                      <option value="E. Coli">E. Coli</option>
-                      <option value="PRRS">PRRS</option>
-                      <option value="Porcine Circovirus">Porcine Circovirus</option>
-                      <option value="Iron">Iron</option>
-                      <option value="Mycoplasma Vaccine">Mycoplasma Vaccine</option>
-                      <option value="Vitamin B-Complex">Vitamin B-Complex</option>
-                      <option value="Ivermectin">Ivermectin</option>
+                      {SCHEDULED_VACCINE_NAMES.map((vaccineName) => (
+                        <option key={vaccineName} value={vaccineName}>{vaccineName}</option>
+                      ))}
                     </select>
                     {vaccinationErrors.vaccineType && <AlertTriangle className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
                   </div>
@@ -1047,13 +1037,9 @@ export default function VaccinationScreen() {
                       className={`w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${restockErrors.vaccineType ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
                     >
                       <option value="">Select vaccine...</option>
-                      <option value="swine-fever">Swine Fever</option>
-                      <option value="ecoli">E. Coli</option>
-                      <option value="prrs">PRRS</option>
-                      <option value="iron">Iron</option>
-                      <option value="mycoplasma-vaccine">Mycoplasma Vaccine</option>
-                      <option value="vitamin-b-complex">Vitamin B-Complex</option>
-                      <option value="ivermectin">Ivermectin</option>
+                      {SCHEDULED_VACCINE_NAMES.map((vaccineName) => (
+                        <option key={vaccineName} value={vaccineName}>{vaccineName}</option>
+                      ))}
                     </select>
                     {restockErrors.vaccineType && <AlertTriangle className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
                   </div>
