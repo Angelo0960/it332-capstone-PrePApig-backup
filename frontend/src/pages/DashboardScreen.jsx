@@ -739,7 +739,7 @@ export default function DashboardScreen() {
               <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#777D8D]">PrepAPig farm center</p>
               <h1 className="text-2xl font-extrabold tracking-[-0.04em] text-[#252838] sm:text-3xl">Good morning, {user?.name && !user.name.includes('@') ? user.name.split(' ')[0] : 'Farm Manager'}.</h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="dashboard-header-actions ml-auto flex items-center gap-2">
               <button onClick={() => setShowAddBatch(true)} className="hidden sm:flex items-center gap-2 rounded-2xl bg-[#ff2f72] px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#ff2f72]/25 transition hover:-translate-y-0.5">
                 <Plus className="w-4 h-4" /> Add batch
               </button>
