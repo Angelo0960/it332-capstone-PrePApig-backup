@@ -805,8 +805,8 @@ export default function DashboardScreen() {
                 key={currentBatch.id}
                 className="dashboard-summary-grid grid grid-cols-2 gap-3 mb-4"
               >
-                <div className="dashboard-card dashboard-primary-metric dashboard-primary-metric--estimate min-w-0 overflow-hidden flex flex-col justify-center rounded-2xl p-3 text-left">
-                  <div className="dashboard-primary-metric-label">Estimated Price</div>
+                <div className="dashboard-card dashboard-primary-metric dashboard-estimate-metric dashboard-primary-metric--estimate min-w-0 overflow-hidden flex flex-col justify-center rounded-2xl p-3 text-left">
+                  <div className="dashboard-primary-metric-label"><ChartNoAxesCombined aria-hidden="true" /> Estimated Price</div>
                   <div className="dashboard-primary-metric-value">
                     {Number.isFinite(currentBatchTotalWeightKg) && currentBatchTotalWeightKg >= 0 && currentBatch?.pricePerKg > 0
                       ? formatCurrency(currentBatchTotalWeightKg * currentBatch.pricePerKg)
@@ -814,11 +814,11 @@ export default function DashboardScreen() {
                   </div>
                   <div className="dashboard-primary-metric-note">Whole-batch estimate</div>
                 </div>
-                <div className="dashboard-card dashboard-primary-metric min-w-0 overflow-hidden flex flex-col justify-center rounded-2xl p-3 text-left">
+                <div className="dashboard-card dashboard-primary-metric dashboard-primary-metric--count min-w-0 overflow-hidden flex flex-col justify-center rounded-2xl p-3 text-left">
                   <div className="dashboard-primary-metric-label">Pigs in Batch</div>
                   <div className="dashboard-primary-metric-value">{currentBatch.pigCount ?? 0}</div>
                 </div>
-                <div className="dashboard-card dashboard-primary-metric min-w-0 overflow-hidden flex flex-col justify-center rounded-2xl p-3 text-left">
+                <div className="dashboard-card dashboard-primary-metric dashboard-primary-metric--age min-w-0 overflow-hidden flex flex-col justify-center rounded-2xl p-3 text-left">
                   <div className="dashboard-primary-metric-label">Pig Age</div>
                   <div className="dashboard-primary-metric-value dashboard-primary-metric-value--age"><span className="dashboard-primary-metric-prefix">Day</span><span>{currentBatchDay}</span></div>
                 </div>
