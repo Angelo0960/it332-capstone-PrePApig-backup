@@ -54,10 +54,14 @@ body {
   -webkit-backdrop-filter: blur(18px) saturate(120%) !important;
 }
 
+.dashboard-primary-metric {
+  align-items: flex-start;
+  text-align: left;
+}
+
 .dashboard-primary-metric-label {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
   color: #555b6e;
   font-size: 0.68rem;
   font-weight: 800;
@@ -66,21 +70,15 @@ body {
   text-transform: uppercase;
 }
 
-.dashboard-primary-metric-label svg {
-  width: 1rem;
-  height: 1rem;
-  flex: 0 0 auto;
-  color: #ff2f72;
-}
-
 .dashboard-primary-metric-value {
-  margin-top: 0.35rem;
+  margin-top: 0.55rem;
   color: #252838;
   font-size: clamp(1.65rem, 2.2vw, 2.35rem);
   font-weight: 850;
   letter-spacing: -0.055em;
   line-height: 1;
   overflow-wrap: anywhere;
+  text-align: left;
 }
 
 .dashboard-primary-metric-note {
@@ -88,33 +86,6 @@ body {
   color: #777d8d;
   font-size: 0.68rem;
   font-weight: 600;
-}
-
-.dashboard-estimate-metric {
-  border-left: 4px solid #ff2f72 !important;
-}
-
-.dashboard-estimate-metric .dashboard-primary-metric-value {
-  color: #d91c5c;
-}
-
-.dashboard-screen .dashboard-primary-metric--count,
-.dashboard-screen .dashboard-primary-metric--age {
-  align-items: flex-start;
-  border-left: 4px solid transparent !important;
-  text-align: left;
-}
-
-.dashboard-screen .dashboard-primary-metric--count .dashboard-primary-metric-value,
-.dashboard-screen .dashboard-primary-metric--age .dashboard-primary-metric-value {
-  margin-top: 0.55rem;
-  font-size: clamp(2.75rem, 4vw, 3.75rem);
-  line-height: 0.95;
-  text-align: left;
-}
-
-.dashboard-screen .dashboard-primary-metric--count .dashboard-primary-metric-value {
-  color: #008f80;
 }
 
 .dashboard-primary-metric-value--age {
@@ -328,11 +299,6 @@ textarea {
 
   .dashboard-primary-metric-value {
     font-size: clamp(1.7rem, 7vw, 2.4rem);
-  }
-
-  .dashboard-screen .dashboard-primary-metric--count .dashboard-primary-metric-value,
-  .dashboard-screen .dashboard-primary-metric--age .dashboard-primary-metric-value {
-    font-size: clamp(2.5rem, 10vw, 3rem);
   }
 
   .dashboard-summary-grid button {
