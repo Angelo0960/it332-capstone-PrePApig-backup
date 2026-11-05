@@ -32,6 +32,7 @@ import { formatCurrency } from '../utils/formatters.js';
 import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 import { PIG_BREEDS } from '../utils/breeds.js';
 import { buildBatchDisplayNames } from '../utils/batchNames.js';
+import { getAgeOnDate, getVaccinationScheduleForAge, getCompletedVaccinationScheduleKeys } from '../utils/vaccinationSchedule.js';
 // ────────────────────────────────────────────────────────────────
 
 const DEFAULT_ESTIMATED_PRICE_PER_KG = 170;
@@ -43,16 +44,21 @@ const getPigImageForBreed = (breed) => {
   return pigImage;
 };
 
-const getVaccinationMetrics = (records, batchId) => {
-  const completedVaccines = new Set(
-    (records || [])
-      .filter((record) => String(record.batch_id) === String(batchId))
-      .filter((record) => String(record.status || '').toLowerCase() === 'completed')
-      .map((record) => String(record.vaccine_name || '').trim())
-      .filter(Boolean)
-  );
-  const shots = Math.min(4, completedVaccines.size);
-  return { shots, percentage: shots * 25 };
+const getVaccinationMetrics = (records, batch) => {
+  const currentDate = getTodayDate();
+  const currentAge = getAgeOnDate(batch, currentDate, getCurrentBatchDay(batch), currentDate) ?? 0;
+  const occurrences = getVaccinationScheduleForAge(currentAge, false)
+    .filter((occurrence) => occurrence.day <= currentAge);
+  const completedKeys = getCompletedVaccinationScheduleKeys({
+    batch,
+    records,
+    occurrences,
+    currentAge,
+    currentDate,
+  });
+  const shots = completedKeys.size;
+  const total = occurrences.length;
+  return { shots, total, percentage: total ? Math.round((shots / total) * 100) : 0 };
 };
 
 
@@ -259,28 +265,6 @@ export default function DashboardScreen() {
     return null;
   };
 
-  // Vaccination scheduling
-  const vaccinationSchedule = [
-    { vaccine: 'Swine Fever', minDay: 7, maxDay: 10 },
-    { vaccine: 'E. Coli', minDay: 14, maxDay: 21 },
-    { vaccine: 'PRRS', minDay: 28, maxDay: 35 },
-    { vaccine: 'Porcine Circovirus', minDay: 42, maxDay: 49 },
-  ];
-
-  const getNextVaccination = (day) => {
-    for (const vax of vaccinationSchedule) {
-      if (day < vax.maxDay) return vax;
-    }
-    return null;
-  };
-
-  const isVaccinationDue = (day, vaccine) => {
-    return day >= vaccine.minDay && day <= vaccine.maxDay;
-  };
-
-  const isVaccinationOverdue = (day, vaccine) => {
-    return day > vaccine.maxDay;
-  };
 
   // ---------- Fetch notifications ----------
   const fetchNotifications = async () => {
@@ -384,7 +368,7 @@ export default function DashboardScreen() {
           const day = getCurrentBatchDay(batch);
           const name = batchDisplayNames.get(String(batch.id)) || 'Batch';
           const growth = Math.min(100, Math.floor(day / 0.5));
-          const vaccinationMetrics = getVaccinationMetrics(vaccinationRecords, batch.id);
+          const vaccinationMetrics = getVaccinationMetrics(vaccinationRecords, batch);
           const health = 80;
           const feed = getFeedLevelPercentage(day);
           const savedPrice = Number(localStorage.getItem(`prepapig:${getUserCacheKey()}:selected-price-per-kg`));
@@ -407,6 +391,7 @@ export default function DashboardScreen() {
             growth,
             vaccination: vaccinationMetrics.percentage,
             vaccinationShots: vaccinationMetrics.shots,
+            vaccinationTotal: vaccinationMetrics.total,
             health,
             feed,
             weight: batch.current_weight || batch.start_weight || 0,
@@ -545,11 +530,12 @@ export default function DashboardScreen() {
 
   useEffect(() => {
     setBatches((current) => current.map((batch) => {
-      const vaccinationMetrics = getVaccinationMetrics(vaccinationRecords, batch.id);
+      const vaccinationMetrics = getVaccinationMetrics(vaccinationRecords, batch);
       return {
         ...batch,
         vaccination: vaccinationMetrics.percentage,
         vaccinationShots: vaccinationMetrics.shots,
+        vaccinationTotal: vaccinationMetrics.total,
       };
     }));
   }, [vaccinationRecords]);
@@ -665,6 +651,7 @@ export default function DashboardScreen() {
             growth: Math.min(100, Math.floor(createdDay / 0.5)),
             vaccination: 0,
             vaccinationShots: 0,
+            vaccinationTotal: 0,
             health: 80,
             feed: getFeedLevelPercentage(createdDay),
             weight: createdBatch.current_weight || createdBatch.start_weight || 0,
@@ -853,7 +840,7 @@ export default function DashboardScreen() {
                       <span className="absolute inset-0 grid place-items-center text-sm font-extrabold text-[#252838]">{currentBatch.vaccination}%</span>
                     </div>
                     <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.06em] text-[#555B6E]">Vaccination</div>
-                    <div className="text-[10px] text-blue-600">{currentBatch.vaccinationShots ?? Math.round(currentBatch.vaccination / 25)}/4 shots</div>
+                    <div className="text-[10px] text-blue-600">{currentBatch.vaccinationShots ?? 0}/{currentBatch.vaccinationTotal ?? 0} scheduled doses</div>
                   </div>
 
                   {/* Avg Weight */}

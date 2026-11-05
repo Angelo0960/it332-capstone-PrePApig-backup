@@ -1,5 +1,6 @@
 import supabase from '../config/supabase.js';
 import admin from '../config/firebase.js';
+import { getAgeOnDate, getVaccinationScheduleForAge, getCompletedVaccinationScheduleKeys } from '../utils/vaccinationSchedule.js';
 
 const DEFAULT_NOTIFICATION_PREFERENCES = { feed_reminders: true, vaccination_reminders: true, push_enabled: true };
 let missingPreferencesTableLogged = false;
@@ -41,13 +42,6 @@ const getDateTimeInTimezone = (date = new Date()) => {
 
 const DAILY_FEED_REMINDER_MINUTES = 17 * 60;
 const DAILY_FEED_REMINDER_LABEL = '5:00 PM';
-const VACCINATION_SCHEDULE = [
-    { vaccine: 'Swine Fever', minDay: 7, maxDay: 10 },
-    { vaccine: 'E. Coli', minDay: 14, maxDay: 21 },
-    { vaccine: 'PRRS', minDay: 28, maxDay: 35 },
-    { vaccine: 'Porcine Circovirus', minDay: 42, maxDay: 49 },
-];
-
 const buildBatchDisplayNames = (batches) => {
     const owners = new Map();
     for (const batch of batches || []) {
@@ -272,30 +266,33 @@ export const sendVaccinationReminders = async () => {
 
     const { data: records, error: recordsError } = await supabase
         .from('vaccination_records')
-        .select('batch_id,vaccine_name,status');
+        .select('batch_id,vaccine_name,vaccination_date,created_at,status');
     if (recordsError) throw recordsError;
-    const completed = new Set((records || [])
-        .filter((record) => String(record.status || '').toLowerCase() === 'completed')
-        .map((record) => `${record.batch_id}|${String(record.vaccine_name || '').trim().toLowerCase()}`));
 
     const displayNames = buildBatchDisplayNames(allBatches);
     const dueByOwner = new Map();
     for (const batch of activeBatches) {
         const sourceDate = batch.date_acquired || batch.created_at;
         if (!sourceDate) continue;
-        const sourceDateOnly = String(sourceDate).slice(0, 10);
-        const acquiredUtc = new Date(`${sourceDateOnly}T00:00:00.000Z`);
-        if (Number.isNaN(acquiredUtc.getTime())) continue;
-        const age = (Number(batch.age_on_acquisition) || 0) + Math.max(0, Math.floor((todayUtc - acquiredUtc) / dayMs));
+        const age = getAgeOnDate(batch, today);
+        if (!Number.isFinite(age)) continue;
+        const occurrences = getVaccinationScheduleForAge(age, false).filter((vaccine) => vaccine.day <= age);
+        const completed = getCompletedVaccinationScheduleKeys({
+            batch,
+            records: records || [],
+            occurrences,
+            currentAge: age,
+            currentDate: today,
+        });
         const pendingVaccines = [];
-        for (const vaccine of VACCINATION_SCHEDULE) {
-            if (completed.has(`${batch.id}|${vaccine.vaccine.toLowerCase()}`) || age < vaccine.minDay) continue;
-            const overdueDays = Math.max(0, age - vaccine.maxDay);
+        for (const vaccine of occurrences) {
+            if (completed.has(vaccine.key)) continue;
+            const overdueDays = Math.max(0, age - vaccine.day);
             pendingVaccines.push({
-                name: vaccine.vaccine,
+                name: vaccine.label,
                 overdueDays,
                 status: overdueDays > 0 ? 'overdue' : 'due',
-                dayWindow: `${vaccine.minDay}-${vaccine.maxDay}`,
+                scheduledDay: vaccine.day,
             });
         }
         if (pendingVaccines.length === 0) continue;
@@ -311,10 +308,10 @@ export const sendVaccinationReminders = async () => {
             const type = hasOverdue ? 'vaccination_overdue' : 'vaccination_reminder';
             const title = hasOverdue ? '⚠️ Vaccination Overdue' : '💉 Vaccination Due';
             const batchName = displayNames.get(String(batch.id)) || 'Your batch';
-            const details = pendingVaccines.map((vaccine) => vaccine.status === 'overdue'
-                ? `${vaccine.name} overdue by ${vaccine.overdueDays} day${vaccine.overdueDays === 1 ? '' : 's'}`
-                : `${vaccine.name} due (scheduled for days ${vaccine.dayWindow})`).join('; ');
-            const body = `${batchName}: ${details}.`;
+            const details = pendingVaccines.slice(0, 5).map((vaccine) => vaccine.status === 'overdue'
+                ? `${vaccine.name} (Day ${vaccine.scheduledDay}) overdue by ${vaccine.overdueDays} day${vaccine.overdueDays === 1 ? '' : 's'}`
+                : `${vaccine.name} due today (Day ${vaccine.scheduledDay})`).join('; ');
+            const body = `${batchName}: ${details}${pendingVaccines.length > 5 ? `; and ${pendingVaccines.length - 5} more scheduled dose${pendingVaccines.length - 5 === 1 ? '' : 's'}` : ''}.`;
             const inserted = await createNotificationOnce({
                 ownerId,
                 title,

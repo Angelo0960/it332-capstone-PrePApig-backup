@@ -21,14 +21,7 @@ import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 import { buildBatchDisplayNames } from '../utils/batchNames.js';
 import { formatLocalDate } from '../utils/dates.js';
 import useOfflineStatus from '../hooks/useOfflineStatus.js';
-
-// Standard vaccination schedule by age
-const vaccinationSchedule = [
-  { vaccine: 'Swine Fever', minDay: 7, maxDay: 10, dosePerPig: 1 },
-  { vaccine: 'E. Coli', minDay: 14, maxDay: 21, dosePerPig: 1 },
-  { vaccine: 'PRRS', minDay: 28, maxDay: 35, dosePerPig: 1 },
-  { vaccine: 'Porcine Circovirus', minDay: 42, maxDay: 49, dosePerPig: 1 },
-];
+import { getAgeOnDate, getVaccinationScheduleForAge, getCompletedVaccinationScheduleKeys } from '../utils/vaccinationSchedule.js';
 
 // Helpers
 const isVaccinationDue = (day, vaccine) => {
@@ -39,15 +32,15 @@ const isVaccinationOverdue = (day, vaccine) => {
 };
 
 const getNextScheduledDate = (batch, vaccinationDate) => {
-  if (!batch?.dateAcquired) return null;
-  const acquired = new Date(`${batch.dateAcquired}T00:00:00`);
-  const administered = new Date(`${vaccinationDate}T00:00:00`);
-  if (Number.isNaN(acquired.getTime()) || Number.isNaN(administered.getTime())) return null;
-  const ageDays = (Number(batch.age_on_acquisition) || 0) + Math.max(0, Math.floor((administered - acquired) / (1000 * 60 * 60 * 24)));
-  const next = vaccinationSchedule.find((item) => item.minDay > ageDays);
+  const acquiredDate = batch?.dateAcquired || batch?.date_acquired || batch?.createdAt || batch?.created_at;
+  if (!acquiredDate) return null;
+  const ageDays = getAgeOnDate(batch, vaccinationDate);
+  if (!Number.isFinite(ageDays)) return null;
+  const next = getVaccinationScheduleForAge(ageDays).find((item) => item.day > ageDays);
   if (!next) return null;
-  const due = new Date(acquired);
-  due.setDate(due.getDate() + next.minDay);
+  const due = new Date(`${String(acquiredDate).slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(due.getTime())) return null;
+  due.setDate(due.getDate() + next.day - (Number(batch.ageOnAcquisition ?? batch.age_on_acquisition) || 0));
   return formatLocalDate(due);
 };
 
@@ -60,6 +53,10 @@ const VACCINE_NAME_MAP = {
   'swine-fever': 'Swine Fever',
   ecoli: 'E. Coli',
   prrs: 'PRRS',
+  'iron': 'Iron',
+  'mycoplasma-vaccine': 'Mycoplasma Vaccine',
+  'vitamin-b-complex': 'Vitamin B-Complex',
+  ivermectin: 'Ivermectin',
 };
 
 export default function VaccinationScreen() {
@@ -111,16 +108,7 @@ export default function VaccinationScreen() {
       if (json.success && json.data.length > 0) {
         const displayNames = buildBatchDisplayNames(json.data);
         const mapped = json.data.filter((batch) => !batch.status || String(batch.status).toLowerCase() === 'active').map((batch) => {
-          let day = 0;
-          if (batch.date_acquired) {
-            const acquired = new Date(batch.date_acquired);
-            const now = new Date();
-            day = (Number(batch.age_on_acquisition) || 0) + Math.max(0, Math.floor((now - acquired) / (1000 * 60 * 60 * 24)));
-          } else if (batch.created_at) {
-            const created = new Date(batch.created_at);
-            const now = new Date();
-            day = (Number(batch.age_on_acquisition) || 0) + Math.max(0, Math.floor((now - created) / (1000 * 60 * 60 * 24)));
-          }
+          const day = getAgeOnDate(batch, formatLocalDate()) ?? 0;
           return {
             id: batch.id,
             batch_code: batch.batch_code,
@@ -131,6 +119,8 @@ export default function VaccinationScreen() {
             startWeight: batch.start_weight,
             currentWeight: batch.current_weight,
             dateAcquired: batch.date_acquired,
+            createdAt: batch.created_at,
+            ageOnAcquisition: batch.age_on_acquisition,
             status: batch.status,
           };
         });
@@ -224,10 +214,7 @@ export default function VaccinationScreen() {
       const overview = json.data || {};
       const displayNames = buildBatchDisplayNames(overview.batches || []);
       const mappedBatches = (overview.batches || []).filter((batch) => !batch.status || String(batch.status).toLowerCase() === 'active').map((batch) => {
-        const sourceDate = batch.date_acquired || batch.created_at;
-        const day = sourceDate
-          ? (Number(batch.age_on_acquisition) || 0) + Math.max(0, Math.floor((new Date() - new Date(sourceDate)) / (1000 * 60 * 60 * 24)))
-          : 0;
+        const day = getAgeOnDate(batch, formatLocalDate()) ?? 0;
         return {
           id: batch.id,
           batch_code: batch.batch_code,
@@ -238,6 +225,8 @@ export default function VaccinationScreen() {
           startWeight: batch.start_weight,
           currentWeight: batch.current_weight,
           dateAcquired: batch.date_acquired,
+          createdAt: batch.created_at,
+          ageOnAcquisition: batch.age_on_acquisition,
           status: batch.status,
         };
       });
@@ -314,7 +303,7 @@ export default function VaccinationScreen() {
   };
 
   // Direct "Mark as Done" – no modal
-  const handleDirectMarkAsDone = async (batchId, vaccineName, doses) => {
+  const handleDirectMarkAsDone = async (batchId, vaccineName, doses, notes) => {
     setPendingDone((current) => ({ ...current, [batchId]: true }));
     const vaccinationDate = formatLocalDate();
     const batch = batches.find((item) => String(item.id) === String(batchId));
@@ -323,6 +312,7 @@ export default function VaccinationScreen() {
       vaccineName,
       doses,
       nextDueDate: getNextScheduledDate(batch, vaccinationDate),
+      notes,
     });
     const saved = await handleSaveVaccination(payload);
     if (!saved) {
@@ -663,6 +653,9 @@ export default function VaccinationScreen() {
                   </div>
                 </div>
 
+                <p className="mb-3 text-xs text-gray-600">
+                  Monthly Vitamin B-Complex and Ivermectin repeat every 30 days, beginning Day 65. Doses are schedule entries only; confirm the product, route, and weight-based amount with your veterinarian before use.
+                </p>
                 <div className="space-y-3">
                   {scheduleBatches
                     .filter((batch) => (selectedBatch === 'all' ? true : String(batch.id) === String(selectedBatch)))
@@ -670,16 +663,16 @@ export default function VaccinationScreen() {
                       const day = batch.day || 0;
                       const pigCount = batch.pigCount || 0;
 
-                      // Get completed vaccine names for this batch from records
-                      const completedVaccines = vaccinationRecords
-                        .filter(
-                          (r) => r.batch_id === batch.id && r.status?.toLowerCase() === 'completed'
-                        )
-                        .map((r) => r.vaccine_name?.trim());
-
-                      // Build status for each vaccine in the schedule
-                      const vaccineStatuses = vaccinationSchedule.map((vax) => {
-                        const isCompleted = completedVaccines.includes(vax.vaccine);
+                      const scheduleForBatch = getVaccinationScheduleForAge(day);
+                      const completedScheduleKeys = getCompletedVaccinationScheduleKeys({
+                        batch,
+                        records: vaccinationRecords,
+                        occurrences: scheduleForBatch,
+                        currentAge: day,
+                        currentDate: formatLocalDate(),
+                      });
+                      const vaccineStatuses = scheduleForBatch.map((vax) => {
+                        const isCompleted = completedScheduleKeys.has(vax.key);
                         const isDue = !isCompleted && isVaccinationDue(day, vax);
                         const isOverdue = !isCompleted && isVaccinationOverdue(day, vax);
                         const isUpcoming = !isCompleted && !isDue && !isOverdue;
@@ -701,14 +694,16 @@ export default function VaccinationScreen() {
 
                       const completedCount = vaccineStatuses.filter((v) => v.isCompleted).length;
                       const nextVax = vaccineStatuses.find((v) => !v.isCompleted);
-                      const isAllComplete = completedCount === vaccinationSchedule.length;
+                      const dueThroughCurrentAge = vaccineStatuses.filter((v) => v.day <= day);
+                      const isAllComplete = dueThroughCurrentAge.length > 0
+                        && dueThroughCurrentAge.every((v) => v.isCompleted);
                       const hasOverdue = vaccineStatuses.some((v) => v.isOverdue);
                       const hasDue = vaccineStatuses.some((v) => v.isDue);
                       const isPending = Boolean(pendingDone[batch.id]);
                       const overallStatus = isPending
                         ? 'Saving...'
                         : isAllComplete
-                        ? 'Complete'
+                        ? 'Up to date'
                         : hasOverdue
                         ? 'Overdue'
                         : hasDue
@@ -732,7 +727,7 @@ export default function VaccinationScreen() {
                               <div className="flex items-center gap-1 mt-2 mb-2">
                                 {vaccineStatuses.map((vax) => (
                                   <div
-                                    key={vax.vaccine}
+                                    key={vax.key}
                                     className={`flex-1 h-1.5 rounded-full transition-all ${
                                       vax.isCompleted
                                         ? 'bg-green-500'
@@ -742,23 +737,22 @@ export default function VaccinationScreen() {
                                         ? 'bg-red-500'
                                         : 'bg-gray-300'
                                     }`}
-                                    title={`${vax.vaccine} – ${vax.status}`}
+                                    title={`${vax.label} · Day ${vax.day} · ${vax.status}`}
                                   />
                                 ))}
                               </div>
 
                               <div className="text-xs text-gray-600">
-                                Completed: {completedCount}/{vaccinationSchedule.length} vaccines
+                                Completed: {completedCount}/{vaccineStatuses.length} scheduled doses
                               </div>
 
-                              {nextVax && !isAllComplete && (
+                              {nextVax && (
                                 <>
                                   <div className="text-sm text-gray-700 mt-2">
-                                    Next: {nextVax.vaccine}
+                                    Next: {nextVax.label}
                                   </div>
                                   <div className="text-xs text-gray-600">
-                                    Day {nextVax.minDay}-{nextVax.maxDay} ·{' '}
-                                    {nextVax.dosePerPig * pigCount} doses needed
+                                    Day {nextVax.day} · {nextVax.doseMlPerPig} mL per pig · {nextVax.doseMlPerPig * pigCount} mL total ({nextVax.dosesPerPig * pigCount} doses)
                                   </div>
                                   {nextVax.isOverdue && (
                                     <div className="text-xs text-red-600 font-semibold mt-1">
@@ -784,7 +778,7 @@ export default function VaccinationScreen() {
                               {isAllComplete && (
                                 <div className="text-xs text-green-600 font-semibold mt-2 flex items-center gap-1">
                                   <Check className="w-3 h-3" />
-                                  All vaccinations complete
+                                  All doses due through Day {day} are complete
                                 </div>
                               )}
                             </div>
@@ -813,8 +807,9 @@ export default function VaccinationScreen() {
                                 <button
                                   disabled={isPending}
                                   onClick={() => {
-                                    const doses = String(dueVax.dosePerPig * pigCount);
-                                    handleDirectMarkAsDone(batch.id, dueVax.vaccine, doses);
+                                    const doses = String(dueVax.dosesPerPig * pigCount);
+                                    const notes = `${dueVax.label}: ${dueVax.doseMlPerPig} mL per pig; ${dueVax.doseMlPerPig * pigCount} mL total for ${pigCount} pigs.`;
+                                    handleDirectMarkAsDone(batch.id, dueVax.vaccine, doses, notes);
                                   }}
                                   className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-semibold py-2 rounded-lg shadow-lg active:scale-95 transition-all"
                                 >
@@ -922,7 +917,7 @@ export default function VaccinationScreen() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">Vaccine Type <span className="text-red-700" aria-hidden="true">*</span></label>
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Vaccine / Medication <span className="text-red-700" aria-hidden="true">*</span></label>
                   <div className="relative">
                     <select
                       value={vaccinationForm.vaccineType}
@@ -940,6 +935,10 @@ export default function VaccinationScreen() {
                       <option value="E. Coli">E. Coli</option>
                       <option value="PRRS">PRRS</option>
                       <option value="Porcine Circovirus">Porcine Circovirus</option>
+                      <option value="Iron">Iron</option>
+                      <option value="Mycoplasma Vaccine">Mycoplasma Vaccine</option>
+                      <option value="Vitamin B-Complex">Vitamin B-Complex</option>
+                      <option value="Ivermectin">Ivermectin</option>
                     </select>
                     {vaccinationErrors.vaccineType && <AlertTriangle className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
                   </div>
@@ -1034,7 +1033,7 @@ export default function VaccinationScreen() {
               <div className="p-5 space-y-4">
                 {restockErrors.form && <p className="rounded-xl border border-red-300 bg-red-50/80 p-3 text-sm font-semibold text-red-700" role="alert">{restockErrors.form}</p>}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">Vaccine Type <span className="text-red-700" aria-hidden="true">*</span></label>
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Vaccine / Medication <span className="text-red-700" aria-hidden="true">*</span></label>
                   <div className="relative">
                     <select
                       value={restockForm.vaccineType}
@@ -1051,6 +1050,10 @@ export default function VaccinationScreen() {
                       <option value="swine-fever">Swine Fever</option>
                       <option value="ecoli">E. Coli</option>
                       <option value="prrs">PRRS</option>
+                      <option value="iron">Iron</option>
+                      <option value="mycoplasma-vaccine">Mycoplasma Vaccine</option>
+                      <option value="vitamin-b-complex">Vitamin B-Complex</option>
+                      <option value="ivermectin">Ivermectin</option>
                     </select>
                     {restockErrors.vaccineType && <AlertTriangle className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
                   </div>

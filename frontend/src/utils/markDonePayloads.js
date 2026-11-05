@@ -6,12 +6,12 @@ const addDays = (date, days) => {
   return result;
 };
 
-export const buildVaccinationDonePayload = ({ batchId, vaccineName, doses, nextDueDate, now = new Date() }) => ({
+export const buildVaccinationDonePayload = ({ batchId, vaccineName, doses, nextDueDate, notes = 'Marked as done via schedule', now = new Date() }) => ({
   batch_id: batchId,
   vaccine_name: vaccineName,
   vaccination_date: formatLocalDate(now),
   dosage: parseInt(doses, 10) || 0,
-  notes: 'Marked as done via schedule',
+  notes,
   next_due_date: nextDueDate || formatLocalDate(addDays(now, 30)),
   administered_by: 'Farmer',
   status: 'Completed',
