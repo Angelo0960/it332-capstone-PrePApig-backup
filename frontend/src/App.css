@@ -482,8 +482,16 @@ textarea {
 
 @media (max-width: 1023px) {
   .feeds-desktop-content {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
     padding: 0 1rem calc(6rem + env(safe-area-inset-bottom));
+  }
+
+  .feeds-layout-columns,
+  .feeds-left-stack,
+  .feeds-right-stack {
+    display: contents;
   }
 
   .feeds-summary-cards {
@@ -493,34 +501,26 @@ textarea {
     margin-bottom: 0.75rem;
   }
 
+  .feeds-summary-cards { order: 1; margin-bottom: 0; }
+  .feeds-state-message { order: 2; }
+
   .feeds-desktop-content .feeds-summary-card {
     width: auto !important;
     min-width: 0;
   }
 
-  .feeds-main-content {
-    padding: 0 !important;
-    overflow: visible !important;
-  }
+  .feeds-stock-card { order: 2; }
+  .feeds-action-buttons { order: 3; gap: 0.75rem; }
+  .feeds-schedule-card { order: 4; }
+  .feeds-chart-card { order: 5; }
+  .feeds-history-type-card { order: 6; }
+  .feeds-history-card { order: 7; }
 
-  .feeds-main-sections {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .feeds-stock-card { order: 1; }
-  .feeds-action-buttons { order: 2; }
-  .feeds-schedule-card { order: 3; }
-  .feeds-chart-card { order: 4; }
-  .feeds-history-type-card { order: 5; }
-  .feeds-history-card { order: 6; }
-
-  .feeds-main-content .feeds-stock-card,
-  .feeds-main-content .feeds-chart-card,
-  .feeds-main-content .feeds-schedule-card,
-  .feeds-main-content .feeds-history-type-card,
-  .feeds-main-content .feeds-history-card {
+  .feeds-stock-card,
+  .feeds-chart-card,
+  .feeds-schedule-card,
+  .feeds-history-type-card,
+  .feeds-history-card {
     width: 100%;
     min-width: 0;
     border-radius: 1.25rem !important;
@@ -528,11 +528,7 @@ textarea {
     box-shadow: 0 10px 24px rgba(31, 64, 49, 0.12);
   }
 
-  .feeds-main-content .feeds-action-buttons {
-    gap: 0.75rem;
-  }
-
-  .feeds-main-content .feeds-action-buttons button {
+  .feeds-action-buttons button {
     min-width: 0;
     padding-inline: 0.65rem;
     font-size: 0.75rem;
@@ -546,10 +542,7 @@ textarea {
     padding-right: 0.75rem;
   }
 
-  .feeds-summary-cards,
-  .feeds-main-sections {
-    gap: 0.55rem;
-  }
+  .feeds-summary-cards { gap: 0.55rem; }
 
   .feeds-desktop-content .feeds-summary-card {
     padding: 0.75rem !important;
@@ -604,22 +597,31 @@ textarea {
 
 @media (min-width: 1024px) {
   .feeds-desktop-content {
-    display: grid;
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-    gap: 1rem 1.1rem;
-    align-items: start;
+    display: block;
     padding: 0 2.4rem 2rem;
     overflow: visible;
   }
 
-  .feeds-main-content,
-  .feeds-main-sections {
-    display: contents;
+  .feeds-layout-columns {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 1rem 1.1rem;
+    align-items: start;
   }
 
+  .feeds-left-stack,
+  .feeds-right-stack {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .feeds-left-stack { grid-column: 1 / span 6; }
+  .feeds-right-stack { grid-column: 7 / span 6; }
+  .feeds-layout-columns > .feeds-state-message { grid-column: 1 / -1; }
+
   .feeds-summary-cards {
-    grid-column: 1 / span 6;
-    grid-row: 1;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
@@ -629,77 +631,27 @@ textarea {
   .feeds-summary-card {
     width: auto !important;
     min-width: 0;
-    min-height: 150px;
+    min-height: 11rem;
     padding: 1.25rem !important;
     border-radius: 1.5rem !important;
   }
 
-  .feeds-stock-card {
-    grid-column: 7 / span 6;
-    grid-row: 1;
-    min-height: 330px;
-    border-radius: 1.5rem !important;
-  }
-
-  .feeds-stock-card .divide-y > div {
-    min-height: 86px;
-  }
-
-  .feeds-schedule-card {
-    grid-column: 1 / span 6;
-    grid-row: 2;
-    min-height: 230px;
-    margin: 0;
-    border-radius: 1.5rem !important;
-  }
-
-  .feeds-chart-card {
-    grid-column: 1 / span 6;
-    grid-row: 3;
-    border-radius: 1.5rem !important;
-  }
-
-  .feeds-history-type-card {
-    grid-column: 7 / span 6;
-    grid-row: 2;
-    margin: 0;
-    border-radius: 1.5rem !important;
-  }
-
+  .feeds-stock-card,
+  .feeds-schedule-card,
+  .feeds-chart-card,
+  .feeds-history-type-card,
   .feeds-history-card {
-    grid-column: 7 / span 6;
-    grid-row: 3;
+    min-width: 0;
     margin: 0;
     border-radius: 1.5rem !important;
   }
 
-  .feeds-selected-batch .feeds-history-card {
-    grid-row: 2 / span 2;
-  }
-
-  .feeds-action-buttons {
-    display: none;
-  }
-
-  .feeds-state-message {
-    grid-column: 1 / -1;
-  }
-
-  .feeds-header-actions {
-    margin-right: 0.2rem;
-  }
-
-  .feeds-desktop-content .feeds-schedule-card button {
-    border-radius: 999px;
-  }
-
-  .feeds-batch-selector > div {
-    scrollbar-width: none;
-  }
-
-  .feeds-batch-selector > div::-webkit-scrollbar {
-    display: none;
-  }
+  .feeds-stock-card .divide-y > div { min-height: 86px; }
+  .feeds-action-buttons { display: none; }
+  .feeds-header-actions { margin-right: 0.2rem; }
+  .feeds-desktop-content .feeds-schedule-card button { border-radius: 999px; }
+  .feeds-batch-selector > div { scrollbar-width: none; }
+  .feeds-batch-selector > div::-webkit-scrollbar { display: none; }
 }
 
 /* Shared dashboard palette for non-overview screens. */

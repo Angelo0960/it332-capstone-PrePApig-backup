@@ -620,346 +620,293 @@ export default function FeedsInventoryScreen() {
         </div>
 
         <div className={`feeds-desktop-content ${selectedBatch === 'all' ? 'feeds-all-batches' : 'feeds-selected-batch'} flex-1 min-h-0 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24`}>
-          {/* Summary Cards */}
-          <div className="feeds-summary-cards grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
-            <div className="feeds-summary-card bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
-              <div className="feeds-summary-label mb-2 text-xs text-gray-700 font-semibold uppercase tracking-wide">
-                {selectedBatch === 'all' ? 'Current Stock' : 'Feed Consumed'}
-              </div>
-              <div className="feeds-hero-number mb-1 font-extrabold text-gray-900">
-                {formatKgQuantity(selectedBatch === 'all' ? totalStock : totalFeedConsumed)} <span className="whitespace-nowrap">kg</span>
-              </div>
-              <div className="feeds-summary-caption mt-2 text-xs text-gray-600 font-semibold">
-                {selectedBatch === 'all'
-                  ? `${feedStocks.length} feed types · ${totalStockValue == null ? 'Unavailable' : `₱${totalStockValue.toFixed(2)}`} value`
-                  : `From ${selectedBatchFeedRecords.length} feeding records`}
-              </div>
-            </div>
-
-            <div className="feeds-summary-card bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
-              <div className="feeds-summary-label mb-2 text-xs text-gray-700 font-semibold uppercase tracking-wide">
-                {selectedBatch === 'all' ? 'Total Feed Expenses' : selectedBatchData?.name || 'Unknown'}
-              </div>
-              <div className="feeds-hero-number mb-1 font-extrabold text-gray-900">
-                {displayedFeedExpense == null ? 'Unavailable' : `₱${displayedFeedExpense.toLocaleString('en-PH', { maximumFractionDigits: 0 })}`}
-              </div>
-              <div className="feeds-summary-caption mt-2 text-xs text-gray-600">
-                {selectedBatch === 'all' ? 'Across all batches' : 'Feed expenses for this batch'}
-              </div>
-            </div>
-
-          </div>
-
-          {/* Main Content */}
-          <div className="feeds-main-content">
-          {loading ? (
-            <div className="feeds-state-message flex items-center justify-center h-40">
-              <div className="text-gray-600">Loading...</div>
-            </div>
-          ) : error ? (
-            <div className="feeds-state-message bg-red-100/20 border border-red-300/50 rounded-xl p-4 text-red-700">
-              <p>Error: {error}</p>
-              <button onClick={fetchFeedRecords} className="mt-2 underline">
-                Retry
-              </button>
-            </div>
-          ) : (
-            <div className="feeds-main-sections">
-              {/* Stock / Consumption Table */}
-              <div className="feeds-stock-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg">
-                <div className="p-4 border-b border-white/20">
-                  <h3 className="font-semibold text-gray-900">
-                    {selectedBatch === 'all' ? 'Feed Stock by Type' : 'Feed Consumption by Type'}
-                  </h3>
-                </div>
-                <div className="divide-y divide-white/20">
-                  {selectedBatch === 'all' ? (
-                    feedStocks.length === 0 ? (
-                      <div className="p-4 text-center text-gray-500 text-sm">
-                        No stock data available
-                      </div>
-                    ) : (
-                      feedStocks.map((feed) => (
-                        <div
-                          key={feed.feed_type}
-                          className={`p-4 flex items-center justify-between ${
-                            feed.stock_quantity < 50 ? 'bg-orange-50/40' : ''
-                          }`}
-                        >
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-900">{getFeedTypeName(feed.feed_type)}</div>
-                            <div className="flex flex-wrap items-center gap-2 mt-1">
-                              <span className="text-xs text-gray-600">
-                                {feed.unit_price == null ? 'Unavailable' : `₱${Number(feed.unit_price).toFixed(2)}/kg`} ·{' '}
-                                {feed.last_updated || 'N/A'}
-                              </span>
-                              {feed.stock_quantity < 50 && (
-                                <span className="px-2 py-1 bg-orange-100/80 border border-orange-300/50 rounded-full text-xs text-orange-700 font-semibold">
-                                  Low stock
-                                </span>
-                              )}
-                              <button
-                                onClick={() => handleEditPrice(feed.feed_type, feed.unit_price || 0)}
-                                className="w-6 h-6 rounded-full bg-white/40 backdrop-blur-sm flex items-center justify-center hover:bg-white/60 transition-all"
-                              >
-                                <Edit className="w-3 h-3 text-gray-700" />
-                              </button>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div
-                              className={`font-bold ${
-                                feed.stock_quantity < 50 ? 'text-orange-600' : 'text-emerald-600'
-                              }`}
-                            >
-                              {formatKgQuantity(feed.stock_quantity)} <span className="whitespace-nowrap">kg</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    )
-                  ) : Object.keys(consumptionByFeedType).length === 0 ? (
-                    <div className="p-4 text-center text-gray-500 text-sm">
-                      No feed consumption records for this batch
+          {loading || error ? (
+            <div className="feeds-layout-columns">
+              <div className="feeds-left-stack">
+                <div className="feeds-summary-cards grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
+                  <div className="feeds-summary-card bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
+                    <div className="feeds-summary-label mb-2 text-xs text-gray-700 font-semibold uppercase tracking-wide">
+                      {selectedBatch === 'all' ? 'Current Stock' : 'Feed Consumed'}
                     </div>
-                  ) : (
-                    Object.entries(consumptionByFeedType).map(([feedType, totalKg]) => (
-                      <div key={feedType} className="p-4 flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-900">{feedType}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-bold text-orange-600">{formatKgQuantity(totalKg)} <span className="whitespace-nowrap">kg</span></div>
-                        </div>
-                      </div>
-                    ))
-                  )}
+                    <div className="feeds-hero-number mb-1 font-extrabold text-gray-900">
+                      {formatKgQuantity(selectedBatch === 'all' ? totalStock : totalFeedConsumed)} <span className="whitespace-nowrap">kg</span>
+                    </div>
+                    <div className="feeds-summary-caption mt-2 text-xs text-gray-600 font-semibold">
+                      {selectedBatch === 'all'
+                        ? `${feedStocks.length} feed types · ${totalStockValue == null ? 'Unavailable' : `₱${totalStockValue.toFixed(2)}`} value`
+                        : `From ${selectedBatchFeedRecords.length} feeding records`}
+                    </div>
+                  </div>
+                  <div className="feeds-summary-card bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
+                    <div className="feeds-summary-label mb-2 text-xs text-gray-700 font-semibold uppercase tracking-wide">
+                      {selectedBatch === 'all' ? 'Total Feed Expenses' : selectedBatchData?.name || 'Unknown'}
+                    </div>
+                    <div className="feeds-hero-number mb-1 font-extrabold text-gray-900">
+                      {displayedFeedExpense == null ? 'Unavailable' : `₱${displayedFeedExpense.toLocaleString('en-PH', { maximumFractionDigits: 0 })}`}
+                    </div>
+                    <div className="feeds-summary-caption mt-2 text-xs text-gray-600">
+                      {selectedBatch === 'all' ? 'Across all batches' : 'Feed expenses for this batch'}
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              {selectedBatch === 'all' && (
-                <div className="feeds-history-type-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg">
-                  <div className="p-4 border-b border-white/20">
-                    <h3 className="font-semibold text-gray-900">Feed Consumption History by Type</h3>
-                  </div>
-                  <div className="divide-y divide-white/20">
-                    {Object.keys(consumptionByFeedType).length === 0 ? (
-                      <div className="p-4 text-center text-gray-500 text-sm">No feed consumption records</div>
-                    ) : (
-                      Object.entries(consumptionByFeedType).map(([feedType, totalKg]) => (
-                        <div key={feedType} className="p-4 flex items-center justify-between">
-                          <div className="font-medium text-gray-900">{getFeedTypeName(feedType)}</div>
-                          <div className="font-bold text-orange-600">{formatKgQuantity(totalKg)} kg consumed</div>
-                        </div>
-                      ))
-                    )}
-                  </div>
+              {loading ? (
+                <div className="feeds-state-message flex items-center justify-center h-40">
+                  <div className="text-gray-600">Loading...</div>
+                </div>
+              ) : (
+                <div className="feeds-state-message bg-red-100/20 border border-red-300/50 rounded-xl p-4 text-red-700">
+                  <p>Error: {error}</p>
+                  <button onClick={fetchFeedRecords} className="mt-2 underline">Retry</button>
                 </div>
               )}
+            </div>
+          ) : (
+            <>
+              <div className="feeds-layout-columns">
+                <div className="feeds-left-stack">
+                  {/* Summary Cards */}
+                  <div className="feeds-summary-cards grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
+                    <div className="feeds-summary-card bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
+                      <div className="feeds-summary-label mb-2 text-xs text-gray-700 font-semibold uppercase tracking-wide">
+                        {selectedBatch === 'all' ? 'Current Stock' : 'Feed Consumed'}
+                      </div>
+                      <div className="feeds-hero-number mb-1 font-extrabold text-gray-900">
+                        {formatKgQuantity(selectedBatch === 'all' ? totalStock : totalFeedConsumed)} <span className="whitespace-nowrap">kg</span>
+                      </div>
+                      <div className="feeds-summary-caption mt-2 text-xs text-gray-600 font-semibold">
+                        {selectedBatch === 'all'
+                          ? `${feedStocks.length} feed types · ${totalStockValue == null ? 'Unavailable' : `₱${totalStockValue.toFixed(2)}`} value`
+                          : `From ${selectedBatchFeedRecords.length} feeding records`}
+                      </div>
+                    </div>
+
+                    <div className="feeds-summary-card bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
+                      <div className="feeds-summary-label mb-2 text-xs text-gray-700 font-semibold uppercase tracking-wide">
+                        {selectedBatch === 'all' ? 'Total Feed Expenses' : selectedBatchData?.name || 'Unknown'}
+                      </div>
+                      <div className="feeds-hero-number mb-1 font-extrabold text-gray-900">
+                        {displayedFeedExpense == null ? 'Unavailable' : `₱${displayedFeedExpense.toLocaleString('en-PH', { maximumFractionDigits: 0 })}`}
+                      </div>
+                      <div className="feeds-summary-caption mt-2 text-xs text-gray-600">
+                        {selectedBatch === 'all' ? 'Across all batches' : 'Feed expenses for this batch'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Automated Feeding Schedule */}
+                  <div className="feeds-schedule-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold text-gray-900">
+                        Automated Feeding Schedule
+                        {selectedBatch !== 'all' && ` - ${selectedBatchData?.name}`}
+                      </h3>
+                      <div className="px-2 py-1 bg-green-100/80 border border-green-300/50 rounded-full text-xs text-green-700 font-semibold flex items-center gap-1">
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                        Auto
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      {batches
+                        .filter((batch) => (selectedBatch === 'all' ? true : String(batch.id) === String(selectedBatch)))
+                        .map((batch) => {
+                          const feedType = getFeedTypeForAge(batch.day);
+                          const feedName = getFeedTypeName(feedType);
+                          const dailyAmount = getDailyFeedForBatch(batch.day);
+                          const daysUntilChange = getDaysUntilFeedChange(batch.day);
+                          const existingToday = feedRecords.some(
+                            (record) => record.batch_id === batch.id && record.feeding_date === todayStr
+                          );
+                          const isPending = Boolean(pendingDone[batch.id]);
+                          const isDone = existingToday || isPending;
+                          const scheduleTime = '5:00 PM';
+
+                          return (
+                            <div key={batch.id} className="bg-white/30 backdrop-blur-sm rounded-xl p-3 border border-white/30">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex-1">
+                                  <div className="font-semibold text-gray-900 text-sm">
+                                    {batch.name} – {batch.pigCount ?? 0} pigs · Day {batch.day}
+                                  </div>
+                                  <div className="text-xs text-gray-600 mt-1">
+                                    {isPending ? 'Saving...' : isDone ? 'Completed today' : `Scheduled daily at ${scheduleTime}`}
+                                  </div>
+                                  <div className="text-xs text-gray-600">{feedName}, {dailyAmount} kg</div>
+                                  {daysUntilChange !== null && daysUntilChange <= 5 && (
+                                    <div className="text-xs text-blue-600 font-medium mt-1 flex items-center gap-1">
+                                      <span>🔄</span>
+                                      Feed change in {daysUntilChange} day{daysUntilChange !== 1 ? 's' : ''}
+                                    </div>
+                                  )}
+                                </div>
+                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${isDone ? 'bg-green-100/80 border border-green-300/50 text-green-700' : 'bg-yellow-100/80 border border-yellow-300/50 text-yellow-700'}`}>
+                                  {isPending ? 'Saving...' : isDone ? 'Completed' : 'Pending'}
+                                </span>
+                              </div>
+                              {!isDone && (
+                                <button
+                                  disabled={isPending}
+                                  onClick={() => handleDirectMarkAsDone(batch.id, feedName, dailyAmount)}
+                                  className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-semibold py-2 rounded-lg shadow-lg active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                                >
+                                  {isPending ? 'Saving...' : 'Mark as Done'}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+
+                  {/* Chart */}
+                  <div className="feeds-chart-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg">
+                    <h3 className="font-semibold text-gray-900 mb-2">Feed Consumption & Forecast</h3>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <LineChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                        <XAxis dataKey="date" tick={{ fill: '#4B5563', fontSize: 10 }} tickFormatter={(value) => new Date(`${value}T12:00:00`).toLocaleDateString()} />
+                        <YAxis tick={{ fill: '#4B5563', fontSize: 10 }} label={{ value: 'kg', angle: -90, position: 'insideLeft', style: { fontSize: 10 } }} />
+                        <Tooltip />
+                        <Line type="monotone" dataKey="actual" stroke="#10B981" strokeWidth={3} dot={{ fill: '#10B981', r: 4 }} />
+                        <Line type="monotone" dataKey="forecast" stroke="#f5125d" strokeWidth={2} strokeDasharray="6 4" dot={{ fill: '#f5125d', r: 3 }} connectNulls={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                    <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-xs text-gray-600">
+                      <span className="text-emerald-700">● Actual feed consumption</span>
+                      <span className="text-pink-700">● 7-day forecast</span>
+                    </div>
+                    {feedForecast?.status === 'forecasted' && (
+                      <p className="text-[10px] text-gray-500 text-center mt-1">
+                        Forecast uses {feedForecast.historyDays} recorded days · holdout MAE {feedForecast.evaluation?.meanAbsoluteErrorKg ?? '—'} kg/day
+                      </p>
+                    )}
+                    {feedForecast?.status === 'insufficient_data' && (
+                      <p className="text-[10px] text-amber-700 text-center mt-1">
+                        Feed forecast needs at least {feedForecast.requiredHistoryDays} recorded days; currently {feedForecast.historyDays} available.
+                      </p>
+                    )}
+                    {feedForecastError && <p className="text-[10px] text-red-600 text-center mt-1">{feedForecastError}</p>}
+                  </div>
+                </div>
+
+                <div className="feeds-right-stack">
+                  {/* Stock / Consumption Table */}
+                  <div className="feeds-stock-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg">
+                    <div className="p-4 border-b border-white/20">
+                      <h3 className="font-semibold text-gray-900">
+                        {selectedBatch === 'all' ? 'Feed Stock by Type' : 'Feed Consumption by Type'}
+                      </h3>
+                    </div>
+                    <div className="divide-y divide-white/20">
+                      {selectedBatch === 'all' ? (
+                        feedStocks.length === 0 ? (
+                          <div className="p-4 text-center text-gray-500 text-sm">No stock data available</div>
+                        ) : (
+                          feedStocks.map((feed) => (
+                            <div key={feed.feed_type} className={`p-4 flex items-center justify-between ${feed.stock_quantity < 50 ? 'bg-orange-50/40' : ''}`}>
+                              <div className="flex-1">
+                                <div className="font-medium text-gray-900">{getFeedTypeName(feed.feed_type)}</div>
+                                <div className="flex flex-wrap items-center gap-2 mt-1">
+                                  <span className="text-xs text-gray-600">
+                                    {feed.unit_price == null ? 'Unavailable' : `₱${Number(feed.unit_price).toFixed(2)}/kg`} · {feed.last_updated || 'N/A'}
+                                  </span>
+                                  {feed.stock_quantity < 50 && (
+                                    <span className="px-2 py-1 bg-orange-100/80 border border-orange-300/50 rounded-full text-xs text-orange-700 font-semibold">Low stock</span>
+                                  )}
+                                  <button onClick={() => handleEditPrice(feed.feed_type, feed.unit_price || 0)} className="w-6 h-6 rounded-full bg-white/40 backdrop-blur-sm flex items-center justify-center hover:bg-white/60 transition-all">
+                                    <Edit className="w-3 h-3 text-gray-700" />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className={`font-bold ${feed.stock_quantity < 50 ? 'text-orange-600' : 'text-emerald-600'}`}>
+                                  {formatKgQuantity(feed.stock_quantity)} <span className="whitespace-nowrap">kg</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )
+                      ) : Object.keys(consumptionByFeedType).length === 0 ? (
+                        <div className="p-4 text-center text-gray-500 text-sm">No feed consumption records for this batch</div>
+                      ) : (
+                        Object.entries(consumptionByFeedType).map(([feedType, totalKg]) => (
+                          <div key={feedType} className="p-4 flex items-center justify-between">
+                            <div className="flex-1"><div className="font-medium text-gray-900">{feedType}</div></div>
+                            <div className="text-right"><div className="font-bold text-orange-600">{formatKgQuantity(totalKg)} <span className="whitespace-nowrap">kg</span></div></div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {selectedBatch === 'all' && (
+                    <div className="feeds-history-type-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg">
+                      <div className="p-4 border-b border-white/20"><h3 className="font-semibold text-gray-900">Feed Consumption History by Type</h3></div>
+                      <div className="divide-y divide-white/20">
+                        {Object.keys(consumptionByFeedType).length === 0 ? (
+                          <div className="p-4 text-center text-gray-500 text-sm">No feed consumption records</div>
+                        ) : (
+                          Object.entries(consumptionByFeedType).map(([feedType, totalKg]) => (
+                            <div key={feedType} className="p-4 flex items-center justify-between">
+                              <div className="font-medium text-gray-900">{getFeedTypeName(feedType)}</div>
+                              <div className="font-bold text-orange-600">{formatKgQuantity(totalKg)} kg consumed</div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* History */}
+                  <div className="feeds-history-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg">
+                    <div className="p-4 border-b border-white/20">
+                      <h3 className="font-semibold text-gray-900">
+                        Feed Consumption History
+                        {selectedBatch !== 'all' && ` - ${selectedBatchData?.name}`}
+                      </h3>
+                    </div>
+                    <div className="divide-y divide-white/20">
+                      {filteredRecords.length === 0 ? (
+                        <div className="p-8 text-center text-gray-500 text-sm">No feed records for this batch yet</div>
+                      ) : (
+                        filteredRecords.slice(0, 10).map((record) => (
+                          <div key={record.id} className="p-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                {getBatchName(record.batch_id, record.batch_name) && (
+                                  <div className="font-medium text-gray-900 text-sm">{getBatchName(record.batch_id, record.batch_name)}</div>
+                                )}
+                                <div className="text-xs text-gray-700 mt-1">{record.feed_type} · {record.quantity_kg} kg</div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                  {new Date(record.feeding_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </div>
+                                {record.notes && <div className="text-xs text-gray-600 mt-1 italic">"{record.notes}"</div>}
+                              </div>
+                              {getBatchName(record.batch_id, record.batch_name) && (
+                                <span className="max-w-[45%] truncate whitespace-nowrap px-2 py-1 bg-green-100/80 border border-green-300/50 rounded-full text-xs text-green-700 font-semibold" title={getBatchName(record.batch_id, record.batch_name)}>
+                                  {getBatchName(record.batch_id, record.batch_name)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {/* Action Buttons */}
               <div className="feeds-action-buttons grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                <button
-                  onClick={() => setShowRecordUsage(true)}
-                  className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold py-3 rounded-xl shadow-[6px_6px_12px_rgba(16,185,129,0.3),-6px_-6px_12px_rgba(255,255,255,0.5)] active:shadow-[inset_3px_3px_6px_rgba(5,150,105,0.4),inset_-3px_-3px_6px_rgba(110,231,183,0.4)] transition-all"
-                >
+                <button onClick={() => setShowRecordUsage(true)} className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold py-3 rounded-xl shadow-[6px_6px_12px_rgba(16,185,129,0.3),-6px_-6px_12px_rgba(255,255,255,0.5)] active:shadow-[inset_3px_3px_6px_rgba(5,150,105,0.4),inset_-3px_-3px_6px_rgba(110,231,183,0.4)] transition-all">
                   Record Feed Usage
                 </button>
-                <button
-                  onClick={() => { setPurchaseErrors({}); setShowAddPurchase(true); }}
-                  className="bg-white/30 backdrop-blur-lg border border-white/40 text-emerald-700 font-bold py-3 rounded-xl shadow-[6px_6px_12px_rgba(0,0,0,0.1),-6px_-6px_12px_rgba(255,255,255,0.8)] active:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.1),inset_-3px_-3px_6px_rgba(255,255,255,0.8)] transition-all"
-                >
+                <button onClick={() => { setPurchaseErrors({}); setShowAddPurchase(true); }} className="bg-white/30 backdrop-blur-lg border border-white/40 text-emerald-700 font-bold py-3 rounded-xl shadow-[6px_6px_12px_rgba(0,0,0,0.1),-6px_-6px_12px_rgba(255,255,255,0.8)] active:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.1),inset_-3px_-3px_6px_rgba(255,255,255,0.8)] transition-all">
                   Add Feed Purchase
                 </button>
               </div>
-
-              {/* Chart */}
-              <div className="feeds-chart-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg">
-                <h3 className="font-semibold text-gray-900 mb-2">Feed Consumption & Forecast</h3>
-                <ResponsiveContainer width="100%" height={220}>
-                  <LineChart
-                    data={chartData}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis dataKey="date" tick={{ fill: '#4B5563', fontSize: 10 }} tickFormatter={(value) => new Date(`${value}T12:00:00`).toLocaleDateString()} />
-                    <YAxis
-                      tick={{ fill: '#4B5563', fontSize: 10 }}
-                      label={{ value: 'kg', angle: -90, position: 'insideLeft', style: { fontSize: 10 } }}
-                    />
-                    <Tooltip />
-                    <Line
-                      type="monotone"
-                      dataKey="actual"
-                      stroke="#10B981"
-                      strokeWidth={3}
-                      dot={{ fill: '#10B981', r: 4 }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="forecast"
-                      stroke="#f5125d"
-                      strokeWidth={2}
-                      strokeDasharray="6 4"
-                      dot={{ fill: '#f5125d', r: 3 }}
-                      connectNulls={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-                <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-xs text-gray-600">
-                  <span className="text-emerald-700">● Actual feed consumption</span>
-                  <span className="text-pink-700">● 7-day forecast</span>
-                </div>
-                {feedForecast?.status === 'forecasted' && (
-                  <p className="text-[10px] text-gray-500 text-center mt-1">
-                    Forecast uses {feedForecast.historyDays} recorded days · holdout MAE {feedForecast.evaluation?.meanAbsoluteErrorKg ?? '—'} kg/day
-                  </p>
-                )}
-                {feedForecast?.status === 'insufficient_data' && (
-                  <p className="text-[10px] text-amber-700 text-center mt-1">
-                    Feed forecast needs at least {feedForecast.requiredHistoryDays} recorded days; currently {feedForecast.historyDays} available.
-                  </p>
-                )}
-                {feedForecastError && <p className="text-[10px] text-red-600 text-center mt-1">{feedForecastError}</p>}
-              </div>
-
-              {/* Automated Feeding Schedule */}
-                            <div className="feeds-schedule-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-gray-900">
-                    Automated Feeding Schedule
-                    {selectedBatch !== 'all' && ` - ${selectedBatchData?.name}`}
-                  </h3>
-                  <div className="px-2 py-1 bg-green-100/80 border border-green-300/50 rounded-full text-xs text-green-700 font-semibold flex items-center gap-1">
-                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                    Auto
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  {batches
-                    .filter((batch) => (selectedBatch === 'all' ? true : String(batch.id) === String(selectedBatch)))
-                    .map((batch) => {
-                      const feedType = getFeedTypeForAge(batch.day);
-                      const feedName = getFeedTypeName(feedType);
-                      const dailyAmount = getDailyFeedForBatch(batch.day);
-                      const daysUntilChange = getDaysUntilFeedChange(batch.day);
-
-                      // Check if a feeding for today already exists for this batch
-                      const existingToday = feedRecords.some(
-                        (r) => r.batch_id === batch.id && r.feeding_date === todayStr
-                      );
-                      const isPending = Boolean(pendingDone[batch.id]);
-                      const isDone = existingToday || isPending;
-
-                      const status = isPending ? 'saving' : isDone ? 'completed' : 'pending';
-                      const scheduleTime = '5:00 PM';
-
-                      return (
-                        <div
-                          key={batch.id}
-                          className="bg-white/30 backdrop-blur-sm rounded-xl p-3 border border-white/30"
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex-1">
-                              <div className="font-semibold text-gray-900 text-sm">
-                                {batch.name} – {batch.pigCount ?? 0} pigs · Day {batch.day}
-                              </div>
-                              <div className="text-xs text-gray-600 mt-1">
-                                {isPending ? 'Saving...' : isDone ? 'Completed today' : `Scheduled daily at ${scheduleTime}`}
-                              </div>
-                              <div className="text-xs text-gray-600">
-                                {feedName}, {dailyAmount} kg
-                              </div>
-                              {daysUntilChange !== null && daysUntilChange <= 5 && (
-                                <div className="text-xs text-blue-600 font-medium mt-1 flex items-center gap-1">
-                                  <span>🔄</span>
-                                  Feed change in {daysUntilChange} day
-                                  {daysUntilChange !== 1 ? 's' : ''}
-                                </div>
-                              )}
-                            </div>
-                            <span
-                              className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                isDone
-                                  ? 'bg-green-100/80 border border-green-300/50 text-green-700'
-                                  : 'bg-yellow-100/80 border border-yellow-300/50 text-yellow-700'
-                              }`}
-                            >
-                              {isPending ? 'Saving...' : isDone ? 'Completed' : 'Pending'}
-                            </span>
-                          </div>
-
-                          {!isDone && (
-                            <button
-                              disabled={isPending}
-                              onClick={() => {
-                                handleDirectMarkAsDone(batch.id, feedName, dailyAmount);
-                              }}
-                              className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-semibold py-2 rounded-lg shadow-lg active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                            >
-                              {isPending ? 'Saving...' : 'Mark as Done'}
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                </div>
-
-              </div>
-
-              {/* History */}
-              <div className="feeds-history-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 overflow-hidden shadow-lg">
-                <div className="p-4 border-b border-white/20">
-                  <h3 className="font-semibold text-gray-900">
-                    Feed Consumption History
-                    {selectedBatch !== 'all' && ` - ${selectedBatchData?.name}`}
-                  </h3>
-                </div>
-                <div className="divide-y divide-white/20">
-                  {filteredRecords.length === 0 ? (
-                    <div className="p-8 text-center text-gray-500 text-sm">
-                      No feed records for this batch yet
-                    </div>
-                  ) : (
-                    filteredRecords.slice(0, 10).map((record) => (
-                      <div key={record.id} className="p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            {getBatchName(record.batch_id, record.batch_name) && (
-                              <div className="font-medium text-gray-900 text-sm">
-                                {getBatchName(record.batch_id, record.batch_name)}
-                              </div>
-                            )}
-                            <div className="text-xs text-gray-700 mt-1">
-                              {record.feed_type} · {record.quantity_kg} kg
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              {new Date(record.feeding_date).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                              })}
-                            </div>
-                            {record.notes && (
-                              <div className="text-xs text-gray-600 mt-1 italic">
-                                "{record.notes}"
-                              </div>
-                            )}
-                          </div>
-                          {getBatchName(record.batch_id, record.batch_name) && (
-                            <span className="max-w-[45%] truncate whitespace-nowrap px-2 py-1 bg-green-100/80 border border-green-300/50 rounded-full text-xs text-green-700 font-semibold" title={getBatchName(record.batch_id, record.batch_name)}>
-                              {getBatchName(record.batch_id, record.batch_name)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
+            </>
           )}
-          </div>
         </div>
 
         {/* Modals */}
