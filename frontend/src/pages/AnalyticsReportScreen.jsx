@@ -1372,7 +1372,7 @@ export default function AnalyticsReportsScreen() {
                       <p className="text-sm leading-6 text-[#252838] mt-2"><strong className="text-[#ad1457]">Suggestion:</strong> {analysis.suggestion}</p>
                       {analysis.actions?.length > 0 && <ul className="list-disc pl-4 mt-2 text-xs text-[#555B6E]">{analysis.actions.map((action) => <li key={action}>{action}</li>)}</ul>}
                     </>}
-                    {[...(context.limitations || []), ...(analysis?.limitations || [])].filter((item, index, list) => item && list.indexOf(item) === index).length > 0 && <p className="text-[10px] text-[#6B7280] mt-3">Limitations: {[...(context.limitations || []), ...(analysis?.limitations || [])].filter((item, index, list) => item && list.indexOf(item) === index).join(' ')}</p>}
+
                   </>
                 );
               })()}
