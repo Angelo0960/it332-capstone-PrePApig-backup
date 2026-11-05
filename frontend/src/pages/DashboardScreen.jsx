@@ -770,7 +770,7 @@ export default function DashboardScreen() {
 
         {/* Content */}
         <div
-          className="dashboard-page-content flex-1 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24"
+          className="dashboard-page-content dashboard-bento-layout flex-1 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           onTouchCancel={handleTouchCancel}
