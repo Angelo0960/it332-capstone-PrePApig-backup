@@ -748,7 +748,7 @@ export default function DashboardScreen() {
         {/* Header */}
         <div className="dashboard-header px-4 md:px-8 lg:px-12 pt-5 pb-4">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="lg:hidden">
               <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#777D8D]">PrepAPig farm center</p>
               <h1 className="text-2xl font-extrabold tracking-[-0.04em] text-[#252838] sm:text-3xl">Good morning, {user?.name && !user.name.includes('@') ? user.name.split(' ')[0] : 'Farm Manager'}.</h1>
             </div>
