@@ -841,7 +841,7 @@ export default function DashboardScreen() {
 
 
 
-                  className="dashboard-progress-stack grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4"
+                  className="dashboard-progress-stack grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-4 mb-4"
                 >
                   {/* Vaccination */}
                   <div className="dashboard-card flex min-h-[150px] flex-col items-center justify-center rounded-2xl p-2 text-center sm:p-3">
@@ -900,6 +900,14 @@ export default function DashboardScreen() {
                     <div className="max-w-full truncate text-[10px] font-semibold text-[#ad1457]" title={currentBatch.breed && currentBatch.breed !== 'Unknown' ? currentBatch.breed : 'Not recorded'}>
                       {currentBatch.breed && currentBatch.breed !== 'Unknown' ? currentBatch.breed : 'Not recorded'}
                     </div>
+                  </div>
+
+                  {/* Pig Count */}
+                  <div className="dashboard-card flex min-h-[150px] min-w-0 flex-col items-center justify-center rounded-2xl p-2 text-center sm:p-3">
+                    <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[#00A896]/10 sm:h-24 sm:w-24">
+                      <span className="text-2xl font-extrabold tracking-[-0.04em] text-[#252838]">{currentBatch.pigCount ?? 0}</span>
+                    </div>
+                    <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.06em] text-[#555B6E]">Pigs in Batch</div>
                   </div>
                 </div>
               </>
