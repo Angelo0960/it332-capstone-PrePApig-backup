@@ -228,7 +228,7 @@ export default function AnalyticsReportsScreen() {
     try {
       const batch = selectedBatch !== 'All Batches' ? batches.find((row) => row.batch_code === selectedBatch) : null;
       const batchId = batch?.batch_code || 'all';
-      const cacheKey = `feed-ai-analysis-v2:${getUserCacheKey()}:${batchId}:1`;
+      const cacheKey = `feed-ai-analysis-v3:${getUserCacheKey()}:${batchId}:1`;
       const cached = readCache(cacheKey, Number.POSITIVE_INFINITY);
       hasCachedForecast = Boolean(cached && typeof cached === 'object');
       if (cached && typeof cached === 'object') {
@@ -619,12 +619,13 @@ export default function AnalyticsReportsScreen() {
     () => feedStock.reduce((sum, s) => sum + (s.stock_quantity || 0), 0),
     [feedStock]
   );
+  const feedHistoryLabel = feedForecast?.dataType === 'uploaded_historical_feed_usage' ? 'Synthetic history' : 'Recorded';
   const feedConsumptionData = useMemo(() => {
     if (!feedForecast) return getFeedConsumptionData();
     const historical = (feedForecast.history || []).map((row) => ({
       date: new Date(`${row.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       actual: row.quantityKg,
-      period: 'Recorded',
+      period: feedHistoryLabel,
     }));
     const forecast = (feedForecast.forecast || []).map((row) => ({
       date: new Date(`${row.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -635,7 +636,7 @@ export default function AnalyticsReportsScreen() {
       period: 'Forecast',
     }));
     return [...historical, ...forecast];
-  }, [filteredFeedRecords, feedForecast]);
+  }, [filteredFeedRecords, feedForecast, feedHistoryLabel]);
   const forecastStartDate = feedConsumptionData.find((point) => point.period === 'Forecast')?.date;
   const profitTrend = financial?.monthly || [];
   const expenseBreakdown = useMemo(() => getExpenseBreakdown(), [filteredExpenses]);
@@ -1219,10 +1220,14 @@ export default function AnalyticsReportsScreen() {
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="font-semibold text-gray-900">Feed Consumption Forecast</h3>
-                <p className="mt-1 text-[10px] text-[#555B6E]">Recorded usage compared with the next-week estimate</p>
+                <p className="mt-1 text-[10px] text-[#555B6E]">
+                  {feedHistoryLabel === 'Synthetic history'
+                    ? 'Synthetic uploaded history, not actual farm records, compared with next-week estimate'
+                    : 'Recorded usage compared with the next-week estimate'}
+                </p>
               </div>
               <div className="flex items-center gap-2 text-[10px] font-semibold">
-                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-700">● Recorded</span>
+                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-700">● {feedHistoryLabel}</span>
                 <span className="rounded-full bg-pink-100 px-2.5 py-1 text-pink-700">● Forecast</span>
               </div>
             </div>
@@ -1235,9 +1240,9 @@ export default function AnalyticsReportsScreen() {
                   <Tooltip
                     contentStyle={{ borderRadius: 12, border: '1px solid #ffd1df', boxShadow: '0 8px 20px rgba(37,40,56,0.12)', fontSize: 12 }}
                     labelStyle={{ color: '#252838', fontWeight: 700 }}
-                    formatter={(value, name) => [`${value} kg`, name === 'actual' ? 'Recorded' : 'Forecast']}
+                    formatter={(value, name) => [`${value} kg`, name === 'actual' ? feedHistoryLabel : 'Forecast']}
                   />
-                  <Legend verticalAlign="top" align="right" height={26} iconType="circle" wrapperStyle={{ fontSize: 10, color: '#555B6E' }} formatter={(value) => value === 'actual' ? 'Recorded' : 'Forecast'} />
+                  <Legend verticalAlign="top" align="right" height={26} iconType="circle" wrapperStyle={{ fontSize: 10, color: '#555B6E' }} formatter={(value) => value === 'actual' ? feedHistoryLabel : 'Forecast'} />
                   {forecastStartDate && <ReferenceLine x={forecastStartDate} stroke="#f77f9f" strokeDasharray="5 5" strokeWidth={1.5} label={{ value: 'Forecast starts', position: 'insideTopRight', fill: '#ad1457', fontSize: 10 }} />}
                   <Line type="monotone" dataKey="actual" stroke="#059669" strokeWidth={3} dot={{ fill: '#059669', stroke: '#FFFFFF', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }} name="actual" connectNulls={false} />
                   <Line type="monotone" dataKey="forecast" stroke="#f5125d" strokeWidth={3} strokeDasharray="7 5" dot={{ fill: '#f5125d', stroke: '#FFFFFF', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }} name="forecast" connectNulls={false}>
@@ -1247,8 +1252,8 @@ export default function AnalyticsReportsScreen() {
               </ResponsiveContainer>
             </div>
             <div className="mt-2 flex items-center justify-between text-[10px] text-[#6B7280]">
-              <span>Dashed styling and error bars show the forecast range.</span>
-              <span>Unit: kg</span>
+              <span>{feedHistoryLabel === 'Synthetic history' ? 'Illustrative uploaded data; not actual farm records.' : 'Recorded database feed logs.'}</span>
+              <span>Dashed styling and error bars show the forecast range · Unit: kg</span>
             </div>
             {feedForecastError && <p className="text-[10px] text-red-700 mb-2">{feedForecastError}</p>}
 
