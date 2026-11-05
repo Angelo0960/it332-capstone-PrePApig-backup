@@ -805,20 +805,24 @@ export default function DashboardScreen() {
                 key={currentBatch.id}
                 className="dashboard-summary-grid grid grid-cols-2 gap-3 mb-4"
               >
-
-                  <div className="dashboard-card col-span-1 min-w-0 overflow-hidden flex min-h-[128px] flex-col justify-center rounded-2xl p-3 text-left">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#555B6E]">Pig Age</div>
-                    <div className="text-[clamp(1.5rem,6vw,2.5rem)] leading-none font-extrabold tracking-[-0.05em] text-[#252838] whitespace-nowrap">Day {currentBatchDay}</div>
+                <div className="dashboard-card dashboard-primary-metric dashboard-estimate-metric dashboard-primary-metric--estimate min-w-0 overflow-hidden flex flex-col justify-center rounded-2xl p-3 text-left">
+                  <div className="dashboard-primary-metric-label"><ChartNoAxesCombined aria-hidden="true" /> Estimated Price</div>
+                  <div className="dashboard-primary-metric-value">
+                    {Number.isFinite(currentBatchTotalWeightKg) && currentBatchTotalWeightKg >= 0 && currentBatch?.pricePerKg > 0
+                      ? formatCurrency(currentBatchTotalWeightKg * currentBatch.pricePerKg)
+                      : '—'}
                   </div>
-                  <div className="dashboard-card col-span-1 min-w-0 overflow-hidden flex min-h-[128px] flex-col justify-center rounded-2xl p-3 text-left">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#555B6E]">Estimated Price</div>
-                    <div className="text-[clamp(1.5rem,6vw,2.5rem)] leading-none font-extrabold tracking-[-0.05em] text-[#252838] whitespace-nowrap">
-                      {Number.isFinite(currentBatchTotalWeightKg) && currentBatchTotalWeightKg >= 0 && currentBatch?.pricePerKg > 0
-                        ? formatCurrency(currentBatchTotalWeightKg * currentBatch.pricePerKg)
-                        : '—'}
-                    </div>
-                  </div>
+                  <div className="dashboard-primary-metric-note">Whole-batch estimate</div>
                 </div>
+                <div className="dashboard-card dashboard-primary-metric dashboard-primary-metric--count min-w-0 overflow-hidden flex flex-col justify-center rounded-2xl p-3 text-left">
+                  <div className="dashboard-primary-metric-label"><PiggyBank aria-hidden="true" /> Pigs in Batch</div>
+                  <div className="dashboard-primary-metric-value">{currentBatch.pigCount ?? 0}</div>
+                </div>
+                <div className="dashboard-card dashboard-primary-metric dashboard-primary-metric--age min-w-0 overflow-hidden flex flex-col justify-center rounded-2xl p-3 text-left">
+                  <div className="dashboard-primary-metric-label"><CalendarClock aria-hidden="true" /> Pig Age</div>
+                  <div className="dashboard-primary-metric-value">Day {currentBatchDay}</div>
+                </div>
+              </div>
               </>
 
               <>
@@ -887,14 +891,6 @@ export default function DashboardScreen() {
                     <div className="max-w-full truncate text-[10px] font-semibold text-[#ad1457]" title={currentBatch.breed && currentBatch.breed !== 'Unknown' ? currentBatch.breed : 'Not recorded'}>
                       {currentBatch.breed && currentBatch.breed !== 'Unknown' ? currentBatch.breed : 'Not recorded'}
                     </div>
-                  </div>
-
-                  {/* Pig Count */}
-                  <div className="dashboard-card flex min-h-[150px] min-w-0 flex-col items-center justify-center rounded-2xl p-2 text-center sm:p-3">
-                    <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[#00A896]/10 sm:h-24 sm:w-24">
-                      <span className="text-2xl font-extrabold tracking-[-0.04em] text-[#252838]">{currentBatch.pigCount ?? 0}</span>
-                    </div>
-                    <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.06em] text-[#555B6E]">Pigs in Batch</div>
                   </div>
                 </div>
               </>
