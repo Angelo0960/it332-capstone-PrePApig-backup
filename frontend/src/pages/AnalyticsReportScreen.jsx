@@ -1346,7 +1346,11 @@ export default function AnalyticsReportsScreen() {
             <div className="bg-white/55 border border-[#ffd1df] rounded-xl p-4 mt-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                 <h4 className="text-sm font-bold text-[#ad1457]">AI Estimated Profit Analysis</h4>
-                {profitAiResult?.aiAnalysis && <span className="text-[10px] uppercase font-bold text-[#f5125d]">{profitAiResult.aiAnalysis.riskLevel || 'unknown'} risk</span>}
+                {['low', 'medium', 'high'].includes(String(profitAiResult?.aiAnalysis?.riskLevel || '').toLowerCase()) && (
+                  <span className="text-[10px] uppercase font-bold text-[#f5125d]">
+                    {String(profitAiResult.aiAnalysis.riskLevel).toLowerCase()} risk
+                  </span>
+                )}
               </div>
               <p className="text-[10px] text-[#6B7280] mb-3">AI interprets recorded weight and expense data. Amounts below are calculated from records and labeled price assumptions; this is not realized or full lifecycle profit.</p>
               {profitAiLoading && <p className="text-sm text-gray-600">Analyzing recorded growth and expenses…</p>}
@@ -1362,13 +1366,7 @@ export default function AnalyticsReportsScreen() {
                       <div className="rounded-lg bg-white/70 p-2"><span className="block text-gray-600">Recorded costs ({context.period.from} to {context.period.to})</span><strong>{formatCurrency(context.totalRecordedCostsPhp)}</strong></div>
                       <div className="rounded-lg bg-white/70 p-2"><span className="block text-gray-600">Standing value less selected-period costs</span><strong>{context.estimatedStandingValueLessSelectedPeriodCostsPhp == null ? 'Unavailable' : formatCurrency(context.estimatedStandingValueLessSelectedPeriodCostsPhp)}</strong></div>
                     </div>
-                    <div className="space-y-2 mb-3 text-xs text-[#555B6E]">
-                      {(context.growth || []).map((row) => (
-                        <p key={row.batchCode}>
-                          <strong>{row.batchCode}</strong>{row.ageDays == null ? ' · age unavailable' : ` · age ${row.ageDays} days`}{row.currentAverageWeightKg == null ? ' · weight unavailable' : ` · current average ${row.currentAverageWeightKg} kg/pig`}{row.growth ? ` · weight gain ${row.growth.gainKg} kg/pig (${row.growth.previousSnapshotDate}–${row.growth.currentSnapshotDate}; ${row.growth.previousSnapshotSource}; ${row.growth.gainKgPerDay} kg/day)` : ' · recent dated growth unavailable'}
-                        </p>
-                      ))}
-                    </div>
+
                     {analysis && <>
                       <p className="text-sm leading-6 text-[#252838]">{analysis.analysis}</p>
                       <p className="text-sm leading-6 text-[#252838] mt-2"><strong className="text-[#ad1457]">Suggestion:</strong> {analysis.suggestion}</p>
