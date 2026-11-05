@@ -53,52 +53,34 @@ export const saveSale = async (req, res) => {
             buyer,
             notes,
         };
-        let data;
-        if (!req.params.id) {
-            const { data: result, error } = await supabase.rpc('create_harvest_sale_and_delete_batch', {
-                p_owner_id: req.user.id,
-                p_sale: record,
-                p_delete_batch: false,
-            });
-            if (error) throw error;
-            data = result?.sale || null;
-        } else {
-            const { data: updated, error } = await supabase
-                .from('harvest_sales')
-                .update(record)
-                .eq('owner_id', req.user.id)
-                .eq('id', req.params.id)
-                .select(fields)
-                .maybeSingle();
-            if (error) throw error;
-            data = updated;
-        }
-
-        if (!data) return res.status(404).json({ success: false, message: 'Harvest/sale not found' });
         const completedSale = record.sale_date !== null && record.revenue !== null;
-        const shouldMarkSold = delete_batch === true || completedSale;
-        if (shouldMarkSold) {
-            const { error: closeError } = await supabase
-                .from('pig_batches')
-                .update({ status: 'Sold' })
-                .eq('owner_id', req.user.id)
-                .eq('id', batch_id);
-            if (closeError) throw closeError;
-        }
+        const { data: result, error } = await supabase.rpc('mutate_harvest_sale', {
+            p_owner_id: req.user.id,
+            p_action: req.params.id ? 'update' : 'create',
+            p_sale_id: req.params.id || null,
+            p_sale: record,
+            p_close_batch: delete_batch === true || completedSale,
+        });
+        if (error) throw error;
+        const data = result?.sale || null;
+        if (!data) return res.status(404).json({ success: false, message: 'Harvest/sale not found' });
         res.status(req.params.id ? 200 : 201).json({
             success: true,
             data,
             batch_deleted: false,
-            batch_closed: !req.params.id && delete_batch === true,
+            batch_closed: Boolean(result?.batch_closed),
         });
     } catch (error) {
         const message = String(error.message || '');
-        const migrationMissing = message.includes('harvest_sales') && (message.includes('schema cache') || message.includes('does not exist') || message.toLowerCase().includes('permission denied'));
-        const transactionMigrationMissing = message.includes('create_harvest_sale_and_delete_batch') && (message.includes('schema cache') || message.toLowerCase().includes('permission denied'));
-        res.status(500).json({
+        const notFound = error.code === 'P0001' && /not found/i.test(message);
+        const migrationMissing = (message.includes('harvest_sales') || message.includes('mutate_harvest_sale'))
+            && (message.includes('schema cache') || message.includes('does not exist') || message.toLowerCase().includes('permission denied'));
+        const transactionMigrationMissing = message.includes('mutate_harvest_sale')
+            && (error.code === 'PGRST202' || message.includes('schema cache') || message.toLowerCase().includes('permission denied'));
+        return res.status(notFound ? 404 : migrationMissing || transactionMigrationMissing ? 503 : 500).json({
             success: false,
-            message: migrationMissing || transactionMigrationMissing
-                ? 'Transactional sale migration is not configured. Run backend/config/migrations/20261013_financial_reliability.sql, backend/config/migrations/20261030_repair_harvest_sales_permissions.sql, and backend/config/migrations/20261031_transactional_sale_and_batch_delete.sql in Supabase SQL Editor, then retry.'
+            message: notFound ? message : migrationMissing || transactionMigrationMissing
+                ? 'Atomic sales migration is not configured. Run backend/config/migrations/20261102_atomic_sales_and_pig_aggregates.sql in Supabase SQL Editor, then retry.'
                 : message,
         });
     }
@@ -106,8 +88,25 @@ export const saveSale = async (req, res) => {
 
 export const deleteSale = async (req, res) => {
     if (!uuid.test(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid record ID' });
-    const { data, error } = await supabase.from('harvest_sales').delete().eq('owner_id', req.user.id).eq('id', req.params.id).select('id').maybeSingle();
-    if (error) return res.status(500).json({ success: false, message: error.message });
-    if (!data) return res.status(404).json({ success: false, message: 'Harvest/sale not found' });
-    res.json({ success: true });
+    try {
+        const { error } = await supabase.rpc('mutate_harvest_sale', {
+            p_owner_id: req.user.id,
+            p_action: 'delete',
+            p_sale_id: req.params.id,
+            p_sale: null,
+            p_close_batch: false,
+        });
+        if (error) throw error;
+        return res.json({ success: true });
+    } catch (error) {
+        const message = String(error.message || '');
+        const notFound = error.code === 'P0001' && /not found/i.test(message);
+        const missingRpc = error.code === 'PGRST202' || error.code === '42883';
+        return res.status(notFound ? 404 : missingRpc ? 503 : 500).json({
+            success: false,
+            message: notFound ? 'Harvest/sale not found' : missingRpc
+                ? 'Atomic sales migration is not configured. Run backend/config/migrations/20261102_atomic_sales_and_pig_aggregates.sql in Supabase SQL Editor, then retry.'
+                : message,
+        });
+    }
 };

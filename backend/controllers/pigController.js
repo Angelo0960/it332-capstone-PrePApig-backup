@@ -1,24 +1,21 @@
 import { collectPages, pagination } from '../services/pagination.js';
 import supabase from '../config/supabase.js';
 
-const syncBatchAverageWeight = async (batchId, ownerId) => {
-    const { data: pigs, error: pigsError } = await supabase
-        .from('pigs')
-        .select('weight')
-        .eq('batch_id', batchId)
-        .eq('owner_id', ownerId);
-    if (pigsError) throw pigsError;
-
-    const totalWeight = (pigs || []).reduce((sum, pig) => sum + Number(pig.weight || 0), 0);
-    const averageWeight = pigs?.length ? Math.round((totalWeight / pigs.length) * 100) / 100 : 0;
-    const { data, error } = await supabase
-        .from('pig_batches')
-        .update({ current_weight: averageWeight, pig_count: pigs?.length || 0 })
-        .eq('id', batchId)
-        .eq('owner_id', ownerId)
-        .select('id,current_weight,pig_count')
-        .single();
-    if (error) throw error;
+const mutatePig = async (ownerId, action, pigId, pig) => {
+    const { data, error } = await supabase.rpc('mutate_pig_and_sync_batch', {
+        p_owner_id: ownerId,
+        p_action: action,
+        p_pig_id: pigId,
+        p_pig: pig,
+    });
+    if (error) {
+        if (error.code === 'P0001' && /not found/i.test(String(error.message || ''))) error.statusCode = 404;
+        if (error.code === 'PGRST202' || error.code === '42883') {
+            error.statusCode = 503;
+            error.message = 'Atomic pig mutation migration is not configured. Run backend/config/migrations/20261102_atomic_sales_and_pig_aggregates.sql in Supabase SQL Editor, then retry.';
+        }
+        throw error;
+    }
     return data;
 };
 
@@ -447,36 +444,15 @@ export const createPig = async (req, res) => {
             });
         }
 
-        const { data: batch, error: batchError } = await supabase
-            .from('pig_batches')
-            .select('id')
-            .eq('id', batch_id)
-            .eq('owner_id', req.user.id)
-            .single();
-        if (batchError || !batch) {
-            return res.status(404).json({ success: false, message: 'Batch not found' });
-        }
-
-        const { data, error } = await supabase
-            .from('pigs')
-            .insert([{ batch_id, owner_id: req.user.id, weight, health_status, notes }])
-            .select();
-
-        if (error) {
-            console.error('Pig insert error:', error);
-            throw error;
-        }
-
-        const updatedBatch = await syncBatchAverageWeight(batch_id, req.user.id);
-
+        const result = await mutatePig(req.user.id, 'create', null, { batch_id, weight, health_status, notes });
         res.status(201).json({
             success: true,
-            data: data[0],
-            batch: updatedBatch,
+            data: result.pig,
+            batch: result.batch,
         });
     } catch (error) {
         console.error('Error creating pig:', error);
-        res.status(500).json({
+        res.status(error.statusCode || 500).json({
             success: false,
             message: error.message,
         });
@@ -488,36 +464,15 @@ export const updatePig = async (req, res) => {
         const { id } = req.params;
         const { weight, health_status, notes } = req.body;
 
-        const { data: existingPig, error: existingPigError } = await supabase
-            .from('pigs')
-            .select('id,batch_id')
-            .eq('id', id)
-            .eq('owner_id', req.user.id)
-            .single();
-        if (existingPigError) throw existingPigError;
-
-        const { data, error } = await supabase
-            .from('pigs')
-            .update({ weight, health_status, notes, updated_at: new Date() })
-            .eq('id', id)
-            .eq('owner_id', req.user.id)
-            .select();
-
-        if (error) {
-            console.error('Pig update error:', error);
-            throw error;
-        }
-
-        const updatedBatch = await syncBatchAverageWeight(existingPig.batch_id, req.user.id);
-
+        const result = await mutatePig(req.user.id, 'update', id, { weight, health_status, notes });
         res.status(200).json({
             success: true,
-            data: data[0],
-            batch: updatedBatch,
+            data: result.pig,
+            batch: result.batch,
         });
     } catch (error) {
         console.error('Error updating pig:', error);
-        res.status(500).json({
+        res.status(error.statusCode || 500).json({
             success: false,
             message: error.message,
         });
@@ -527,35 +482,15 @@ export const updatePig = async (req, res) => {
 export const deletePig = async (req, res) => {
     try {
         const { id } = req.params;
-        const { data: existingPig, error: existingPigError } = await supabase
-            .from('pigs')
-            .select('id,batch_id')
-            .eq('id', id)
-            .eq('owner_id', req.user.id)
-            .single();
-        if (existingPigError) throw existingPigError;
-
-        const { error } = await supabase
-            .from('pigs')
-            .delete()
-            .eq('id', id)
-            .eq('owner_id', req.user.id);
-
-        if (error) {
-            console.error('Pig delete error:', error);
-            throw error;
-        }
-
-        const updatedBatch = await syncBatchAverageWeight(existingPig.batch_id, req.user.id);
-
+        const result = await mutatePig(req.user.id, 'delete', id, null);
         res.status(200).json({
             success: true,
             message: 'Pig deleted successfully',
-            batch: updatedBatch,
+            batch: result.batch,
         });
     } catch (error) {
         console.error('Error deleting pig:', error);
-        res.status(500).json({
+        res.status(error.statusCode || 500).json({
             success: false,
             message: error.message,
         });
