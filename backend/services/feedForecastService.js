@@ -49,7 +49,8 @@ const loadUploadedHistoricalData = ({ batchId } = {}) => {
     .map((row) => ({ feeding_date: row.date, quantity_kg: Number(row.actual_feed_kg), planned_kg: Number(row.planned_daily_kg_per_pig) * Number(row.active_pigs), dataType: row.data_type }));
   const weeklyRows = readCsv('PrepAPig_5Y_Weekly_Forecast.csv')
     .filter((row) => row.week_start <= MAX_SOURCE_DATE)
-    .filter((row) => !batchId || batchId === 'all' || row.batch_id === batchId);
+    .filter((row) => !batchId || batchId === 'all' || row.batch_id === batchId)
+    .map((row) => ({ ...row, ration_code: String(row.ration_code || '').trim() || 'Unspecified ration' }));
   return { dailyRows, weeklyRows };
 };
 
@@ -153,13 +154,26 @@ export const getFeedConsumptionForecast = async ({ ownerId, batchId, horizonDays
   if (source === 'uploaded_historical') {
     const { dailyRows, weeklyRows } = loadUploadedHistoricalData({ batchId });
     const historicalSummary = summarizeUploadedHistory(dailyRows, weeklyRows);
+    const grouped = new Map();
+    weeklyRows.forEach((row) => {
+      const rows = grouped.get(row.ration_code) || [];
+      rows.push(row);
+      grouped.set(row.ration_code, rows);
+    });
+    const rationForecasts = [...grouped.entries()].map(([rationCode, rows]) => ({
+      rationCode,
+      ...forecastUploadedWeeklyConsumption(rows, horizonWeeks, { averageRecentPricePer50kgBagPhp: historicalSummary.averageRecentPricePer50kgBagPhp }),
+    }));
+    const aggregate = forecastUploadedWeeklyConsumption(weeklyRows, horizonWeeks, { averageRecentPricePer50kgBagPhp: historicalSummary.averageRecentPricePer50kgBagPhp, historicalSummary });
     return {
       success: true,
       batchId: batchId || 'all',
       dataType: 'uploaded_historical_feed_usage',
       provenance: { files: ['PrepAPig_5Y_Daily_Feed_Usage.csv', 'PrepAPig_5Y_Weekly_Forecast.csv', 'PrepAPig_5_Year_Synthetic_Feed_Dataset.xlsx'], label: 'Uploaded historical feed data' },
       historicalSummary,
-      ...forecastUploadedWeeklyConsumption(weeklyRows, horizonWeeks, { averageRecentPricePer50kgBagPhp: historicalSummary.averageRecentPricePer50kgBagPhp, historicalSummary }),
+      ...aggregate,
+      rationForecasts,
+      limitations: [...(aggregate.limitations || []), 'Ration codes are synthetic forecast categories and are not mapped to recorded feed-stock types.'],
       generatedAt: new Date().toISOString(),
     };
   }

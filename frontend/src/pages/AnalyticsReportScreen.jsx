@@ -1203,8 +1203,10 @@ export default function AnalyticsReportsScreen() {
                 <div className="flex items-center justify-between gap-2 mb-2"><span className="text-sm font-bold text-[#ad1457]">AI Forecast Analysis</span><span className="text-[10px] uppercase font-bold text-[#f5125d]">{feedForecastAi.riskLevel || 'unknown'} risk</span></div>
                 <p className="text-left text-sm leading-6 text-[#252838] mb-3">{feedForecastAi.analysis}</p>
                 <p className="text-left text-sm leading-6 text-[#252838]"><strong className="text-[#ad1457]">Suggestion:</strong> {feedForecastAi.suggestion}</p>
-                {feedForecastAi.stockContext && <div className="grid grid-cols-3 gap-2 mt-3 text-[10px] text-[#555B6E]"><span>Stock: <strong>{feedForecastAi.stockContext.totalStockKg} kg</strong></span><span>1-week need: <strong>{feedForecastAi.stockContext.forecastKg} kg</strong></span><span>Coverage: <strong>{feedForecastAi.stockContext.coverageWeeks == null ? '—' : `${feedForecastAi.stockContext.coverageWeeks} wk`}</strong></span></div>}
-                {feedForecastAi.stockContext?.projectedShortfallKg > 0 && <p className="text-[10px] text-red-700 mt-2">Projected stock shortfall: {feedForecastAi.stockContext.projectedShortfallKg} kg.</p>}
+                {feedForecastAi.stockContext && <div className="mt-3 text-[10px] text-[#555B6E]">
+                  <p>Recorded stock (all feed types; not mapped to synthetic ration codes): <strong>{feedForecastAi.stockContext.totalRecordedStockKg} kg</strong></p>
+                  {feedForecastAi.stockContext.rationForecasts?.length > 0 && <div className="grid grid-cols-2 gap-2 mt-2">{feedForecastAi.stockContext.rationForecasts.map((ration) => <span key={ration.rationCode}>{ration.rationCode} need: <strong>{ration.forecastKg} kg</strong> · Stock match: unavailable</span>)}</div>}
+                </div>}
                 {feedForecastAi.actions?.length > 0 && <ul className="list-disc pl-4 mt-3 text-[10px] text-[#555B6E]">{feedForecastAi.actions.map((action) => <li key={action}>{action}</li>)}</ul>}
                 <p className="text-[10px] text-[#6B7280] mt-3">AI interpretation only; it does not replace recorded feed, inventory, expense, financial, or FCR calculations.</p>
               </div>

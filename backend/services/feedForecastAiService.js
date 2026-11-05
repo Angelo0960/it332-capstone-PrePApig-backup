@@ -10,18 +10,23 @@ const parseJson = (text) => {
   }
 };
 
-const buildStockContext = (feedStocks = [], forecastRows = []) => {
-  const totalStockKg = feedStocks.reduce((sum, row) => sum + Math.max(0, Number(row.stock_quantity) || 0), 0);
-  const forecastKg = forecastRows.reduce((sum, row) => sum + Math.max(0, Number(row.predictedKg) || 0), 0);
-  const averageWeeklyForecastKg = forecastRows.length ? forecastKg / forecastRows.length : 0;
-  const coverageWeeks = averageWeeklyForecastKg > 0 ? totalStockKg / averageWeeklyForecastKg : null;
+const buildStockContext = (feedStocks = [], forecastRows = [], rationForecasts = []) => {
+  const categories = rationForecasts.map((ration) => {
+    const rows = ration.forecast || [];
+    const forecastKg = rows.reduce((sum, row) => sum + Math.max(0, Number(row.predictedKg) || 0), 0);
+    return {
+      rationCode: ration.rationCode,
+      forecastKg: Number(forecastKg.toFixed(3)),
+      averageWeeklyForecastKg: Number((rows.length ? forecastKg / rows.length : 0).toFixed(3)),
+      stockMatch: 'unmapped',
+      note: 'Synthetic ration code; no safe mapping to recorded stock feed type.',
+    };
+  });
   return {
-    totalStockKg: Number(totalStockKg.toFixed(3)),
-    forecastKg: Number(forecastKg.toFixed(3)),
-    averageWeeklyForecastKg: Number(averageWeeklyForecastKg.toFixed(3)),
-    coverageWeeks: coverageWeeks == null ? null : Number(coverageWeeks.toFixed(2)),
-    projectedShortfallKg: Number(Math.max(0, forecastKg - totalStockKg).toFixed(3)),
-    feedStocks: feedStocks.map((row) => ({ feedType: row.feed_type, stockQuantityKg: Number(row.stock_quantity) || 0, unitPrice: Number(row.unit_price) || null })),
+    totalRecordedStockKg: Number(feedStocks.reduce((sum, row) => sum + Math.max(0, Number(row.stock_quantity) || 0), 0).toFixed(3)),
+    recordedStocks: feedStocks.map((row) => ({ feedType: row.feed_type, stockQuantityKg: Number(row.stock_quantity) || 0 })),
+    rationForecasts: categories,
+    stockToForecastComparison: 'not_available_without_explicit_feed_type_mapping',
   };
 };
 
@@ -77,11 +82,12 @@ export const generateFeedForecastAnalysis = async ({ forecast, feedStocks = [], 
     'Use only the supplied historical and forecast values. Do not invent measurements, prices, causes, or farm conditions.',
     'Treat the uploaded historical feed data as the active dataset for this analysis. Do not replace its values with invented measurements.',
     'Analyze the direction of weekly consumption, actual-versus-planned variance, projected bag requirements, projected cost, forecast error, and uncertainty.',
-    'Check the current feed-stock quantities against the one-week forecast. Calculate whether the stock covers the forecast, estimate coverage in weeks, identify a projected shortfall or surplus, and suggest the next action: purchase, monitor, or avoid unnecessary buying. Do not recommend a purchase when stock coverage is sufficient.',
+    'Do not compare, combine, or map synthetic ration codes to recorded feed-stock names. Report stock separately unless an explicit safe mapping is supplied.',
+    'Analyze each ration forecast independently, including direction, uncertainty, and requirements. Do not make stock coverage or shortage claims for unmapped ration codes.',
     'Give practical but qualified suggestions for feed purchasing and monitoring. Do not replace recorded feed, inventory, expense, financial, or FCR calculations.',
     'Return JSON only in this exact shape:',
     '{"analysis":"short evidence-based analysis","suggestion":"specific planning suggestion","riskLevel":"low|medium|high|unknown","actions":["action"],"limitations":["limitation"]}',
-    `Forecast and stock data: ${JSON.stringify({ historicalSummary: forecast.historicalSummary, history: forecast.history, forecast: forecast.forecast, evaluation: forecast.evaluation, provenance: forecast.provenance, stockContext: buildStockContext(feedStocks, forecast.forecast || []) })}`,
+    `Forecast and stock data: ${JSON.stringify({ historicalSummary: forecast.historicalSummary, history: forecast.history, forecast: forecast.forecast, rationForecasts: forecast.rationForecasts, evaluation: forecast.evaluation, provenance: forecast.provenance, stockContext: buildStockContext(feedStocks, forecast.forecast || [], forecast.rationForecasts || []) })}`,
   ].join('\n');
   const providers = [
     { provider: 'gemini', apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY, model: process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite' },
@@ -103,7 +109,7 @@ export const generateFeedForecastAnalysis = async ({ forecast, feedStocks = [], 
         riskLevel: structured.riskLevel || 'unknown',
         actions: Array.isArray(structured.actions) ? structured.actions : [],
         limitations: Array.isArray(structured.limitations) ? structured.limitations : [],
-        stockContext: buildStockContext(feedStocks, forecast.forecast || []),
+        stockContext: buildStockContext(feedStocks, forecast.forecast || [], forecast.rationForecasts || []),
         generatedAt: new Date().toISOString(),
       };
     } catch (error) {
