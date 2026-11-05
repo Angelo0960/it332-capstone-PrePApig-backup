@@ -100,8 +100,9 @@ body {
 
 .dashboard-screen .dashboard-primary-metric--count,
 .dashboard-screen .dashboard-primary-metric--age {
-  align-items: center;
-  text-align: center;
+  align-items: flex-start;
+  border-left: 4px solid transparent !important;
+  text-align: left;
 }
 
 .dashboard-screen .dashboard-primary-metric--count .dashboard-primary-metric-value,
@@ -109,6 +110,7 @@ body {
   margin-top: 0.55rem;
   font-size: clamp(2.75rem, 4vw, 3.75rem);
   line-height: 0.95;
+  text-align: left;
 }
 
 .dashboard-screen .dashboard-primary-metric--count .dashboard-primary-metric-value {
@@ -118,7 +120,7 @@ body {
 .dashboard-primary-metric-value--age {
   display: flex;
   align-items: baseline;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.35rem;
 }
 
