@@ -72,6 +72,12 @@ const FEED_TYPE_MAP = {
   finisher: 'Finisher',
 };
 
+const SYNTHETIC_FORECAST_DEMO_NOTE = 'synthetic forecast demo data; sample feed log only; no stock or weight mutation.';
+const shouldDisplayFeedNote = (notes) => {
+  const normalized = String(notes || '').trim().replace(/^['"]|['"]$/g, '').trim().toLowerCase();
+  return Boolean(normalized) && normalized !== SYNTHETIC_FORECAST_DEMO_NOTE;
+};
+
 const InlineFieldError = ({ id, message }) => message ? (
   <p id={id} className="mt-1 flex items-center gap-1 text-xs font-medium text-red-700" role="alert">
     <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -976,7 +982,7 @@ export default function FeedsInventoryScreen() {
                                 <div className="text-xs text-gray-500 mt-1">
                                   {new Date(record.feeding_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                 </div>
-                                {record.notes && <div className="text-xs text-gray-600 mt-1 italic">"{record.notes}"</div>}
+                                {shouldDisplayFeedNote(record.notes) && <div className="text-xs text-gray-600 mt-1 italic">"{record.notes}"</div>}
                               </div>
                               {getBatchName(record.batch_id, record.batch_name) && (
                                 <span className="max-w-[45%] truncate whitespace-nowrap px-2 py-1 bg-green-100/80 border border-green-300/50 rounded-full text-xs text-green-700 font-semibold" title={getBatchName(record.batch_id, record.batch_name)}>
