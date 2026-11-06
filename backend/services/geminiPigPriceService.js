@@ -76,12 +76,12 @@ export const generatePigPriceAnalysis = async ({
     `Find current public pig liveweight or farmgate price points for these locations: ${uniqueLocations.join(', ')}. Use at least 3 different nearby locations when sources are available.`,
     'Use web search grounding and prioritize public Facebook posts, pages, and groups for local price evidence when available. Do not use private or login-only content. Do not invent prices. If a location has no reliable public price, label it unavailable.',
     'Separate liveweight/farmgate prices from retail, dressed-meat, or unrelated prices.',
-    'Recommend which available location/source is the most useful price basis and explain why.',
+    'Separate descriptive analytics (what observed prices show), diagnostic analytics (why coverage, period, source, or geography limits the comparison), and prescriptive analytics (specific checks a farmer should take before selling). Use plain language and short, readable paragraphs; never call an unverified or older provincial reference the strongest verified local price.',
     'Return JSON only with this shape:',
-    '{"pricePoints":[{"location":"Calaca","query":"exact search query used","pricePhpPerKg":null,"unit":"PHP/kg liveweight","period":"YYYY-MM-DD or unavailable","source":"source name or unavailable","sourceUrl":"public direct URL or unavailable","status":"found or unavailable"}],"analysis":"short analysis","suggestion":"recommended price basis or next action","limitations":["important limitation"]}',
+    '{"pricePoints":[{"location":"Calaca","query":"exact search query used","pricePhpPerKg":null,"unit":"PHP/kg liveweight","period":"YYYY-MM-DD or unavailable","source":"source name or unavailable","sourceUrl":"public direct URL or unavailable","status":"found or unavailable"}],"analytics":{"descriptive":"what the observed prices show","diagnostic":"what the data can and cannot support, including date and location limitations","prescriptive":"practical next steps before selling"},"analysis":"brief plain-language summary","suggestion":"one clear next action","limitations":["important limitation"]}',
     'Use null and unavailable when a location has no reliable public price. Do not estimate, average, or invent missing local prices.',
     `Provincial reference (not Calaca-only): ${JSON.stringify(provincialReference)}`,
-    `Local reference points (may be user-provided and not independently verified): ${JSON.stringify(localPricePoints)}`,
+    `Official and user-provided reference points, including their source, period, scope, and verification status: ${JSON.stringify(localPricePoints)}`,
   ].join('\n');
 
   const controller = new AbortController();
@@ -127,8 +127,9 @@ export const generatePigPriceAnalysis = async ({
     locations: uniqueLocations,
     searchQueries: LIVE_WEIGHT_SEARCH_QUERIES,
     pricePoints: Array.isArray(structured.pricePoints) ? structured.pricePoints : [],
+    analytics: structured.analytics && typeof structured.analytics === 'object' ? structured.analytics : null,
     analysis: structured.analysis || analysis,
-    suggestion: structured.suggestion || '',
+    suggestion: structured.suggestion || structured.analytics?.prescriptive || '',
     limitations: Array.isArray(structured.limitations) ? structured.limitations : [],
     sources: extractGrounding(payload),
     generatedAt: new Date().toISOString(),

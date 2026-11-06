@@ -2,8 +2,9 @@
 
 ## Existing functionality
 
-- `GET /market-prices/pigs` retrieves the latest province-level Batangas reference from the Baboy PH / PSA household farmgate CSV.
-- `POST /market-prices/pigs/ai-analysis` uses the existing Gemini integration and Google Search grounding, with secondary provider fallbacks.
+- `GET /market-prices/pigs` queries the official PSA OpenSTAT province-level farmgate average table through its API and retrieves current published monthly points for Batangas and Cavite provinces. In the November 6, 2026 source response, both latest available province records were for September 2026; PSA marks Q3 2026 as preliminary, and the table does not publish municipality-specific Calaca quotes.
+- The PSA table reports hog-for-slaughter farmgate averages in pesos per kilogram, liveweight. These are province-level statistical benchmarks, not current municipality buyer offers.
+- The Calaca reference is separately labeled as user-provided screenshot evidence and is not independently verified. Public search results remain unavailable when search credentials or provider quota are unavailable.
 - `backend/services/webPigPriceSearchService.js` now performs location-specific Google Custom Search requests for Lemery, Calaca, Tuy, Balayan, Lian, Nasugbu, and Taal.
 
 ## New functionality

@@ -58,6 +58,8 @@ const getEstimatedBatchTotalWeightKg = (batch, weightTotals) => {
   return Number.isFinite(totalWeight) && totalWeight > 0 ? totalWeight : 0;
 };
 
+const getAnalysisText = (value) => (typeof value === 'string' ? value.trim() : '');
+
 export default function AnalyticsReportsScreen() {
   const navigate = useNavigate();
   const { isOnline } = useOfflineStatus();
@@ -259,7 +261,7 @@ export default function AnalyticsReportsScreen() {
 
   // ---------- Fetch pig price basis for analysis ----------
   const fetchPigPriceBasis = async (signal) => {
-    const cacheKey = `pig-price-basis-v2:${getUserCacheKey()}`;
+    const cacheKey = `pig-price-basis-v3:${getUserCacheKey()}`;
     // Render the last successful price basis immediately, then refresh it in the background.
     // The live request below still runs on every mount/date-range refresh.
     const cached = readCache(cacheKey, Number.POSITIVE_INFINITY);
@@ -306,7 +308,7 @@ export default function AnalyticsReportsScreen() {
   const requestAiPriceAnalysis = async (locations = pigPriceLocations, { bypassCache = false } = {}) => {
     if (!Array.isArray(locations) || locations.length < 3) return;
 
-    const cacheKey = `price-ai-analysis-v5:${getUserCacheKey()}:${locations.join('|')}`;
+    const cacheKey = `price-ai-analysis-v6:${getUserCacheKey()}:${locations.join('|')}`;
     const cachedAnalysis = readCache(cacheKey, Number.POSITIVE_INFINITY);
     const hasCachedPriceAnalysis = Boolean(cachedAnalysis && !bypassCache);
     if (cachedAnalysis && !bypassCache) {
@@ -403,7 +405,14 @@ export default function AnalyticsReportsScreen() {
       });
       const json = await response.json();
       if (!response.ok || !json.success) throw new Error(json.message || 'Market price refresh failed');
-      setPricePoints(json.pricePoints?.length ? json.pricePoints : DEFAULT_PRICE_POINTS);
+      const retainedReferencePoints = pricePoints.filter((point) => (
+        point.sourceType === 'official_statistic'
+        || point.verificationStatus === 'user-provided-screenshot'
+      ));
+      setPricePoints([
+        ...(json.pricePoints || []).filter((point) => !retainedReferencePoints.some((reference) => reference.location === point.location)),
+        ...retainedReferencePoints,
+      ]);
       await requestAiPriceAnalysis(pigPriceLocations, { bypassCache: true });
       await fetchMarketHistory(pigPriceLocations);
     } catch (err) {
@@ -737,23 +746,62 @@ export default function AnalyticsReportsScreen() {
     return () => controller.abort();
   }, [loading, error, batchWeightLoading, batches, selectedBatch, dateRange, selectedPrice, selectedPriceLocation, referencePrice]);
 
-  const pricingActionSuggestion = aiAnalysis?.suggestion
-    || (pricePoints.length > 0
-      ? 'Before selling, compare the buyer\'s liveweight offer with these local reference prices, confirm the price date and unit, and negotiate using the closest verified location rather than a retail price.'
-      : 'Wait for a current local price source before setting a selling price; confirm the buyer\'s unit, location, and price date.');
+  const pricingActionSuggestion = getAnalysisText(aiAnalysis?.suggestion)
+    || 'Before selling, compare a current local buyer offer with the dated official benchmarks and confirm the liveweight basis, location, and price date.';
   const livePricePoints = useMemo(
-    () => pricePoints.filter((point) => Number.isFinite(Number(point.pricePhpPerKg))),
+    () => pricePoints.filter((point) => point.pricePhpPerKg != null && Number.isFinite(Number(point.pricePhpPerKg)) && Number(point.pricePhpPerKg) > 0),
     [pricePoints]
   );
-  const highestLivePrice = useMemo(
-    () => livePricePoints.reduce((best, point) => (
-      !best || Number(point.pricePhpPerKg) > Number(best.pricePhpPerKg) ? point : best
-    ), null),
+  const officialPricePoints = useMemo(
+    () => livePricePoints.filter((point) => point.sourceType === 'official_statistic'),
     [livePricePoints]
   );
+  const batangasBenchmark = officialPricePoints.find((point) => point.province === 'Batangas');
+  const caviteBenchmark = officialPricePoints.find((point) => point.province === 'Cavite');
+  const provinceComparison = useMemo(() => {
+    if (!batangasBenchmark || !caviteBenchmark || batangasBenchmark.period !== caviteBenchmark.period) return null;
+    const difference = Number(caviteBenchmark.pricePhpPerKg) - Number(batangasBenchmark.pricePhpPerKg);
+    const percent = Math.abs(difference / Number(batangasBenchmark.pricePhpPerKg)) * 100;
+    const relationship = Math.abs(difference) < 0.005
+      ? 'matches'
+      : `${formatPricePerKg(Math.abs(difference))} (${percent.toFixed(1)}%) ${difference > 0 ? 'above' : 'below'}`;
+    return `For ${batangasBenchmark.period}, the PSA Cavite province average (${formatPricePerKg(caviteBenchmark.pricePhpPerKg)}/kg) ${relationship} the Batangas average (${formatPricePerKg(batangasBenchmark.pricePhpPerKg)}/kg). This compares province-level averages, not municipality buyer offers.`;
+  }, [batangasBenchmark, caviteBenchmark]);
+  const calacaPriceReference = livePricePoints.find((point) => point.location === 'Calaca');
+  const marketPriceObservations = useMemo(() => pricePoints.filter((point) => {
+    const hasPoint = point.pricePhpPerKg != null && Number.isFinite(Number(point.pricePhpPerKg)) && Number(point.pricePhpPerKg) > 0;
+    const hasRange = point.priceMinPhpPerKg != null && point.priceMaxPhpPerKg != null
+      && Number.isFinite(Number(point.priceMinPhpPerKg)) && Number.isFinite(Number(point.priceMaxPhpPerKg));
+    return hasPoint || hasRange;
+  }), [pricePoints]);
+  const otherLocalPricePoints = livePricePoints.filter((point) => point.sourceKind === 'web_search');
+  const priceAnalytics = useMemo(() => ({
+    descriptive: getAnalysisText(aiAnalysis?.analytics?.descriptive) || (marketPriceObservations.length
+      ? marketPriceObservations.map((point) => {
+        const hasRange = point.priceMinPhpPerKg != null && point.priceMaxPhpPerKg != null
+          && Number(point.priceMinPhpPerKg) !== Number(point.priceMaxPhpPerKg);
+        const value = hasRange
+          ? `${formatPricePerKg(point.priceMinPhpPerKg)}–${formatPricePerKg(point.priceMaxPhpPerKg)}`
+          : formatPricePerKg(point.pricePhpPerKg);
+        return `${point.location}: ${value} per kg (${point.period || 'date unavailable'}).`;
+      }).join(' ')
+      : 'No dated price observations are currently available.'),
+    diagnostic: getAnalysisText(aiAnalysis?.analytics?.diagnostic) || [
+      'The PSA figures are province-level monthly averages, not municipality-specific buyer offers.',
+      provinceComparison,
+      calacaPriceReference ? 'The Calaca value comes from a dated user-provided reference and is not independently verified.' : 'No independently verified Calaca buyer quote is available.',
+
+      otherLocalPricePoints.length
+        ? `${otherLocalPricePoints.length} additional local search result(s) include a price, but their dates and public evidence must be confirmed before comparing.`
+        : 'Public searches did not return another usable municipality-level price for this refresh.',
+    ].filter(Boolean).join(' '),
+    prescriptive: getAnalysisText(aiAnalysis?.analytics?.prescriptive) || getAnalysisText(aiAnalysis?.suggestion) || (calacaPriceReference
+      ? 'Treat the Calaca reference as a dated lead, not a guaranteed offer. Request current written quotes from local buyers, then confirm the date, liveweight basis, pig grade, weighing method, and any deductions before choosing a price.'
+      : pricingActionSuggestion),
+  }), [aiAnalysis, livePricePoints, marketPriceObservations, provinceComparison, calacaPriceReference, otherLocalPricePoints, pricingActionSuggestion]);
   const priceUpdatedLabel = aiAnalysis?.generatedAt
     ? `updated ${new Date(aiAnalysis.generatedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
-    : 'waiting for web search';
+    : 'using dated source references';
 
   const handleDownloadReport = (reportName) => {
     const content = [
@@ -1077,12 +1125,12 @@ export default function AnalyticsReportsScreen() {
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-gray-900">Live Hog Price Analysis</h3>
+                  <h3 className="font-semibold text-gray-900">Hog Price Benchmarks & Analysis</h3>
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
-                    <Radio size={10} /> {aiAnalysisLoading ? 'Updating' : livePricePoints.length > 0 ? 'Live' : 'Search'}
+                    <Radio size={10} /> {aiAnalysisLoading ? 'Updating' : officialPricePoints.length > 0 ? 'Official + local references' : 'Search'}
                   </span>
                 </div>
-                <p className="text-xs text-gray-600">Facebook public listings for farmgate prices per kg across nearby markets</p>
+                <p className="text-xs text-gray-600">Local public listings plus official PSA provincial farmgate benchmarks</p>
 
               </div>
               <button
@@ -1098,80 +1146,100 @@ export default function AnalyticsReportsScreen() {
             <div className="space-y-2">
               {pricePoints.map((point) => {
                 const isSelected = point.location === selectedPriceLocation;
-                const isHighest = highestLivePrice?.location === point.location;
+                const hasPrice = point.pricePhpPerKg != null && Number.isFinite(Number(point.pricePhpPerKg));
+                const hasRange = point.priceMinPhpPerKg != null && point.priceMaxPhpPerKg != null
+                  && Number.isFinite(Number(point.priceMinPhpPerKg)) && Number.isFinite(Number(point.priceMaxPhpPerKg))
+                  && Number(point.priceMinPhpPerKg) !== Number(point.priceMaxPhpPerKg);
+                const hasDisplayPrice = hasPrice || hasRange;
+                const displayedPrice = hasRange
+                  ? `${formatPricePerKg(point.priceMinPhpPerKg)}–${formatPricePerKg(point.priceMaxPhpPerKg)}`
+                  : hasPrice ? formatPricePerKg(point.pricePhpPerKg) : '—';
+                const pointSourceLabel = point.sourceKind === 'official_statistic'
+                  ? 'PSA provincial benchmark'
+                  : point.verificationStatus === 'user-provided-screenshot'
+                    ? 'Dated user-provided reference'
+                    : point.source || 'Public search result';
                 return (
-                  <button
-                    key={point.location}
-                    type="button"
-                    onClick={() => point.pricePhpPerKg != null && setSelectedPriceLocation(point.location)}
-                    className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-all ${
-                      isSelected
-                        ? 'border-pink-300 bg-pink-50/80 ring-2 ring-pink-200'
-                        : 'border-white/70 bg-white/65 hover:bg-white/85'
-                    }`}
-                  >
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-50 text-gray-500">
-                      <MapPin size={16} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-center gap-2 text-xs font-semibold text-gray-900">
-                        {point.location}
-                        {isHighest && <span className="rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold text-white">BEST FOUND</span>}
+                  <div key={point.location}>
+                    <button
+                      type="button"
+                      disabled={!hasPrice}
+                      onClick={() => hasPrice && setSelectedPriceLocation(point.location)}
+                      className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-all disabled:cursor-default ${
+                        isSelected
+                          ? 'border-pink-300 bg-pink-50/80 ring-2 ring-pink-200'
+                          : 'border-white/70 bg-white/65 hover:bg-white/85'
+                      }`}
+                    >
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-50 text-gray-500">
+                        <MapPin size={16} />
                       </span>
-                      <span className="mt-1 block truncate text-[10px] text-gray-500">
-                        {point.pricePhpPerKg == null ? point.source || 'No qualifying public Facebook result' : `${point.unit || 'PHP/kg liveweight'} · ${point.period || priceUpdatedLabel}`}
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-2 text-xs font-semibold text-gray-900">
+                          {point.location}
+                          {point.sourceKind === 'official_statistic' && <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] font-bold text-blue-700">PSA BENCHMARK</span>}
+                          {point.dataStatus === 'preliminary' && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800">PRELIMINARY</span>}
+                          {point.verificationStatus === 'user-provided-screenshot' && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800">NOT INDEPENDENTLY VERIFIED</span>}
+                        </span>
+                        <span className="mt-1 block truncate text-[10px] text-gray-500">
+                          {hasDisplayPrice ? `${point.unit || 'PHP/kg liveweight'} · ${point.period || priceUpdatedLabel}` : point.source || 'No qualifying public result'}
+                        </span>
                       </span>
-                    </span>
-                    <span className="shrink-0 text-right">
-                      <span className={`block text-lg font-bold ${point.pricePhpPerKg == null ? 'text-gray-400' : 'text-gray-900'}`}>
-                        {point.pricePhpPerKg == null ? '—' : formatPricePerKg(point.pricePhpPerKg)}
+                      <span className="shrink-0 text-right">
+                        <span className={`block text-lg font-bold ${hasDisplayPrice ? 'text-gray-900' : 'text-gray-400'}`}>{displayedPrice}</span>
+                        <span className="block text-[10px] text-emerald-600">{hasPrice ? 'per kg' : hasRange ? 'reported range per kg' : 'unavailable'}</span>
                       </span>
-                      <span className="block text-[10px] text-emerald-600">{point.pricePhpPerKg == null ? 'unavailable' : 'per kg'}</span>
-                    </span>
-                  </button>
+                    </button>
+                    {(point.source || point.sourceUrl) && (
+                      <div className="px-3 pt-1 text-[10px] text-gray-500">
+                        {pointSourceLabel}
+                        {point.sourceUrl && point.sourceUrl !== 'unavailable' && (
+                          <> · <a href={point.sourceUrl} target="_blank" rel="noreferrer" className="font-semibold text-blue-700 underline">Open source</a></>
+                        )}
+                        {point.note && <span> · {point.note}</span>}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
 
             {pigPriceReference && (
-              <div className="mt-3 text-[10px] text-gray-500">Provincial reference: {formatPricePerKg(pigPriceReference.pricePhpPerKg)} ({pigPriceReference.period}); not a municipality-specific quote.</div>
+              <div className="mt-3 text-[10px] text-gray-500">Batangas province PSA benchmark: {formatPricePerKg(pigPriceReference.pricePhpPerKg)} ({pigPriceReference.period}); a monthly provincial average, not a municipality-specific buyer quote.</div>
             )}
             {pigPriceError && <div className="mt-2 text-xs text-red-600">{pigPriceError}</div>}
             {marketRefreshError && <div className="mt-2 text-xs text-red-600">{marketRefreshError}</div>}
             {aiAnalysisError && <div className="mt-2 text-xs text-red-600">{aiAnalysisError}</div>}
             {aiAnalysis && (
               <div className="mt-4 rounded-[1.5rem] border border-[#ffd1df] bg-white/90 p-5 shadow-[0_12px_28px_rgba(255, 47, 114, 0.12)]">
-                <div className="mb-3 flex items-center gap-2 text-sm font-bold leading-tight text-[#ad1457]">
-                  <Sparkles size={16} />
-                  <span>PrepAPig AI<br />recommendation</span>
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-sm font-bold leading-tight text-[#ad1457]">
+                    <Sparkles size={16} />
+                    <span>Hog Price Analytics</span>
+                  </div>
+                  <span className="rounded-full bg-pink-50 px-2 py-1 text-[10px] font-semibold text-pink-700">
+                    {aiAnalysis.provider === 'local-reference-fallback' || !aiAnalysis.analytics ? 'Source-based review' : 'AI-assisted review'}
+                  </span>
                 </div>
-                <h4 className="max-w-sm text-lg font-extrabold leading-snug text-gray-900">
-                  {highestLivePrice
-                    ? `${highestLivePrice.location} has the strongest verified price point at ${formatPricePerKg(highestLivePrice.pricePhpPerKg)}.`
-                    : 'A verified live market recommendation is not available yet.'}
-                </h4>
-                <p className="mt-3 max-w-2xl text-left text-sm leading-7 text-gray-700">
-                  {aiAnalysis.suggestion || aiAnalysis.analysis || pricingActionSuggestion}
-                </p>
-                {aiAnalysis.analysis && aiAnalysis.suggestion && (
-                  <p className="mt-3 max-w-2xl text-left text-sm leading-7 text-gray-600">{aiAnalysis.analysis}</p>
-                )}
-                {highestLivePrice && selectedPriceLocation && selectedPriceLocation !== highestLivePrice.location && (
-                  <p className="mt-3 text-sm font-semibold leading-relaxed text-[#ad1457]">
-                    {selectedPriceLocation} is currently selected. Compare it with the recommended market before selling.
-                  </p>
+                <div className="space-y-4">
+                  <section>
+                    <h4 className="text-sm font-bold text-gray-900">Descriptive — What the prices show</h4>
+                    <p className="mt-1 max-w-3xl text-left text-sm leading-6 text-gray-700">{priceAnalytics.descriptive}</p>
+                  </section>
+                  <section>
+                    <h4 className="text-sm font-bold text-gray-900">Diagnostic — What may affect the comparison</h4>
+                    <p className="mt-1 max-w-3xl text-left text-sm leading-6 text-gray-700">{priceAnalytics.diagnostic}</p>
+                  </section>
+                  <section>
+                    <h4 className="text-sm font-bold text-gray-900">Prescriptive — What to do next</h4>
+                    <p className="mt-1 max-w-3xl text-left text-sm leading-6 text-gray-700">{priceAnalytics.prescriptive}</p>
+                  </section>
+                </div>
+                {selectedPriceLocation && (
+                  <p className="mt-3 text-xs text-gray-500">Selected for the standing-value estimate: {selectedPriceLocation}. Choose a source above to change it.</p>
                 )}
                 {aiAnalysis.sources?.length > 0 && (
-                  <p className="mt-3 text-[10px] text-gray-500">Web sources checked: {aiAnalysis.sources.length}</p>
-                )}
-                {highestLivePrice && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPriceLocation(highestLivePrice.location)}
-                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-transparent py-2 text-sm font-bold text-pink-600 transition hover:bg-pink-100/70"
-                  >
-                    Use recommended market <span aria-hidden="true">↗</span>
-                  </button>
+                  <p className="mt-3 text-[10px] text-gray-500">Additional web sources checked: {aiAnalysis.sources.length}</p>
                 )}
               </div>
             )}

@@ -91,6 +91,7 @@ const normalizeResult = (location, query, item) => {
     verificationStatus: observedDate ? 'partially_verified' : 'unverified',
     evidence: snippet,
     sourceType: 'web search result; verify with buyer before selling',
+    sourceKind: 'web_search',
   };
 };
 

@@ -33,11 +33,14 @@ marketPriceRouter.get('/pigs', rateLimit({ limit: 60, windowMs: 60000 }), async 
   try {
     if (process.env.SERPER_API_KEY || (process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_ENGINE_ID)) {
       const facebookResult = await searchPigPricesWeb({ locations: result.priceSourceLocations });
-      result.pricePoints = facebookResult.pricePoints.map((point) => (
-        point.location === CALACA_FACEBOOK_PRICE_POINT.location
-          ? CALACA_FACEBOOK_PRICE_POINT
-          : point
-      ));
+      result.pricePoints = [
+        ...facebookResult.pricePoints.map((point) => (
+          point.location === CALACA_FACEBOOK_PRICE_POINT.location
+            ? CALACA_FACEBOOK_PRICE_POINT
+            : point
+        )),
+        ...(result.provinceBenchmarks || []),
+      ];
       result.priceSources = facebookResult.sources;
       result.facebookSearchGeneratedAt = facebookResult.generatedAt;
     } else {
@@ -127,6 +130,7 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
         },
         localPricePoints: [
           CALACA_FACEBOOK_PRICE_POINT,
+          ...(priceData.provinceBenchmarks || []),
           ...(webSearchResult?.pricePoints || []).filter((point) => point.location !== CALACA_FACEBOOK_PRICE_POINT.location),
         ],
       });
@@ -140,19 +144,21 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
         limitations: webSearchResult.limitations,
       };
     }
-    if (webSearchResult) {
-      const aiPoints = Array.isArray(result.pricePoints) ? result.pricePoints : [];
-      const aiByLocation = new Map(aiPoints.map((point) => [String(point.location).toLowerCase(), point]));
-      result.pricePoints = webSearchResult.pricePoints.map((webPoint) => {
-        const aiPoint = aiByLocation.get(String(webPoint.location).toLowerCase());
-        return aiPoint?.pricePhpPerKg != null ? { ...webPoint, ...aiPoint } : webPoint;
-      });
-      result.sources = [...new Map([
-        ...(result.sources || []),
-        ...(webSearchResult.sources || []),
-      ].filter((source) => source?.url).map((source) => [source.url, source])).values()];
-      result.searchProvider = webSearchResult.provider;
-    }
+    const sourcePoints = webSearchResult?.pricePoints || [CALACA_FACEBOOK_PRICE_POINT];
+    result.pricePoints = [
+      ...sourcePoints.map((point) => (
+        point.location === CALACA_FACEBOOK_PRICE_POINT.location
+          ? CALACA_FACEBOOK_PRICE_POINT
+          : point
+      )),
+      ...(priceData.provinceBenchmarks || []),
+    ];
+    result.sources = [...new Map([
+      ...(result.sources || []),
+      ...(webSearchResult?.sources || []),
+      ...(priceData.provinceBenchmarks || []).map((point) => ({ title: point.source, url: point.sourceUrl })),
+    ].filter((source) => source?.url).map((source) => [source.url, source])).values()];
+    if (webSearchResult) result.searchProvider = webSearchResult.provider;
 
     console.log(JSON.stringify({
       event: 'pig_price_ai_succeeded',
