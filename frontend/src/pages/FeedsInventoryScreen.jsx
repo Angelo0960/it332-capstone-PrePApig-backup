@@ -66,6 +66,9 @@ const getDailyFeedForBatch = (day) => {
   return 2.8;
 };
 
+const DAILY_FEEDING_RECORDS_REQUIRED = 2;
+const FEED_REMINDER_TIMES = ['8:00 AM', '5:00 PM'];
+
 const FEED_TYPE_MAP = {
   starter: 'Starter Mash',
   grower: 'Grower Pellet',
@@ -796,18 +799,18 @@ export default function FeedsInventoryScreen() {
                     </div>
                   </div>
 
-                  {/* Automated Feeding Schedule */}
+                  {/* Feed Schedule & Reminders */}
                   <div className="feeds-schedule-card bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg">
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between gap-3 mb-3">
                       <h3 className="font-semibold text-gray-900">
-                        Automated Feeding Schedule
+                        Feed Schedule & Reminders
                         {selectedBatch !== 'all' && ` - ${selectedBatchData?.name}`}
                       </h3>
-                      <div className="px-2 py-1 bg-green-100/80 border border-green-300/50 rounded-full text-xs text-green-700 font-semibold flex items-center gap-1">
-                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                        Auto
+                      <div className="shrink-0 rounded-full border border-green-300/50 bg-green-100/80 px-2 py-1 text-xs font-semibold text-green-700">
+                        {FEED_REMINDER_TIMES.join(' · ')}
                       </div>
                     </div>
+                    <p className="mb-3 text-xs text-gray-600">Reminders are sent at these times whether or not a feeding has been recorded.</p>
                     <div className="space-y-3">
                       {batches
                         .filter((batch) => (selectedBatch === 'all' ? true : String(batch.id) === String(selectedBatch)))
@@ -815,13 +818,13 @@ export default function FeedsInventoryScreen() {
                           const feedType = getFeedTypeForAge(batch.day);
                           const feedName = getFeedTypeName(feedType);
                           const dailyAmount = getDailyFeedForBatch(batch.day);
-                          const daysUntilChange = getDaysUntilFeedChange(batch.day);
-                          const existingToday = feedRecords.some(
-                            (record) => record.batch_id === batch.id && record.feeding_date === todayStr
-                          );
+                          const recordedFeedingsToday = feedRecords.filter((record) =>
+                            String(record.batch_id) === String(batch.id)
+                            && String(record.feeding_date || '').slice(0, 10) === todayStr
+                          ).length;
+                          const completedFeedingsToday = Math.min(recordedFeedingsToday, DAILY_FEEDING_RECORDS_REQUIRED);
                           const isPending = Boolean(pendingDone[batch.id]);
-                          const isDone = existingToday || isPending;
-                          const scheduleTime = '5:00 PM';
+                          const isDone = recordedFeedingsToday >= DAILY_FEEDING_RECORDS_REQUIRED;
 
                           return (
                             <div key={batch.id} className="bg-white/30 backdrop-blur-sm rounded-xl p-3 border border-white/30">
@@ -831,9 +834,12 @@ export default function FeedsInventoryScreen() {
                                     {batch.name} – {batch.pigCount ?? 0} pigs · Day {batch.day}
                                   </div>
                                   <div className="text-xs text-gray-600 mt-1">
-                                    {isPending ? 'Saving...' : isDone ? 'Completed today' : `Scheduled daily at ${scheduleTime}`}
+                                    {isPending ? 'Saving...' : `${completedFeedingsToday} of ${DAILY_FEEDING_RECORDS_REQUIRED} feedings recorded today`}
                                   </div>
                                   <div className="text-xs text-gray-600">{feedName}, {dailyAmount} kg</div>
+                                  {recordedFeedingsToday === 1 && !isPending && (
+                                    <div className="mt-1 text-xs text-gray-600">Record the other feeding using Record Feed Usage.</div>
+                                  )}
                                   {daysUntilChange !== null && daysUntilChange <= 5 && (
                                     <div className="text-xs text-blue-600 font-medium mt-1 flex items-center gap-1">
                                       <span>🔄</span>
@@ -842,10 +848,10 @@ export default function FeedsInventoryScreen() {
                                   )}
                                 </div>
                                 <span className={`px-3 py-1 rounded-full text-xs font-semibold ${isDone ? 'bg-green-100/80 border border-green-300/50 text-green-700' : 'bg-yellow-100/80 border border-yellow-300/50 text-yellow-700'}`}>
-                                  {isPending ? 'Saving...' : isDone ? 'Completed' : 'Pending'}
+                                  {isPending ? 'Saving...' : isDone ? 'Completed' : `${completedFeedingsToday}/${DAILY_FEEDING_RECORDS_REQUIRED}`}
                                 </span>
                               </div>
-                              {!isDone && (
+                              {!isDone && recordedFeedingsToday === 0 && (
                                 <button
                                   disabled={isPending}
                                   onClick={() => handleDirectMarkAsDone(batch.id, feedName, dailyAmount)}
