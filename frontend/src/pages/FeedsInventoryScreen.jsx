@@ -1021,10 +1021,13 @@ export default function FeedsInventoryScreen() {
         {/* Modals */}
         {/* Record Feed Usage Modal */}
         {showRecordUsage && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center responsive-modal-overlay bg-black/50 backdrop-blur-sm p-4">
-            <div className="responsive-modal bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-sm md:max-w-md lg:max-w-lg max-h-[80%] overflow-y-auto">
-              <div className="flex items-center justify-between p-5 border-b border-white/30">
-                <h2 className="text-lg font-bold text-gray-900">Record Feed Consumption</h2>
+          <div className="feed-usage-modal-overlay fixed inset-0 z-[60] flex items-center justify-center responsive-modal-overlay bg-black/50 backdrop-blur-sm p-4">
+            <div className="feed-usage-modal responsive-modal bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-sm md:max-w-md lg:max-w-lg max-h-[80vh] overflow-y-auto">
+              <div className="feed-usage-modal-header flex items-center justify-between p-5 border-b border-white/30">
+                <div>
+                  <h2 className="feed-usage-modal-title text-xl font-bold text-gray-950">Record Feed Consumption</h2>
+                  <p className="text-sm text-gray-700 mt-1">Log the feed given to a batch.</p>
+                </div>
                 <button
                   onClick={() => {
                     setShowRecordUsage(false);
@@ -1186,10 +1189,13 @@ export default function FeedsInventoryScreen() {
 
         {/* Add Purchase Modal */}
         {showAddPurchase && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center responsive-modal-overlay bg-black/50 backdrop-blur-sm p-4">
-            <div className="responsive-modal bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-sm md:max-w-md lg:max-w-lg">
-              <div className="flex items-center justify-between p-5 border-b border-white/30">
-                <h2 className="text-lg font-bold text-gray-900">Record Feed Purchase</h2>
+          <div className="feed-purchase-modal-overlay fixed inset-0 z-[60] flex items-center justify-center responsive-modal-overlay bg-black/50 backdrop-blur-sm p-4">
+            <div className="feed-purchase-modal responsive-modal bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-sm md:max-w-md lg:max-w-lg max-h-[80vh] overflow-y-auto">
+              <div className="feed-purchase-modal-header flex items-center justify-between p-5 border-b border-white/30">
+                <div>
+                  <h2 className="feed-purchase-modal-title text-xl font-bold text-gray-950">Record Feed Purchase</h2>
+                  <p className="text-sm text-gray-700 mt-1">Add purchased feed to your inventory.</p>
+                </div>
                 <button
                   onClick={() => {
                     setShowAddPurchase(false);
