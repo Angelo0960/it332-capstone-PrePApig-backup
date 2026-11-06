@@ -170,10 +170,8 @@ export const searchPigPricesWeb = async ({
         .find(Boolean);
       const point = facebookPoint || generalPoint;
       if (point) pricePoints.push(point);
-      else pricePoints.push({ location, query: facebookQuery, pricePhpPerKg: null, unit: 'PHP/kg liveweight', period: 'unavailable', source: 'No qualifying price result', sourceUrl: 'unavailable', status: 'unavailable', verificationStatus: 'unavailable' });
     } catch (error) {
       errors.push(`${location}: ${String(error.message || error)}`.slice(0, 240));
-      pricePoints.push({ location, query: facebookQuery, pricePhpPerKg: null, unit: 'PHP/kg liveweight', period: 'unavailable', source: 'Price search failed', sourceUrl: 'unavailable', status: 'unavailable', verificationStatus: 'unavailable' });
     }
   }
 

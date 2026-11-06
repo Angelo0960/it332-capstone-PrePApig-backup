@@ -43,15 +43,18 @@ import { buildBatchDisplayNames } from '../utils/batchNames.js';
 import useOfflineStatus from '../hooks/useOfflineStatus.js';
 // ────────────────────────────────────────────────────────────────
 
-const DEFAULT_PRICE_POINTS = [
-  { location: 'Lemery', pricePhpPerKg: null, unit: 'PHP/kg liveweight', source: 'Search unavailable', status: 'unavailable' },
-  { location: 'Calaca', pricePhpPerKg: null, unit: 'PHP/kg liveweight', source: 'Search unavailable', status: 'unavailable' },
-  { location: 'Tuy', pricePhpPerKg: null, unit: 'PHP/kg liveweight', source: 'Search unavailable', status: 'unavailable' },
-  { location: 'Balayan', pricePhpPerKg: null, unit: 'PHP/kg liveweight', source: 'Search unavailable', status: 'unavailable' },
-  { location: 'Lian', pricePhpPerKg: null, unit: 'PHP/kg liveweight', source: 'Search unavailable', status: 'unavailable' },
-  { location: 'Nasugbu', pricePhpPerKg: null, unit: 'PHP/kg liveweight', source: 'Search unavailable', status: 'unavailable' },
-  { location: 'Taal', pricePhpPerKg: null, unit: 'PHP/kg liveweight', source: 'Search unavailable', status: 'unavailable' },
-];
+const DEFAULT_PRICE_LOCATIONS = ['Lemery', 'Calaca', 'Tuy', 'Balayan', 'Lian', 'Nasugbu', 'Taal'];
+const DEFAULT_PRICE_POINTS = [];
+const hasDisplayablePrice = (point) => {
+  const price = Number(point?.pricePhpPerKg);
+  const hasPrice = point?.pricePhpPerKg != null && Number.isFinite(price) && price > 0;
+  const min = Number(point?.priceMinPhpPerKg);
+  const max = Number(point?.priceMaxPhpPerKg);
+  const hasRange = point?.priceMinPhpPerKg != null && point?.priceMaxPhpPerKg != null
+    && Number.isFinite(min) && Number.isFinite(max) && min > 0 && max >= min;
+  return hasPrice || hasRange;
+};
+const availablePricePoints = (points) => (Array.isArray(points) ? points.filter(hasDisplayablePrice) : []);
 
 const getEstimatedBatchTotalWeightKg = (batch, weightTotals) => {
   const totalWeight = Number(weightTotals[String(batch?.id)]);
@@ -89,7 +92,7 @@ export default function AnalyticsReportsScreen() {
   const [profitAiResult, setProfitAiResult] = useState(null);
   const [profitAiLoading, setProfitAiLoading] = useState(false);
   const [profitAiError, setProfitAiError] = useState(null);
-  const [pigPriceLocations, setPigPriceLocations] = useState(DEFAULT_PRICE_POINTS.map((point) => point.location));
+  const [pigPriceLocations, setPigPriceLocations] = useState(DEFAULT_PRICE_LOCATIONS);
   const [pigPriceReference, setPigPriceReference] = useState(null);
 
   const [pricePoints, setPricePoints] = useState(DEFAULT_PRICE_POINTS);
@@ -98,6 +101,7 @@ export default function AnalyticsReportsScreen() {
   ));
 
   const [pigPriceError, setPigPriceError] = useState(null);
+  const [pigPriceBasisLoaded, setPigPriceBasisLoaded] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState(null);
   const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
   const [aiAnalysisError, setAiAnalysisError] = useState(null);
@@ -268,9 +272,10 @@ export default function AnalyticsReportsScreen() {
     const hasCachedBasis = Boolean(cached && typeof cached === 'object');
 
     if (hasCachedBasis) {
-      setPigPriceLocations(cached.priceSourceLocations || DEFAULT_PRICE_POINTS.map((point) => point.location));
+      setPigPriceBasisLoaded(true);
+      setPigPriceLocations(cached.priceSourceLocations || DEFAULT_PRICE_LOCATIONS);
       setPigPriceReference(cached.data || null);
-      setPricePoints(cached.pricePoints?.length ? cached.pricePoints : DEFAULT_PRICE_POINTS);
+      setPricePoints(availablePricePoints(cached.pricePoints));
 
       setPigPriceError(null);
     }
@@ -283,12 +288,13 @@ export default function AnalyticsReportsScreen() {
       const nextBasis = {
         priceSourceLocations: json.priceSourceLocations || [],
         data: json.data || null,
-        pricePoints: json.pricePoints?.length ? json.pricePoints : DEFAULT_PRICE_POINTS,
+        pricePoints: availablePricePoints(json.pricePoints),
 
       };
       setPigPriceLocations(nextBasis.priceSourceLocations);
       setPigPriceReference(nextBasis.data);
       setPricePoints(nextBasis.pricePoints);
+      setPigPriceBasisLoaded(true);
 
       setPigPriceError(null);
       writeCache(cacheKey, nextBasis);
@@ -296,11 +302,12 @@ export default function AnalyticsReportsScreen() {
       if (err.name === 'AbortError') return;
       console.error('Error loading pig price basis:', err);
       if (!hasCachedBasis) {
-        setPigPriceLocations(DEFAULT_PRICE_POINTS.map((point) => point.location));
+        setPigPriceLocations(DEFAULT_PRICE_LOCATIONS);
         setPigPriceReference(null);
         setPricePoints(DEFAULT_PRICE_POINTS);
 
       }
+      setPigPriceBasisLoaded(true);
       setPigPriceError(hasCachedBasis ? 'Using cached prices; live refresh unavailable' : 'Price sources unavailable');
     }
   };
@@ -308,14 +315,12 @@ export default function AnalyticsReportsScreen() {
   const requestAiPriceAnalysis = async (locations = pigPriceLocations, { bypassCache = false } = {}) => {
     if (!Array.isArray(locations) || locations.length < 3) return;
 
-    const cacheKey = `price-ai-analysis-v6:${getUserCacheKey()}:${locations.join('|')}`;
+    const cacheKey = `price-ai-analysis-v7:${getUserCacheKey()}:${locations.join('|')}`;
     const cachedAnalysis = readCache(cacheKey, Number.POSITIVE_INFINITY);
     const hasCachedPriceAnalysis = Boolean(cachedAnalysis && !bypassCache);
     if (cachedAnalysis && !bypassCache) {
       setAiAnalysis(cachedAnalysis);
-      if (Array.isArray(cachedAnalysis.pricePoints) && cachedAnalysis.pricePoints.length > 0) {
-        setPricePoints(cachedAnalysis.pricePoints);
-      }
+      setPricePoints(availablePricePoints(cachedAnalysis.pricePoints));
       setAiAnalysisError(null);
     }
 
@@ -345,9 +350,7 @@ export default function AnalyticsReportsScreen() {
         throw new Error(json.message || 'AI price analysis unavailable');
       }
       setAiAnalysis(json);
-      if (Array.isArray(json.pricePoints) && json.pricePoints.length > 0) {
-        setPricePoints(json.pricePoints);
-      }
+      setPricePoints(availablePricePoints(json.pricePoints));
       writeCache(cacheKey, json);
     } catch (err) {
       if (err.name === 'AbortError') return;
@@ -355,7 +358,7 @@ export default function AnalyticsReportsScreen() {
         setAiAnalysisError('Using the previous live hog price analysis; a fresh update was unavailable.');
         return;
       }
-      const fallbackPoints = (pricePoints.length > 0 ? pricePoints : DEFAULT_PRICE_POINTS)
+      const fallbackPoints = availablePricePoints(pricePoints)
         .filter((point) => locations.includes(point.location) || !locations.length);
       setAiAnalysis({
         success: true,
@@ -409,10 +412,10 @@ export default function AnalyticsReportsScreen() {
         point.sourceType === 'official_statistic'
         || point.verificationStatus === 'user-provided-screenshot'
       ));
-      setPricePoints([
+      setPricePoints(availablePricePoints([
         ...(json.pricePoints || []).filter((point) => !retainedReferencePoints.some((reference) => reference.location === point.location)),
         ...retainedReferencePoints,
-      ]);
+      ]));
       await requestAiPriceAnalysis(pigPriceLocations, { bypassCache: true });
       await fetchMarketHistory(pigPriceLocations);
     } catch (err) {
@@ -484,10 +487,17 @@ export default function AnalyticsReportsScreen() {
   }, [dateRange, selectedBatch, batches]);
 
   useEffect(() => {
+    if (!pigPriceBasisLoaded) return;
+    if (pricePoints.length === 0) {
+      setSelectedPriceLocation(null);
+      localStorage.removeItem(`prepapig:${getUserCacheKey()}:selected-price-location`);
+      localStorage.removeItem(`prepapig:${getUserCacheKey()}:selected-price-per-kg`);
+      return;
+    }
     if (pricePoints.length > 0 && !pricePoints.some((point) => point.location === selectedPriceLocation)) {
       setSelectedPriceLocation(pricePoints[0].location);
     }
-  }, [pricePoints, selectedPriceLocation]);
+  }, [pigPriceBasisLoaded, pricePoints, selectedPriceLocation]);
 
   useEffect(() => {
     const selectedPoint = pricePoints.find((point) => point.location === selectedPriceLocation);
@@ -768,12 +778,7 @@ export default function AnalyticsReportsScreen() {
     return `For ${batangasBenchmark.period}, the PSA Cavite province average (${formatPricePerKg(caviteBenchmark.pricePhpPerKg)}/kg) ${relationship} the Batangas average (${formatPricePerKg(batangasBenchmark.pricePhpPerKg)}/kg). This compares province-level averages, not municipality buyer offers.`;
   }, [batangasBenchmark, caviteBenchmark]);
   const calacaPriceReference = livePricePoints.find((point) => point.location === 'Calaca');
-  const marketPriceObservations = useMemo(() => pricePoints.filter((point) => {
-    const hasPoint = point.pricePhpPerKg != null && Number.isFinite(Number(point.pricePhpPerKg)) && Number(point.pricePhpPerKg) > 0;
-    const hasRange = point.priceMinPhpPerKg != null && point.priceMaxPhpPerKg != null
-      && Number.isFinite(Number(point.priceMinPhpPerKg)) && Number.isFinite(Number(point.priceMaxPhpPerKg));
-    return hasPoint || hasRange;
-  }), [pricePoints]);
+  const marketPriceObservations = useMemo(() => availablePricePoints(pricePoints), [pricePoints]);
   const otherLocalPricePoints = livePricePoints.filter((point) => point.sourceKind === 'web_search');
   const priceAnalytics = useMemo(() => ({
     descriptive: getAnalysisText(aiAnalysis?.analytics?.descriptive) || (marketPriceObservations.length
@@ -786,15 +791,14 @@ export default function AnalyticsReportsScreen() {
         return `${point.location}: ${value} per kg (${point.period || 'date unavailable'}).`;
       }).join(' ')
       : 'No dated price observations are currently available.'),
-    diagnostic: getAnalysisText(aiAnalysis?.analytics?.diagnostic) || [
-      'The PSA figures are province-level monthly averages, not municipality-specific buyer offers.',
+    diagnostic: getAnalysisText(aiAnalysis?.analytics?.diagnostic) || (marketPriceObservations.length ? [
+      officialPricePoints.length ? 'PSA figures are province-level monthly averages, not municipality-specific buyer offers.' : null,
       provinceComparison,
-      calacaPriceReference ? 'The Calaca value comes from a dated user-provided reference and is not independently verified.' : 'No independently verified Calaca buyer quote is available.',
-
+      calacaPriceReference ? 'The Calaca value comes from a dated user-provided reference and is not independently verified.' : null,
       otherLocalPricePoints.length
-        ? `${otherLocalPricePoints.length} additional local search result(s) include a price, but their dates and public evidence must be confirmed before comparing.`
-        : 'Public searches did not return another usable municipality-level price for this refresh.',
-    ].filter(Boolean).join(' '),
+        ? `${otherLocalPricePoints.length} local search result(s) include a price; confirm their dates and public evidence before comparing.`
+        : null,
+    ].filter(Boolean).join(' ') : 'No sourced price observations are available to compare; confirm a current offer directly with a local buyer.'),
     prescriptive: getAnalysisText(aiAnalysis?.analytics?.prescriptive) || getAnalysisText(aiAnalysis?.suggestion) || (calacaPriceReference
       ? 'Treat the Calaca reference as a dated lead, not a guaranteed offer. Request current written quotes from local buyers, then confirm the date, liveweight basis, pig grade, weighing method, and any deductions before choosing a price.'
       : pricingActionSuggestion),
@@ -1144,9 +1148,14 @@ export default function AnalyticsReportsScreen() {
               </button>
             </div>
             <div className="space-y-2">
-              {pricePoints.map((point) => {
+              {marketPriceObservations.length === 0 && !loading && (
+                <p className="rounded-2xl border border-white/70 bg-white/65 px-3 py-4 text-sm text-gray-600">
+                  No sourced price benchmarks are available to display right now.
+                </p>
+              )}
+              {marketPriceObservations.map((point) => {
                 const isSelected = point.location === selectedPriceLocation;
-                const hasPrice = point.pricePhpPerKg != null && Number.isFinite(Number(point.pricePhpPerKg));
+                const hasPrice = point.pricePhpPerKg != null && Number.isFinite(Number(point.pricePhpPerKg)) && Number(point.pricePhpPerKg) > 0;
                 const hasRange = point.priceMinPhpPerKg != null && point.priceMaxPhpPerKg != null
                   && Number.isFinite(Number(point.priceMinPhpPerKg)) && Number.isFinite(Number(point.priceMaxPhpPerKg))
                   && Number(point.priceMinPhpPerKg) !== Number(point.priceMaxPhpPerKg);
@@ -1182,12 +1191,12 @@ export default function AnalyticsReportsScreen() {
                           {point.verificationStatus === 'user-provided-screenshot' && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800">NOT INDEPENDENTLY VERIFIED</span>}
                         </span>
                         <span className="mt-1 block truncate text-[10px] text-gray-500">
-                          {hasDisplayPrice ? `${point.unit || 'PHP/kg liveweight'} · ${point.period || priceUpdatedLabel}` : point.source || 'No qualifying public result'}
+                          {`${point.unit || 'PHP/kg liveweight'} · ${point.period || priceUpdatedLabel}`}
                         </span>
                       </span>
                       <span className="shrink-0 text-right">
                         <span className={`block text-lg font-bold ${hasDisplayPrice ? 'text-gray-900' : 'text-gray-400'}`}>{displayedPrice}</span>
-                        <span className="block text-[10px] text-emerald-600">{hasPrice ? 'per kg' : hasRange ? 'reported range per kg' : 'unavailable'}</span>
+                        <span className="block text-[10px] text-emerald-600">{hasPrice ? 'per kg' : 'reported range per kg'}</span>
                       </span>
                     </button>
                     {(point.source || point.sourceUrl) && (
