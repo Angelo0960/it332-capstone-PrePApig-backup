@@ -41,8 +41,8 @@ const getDateTimeInTimezone = (date = new Date()) => {
 };
 
 const FEED_REMINDER_SLOTS = [
-    { key: 'morning', minutes: 8 * 60, label: 'morning', expectedFeedings: 1 },
-    { key: 'afternoon', minutes: 17 * 60, label: 'afternoon', expectedFeedings: 2 },
+    { key: 'morning', minutes: 8 * 60, label: 'morning' },
+    { key: 'afternoon', minutes: 17 * 60, label: 'afternoon' },
 ];
 const buildBatchDisplayNames = (batches) => {
     const owners = new Map();
@@ -121,10 +121,10 @@ const sendPushNotification = async (ownerId, preferences, { type, title, body, .
  * Runs via cron job.
  */
 
-// ----- Twice-daily feed reminders -----
+// ----- Twice-daily scheduled feed reminders -----
 export const sendDailyFeedReminders = async () => {
     const { date: today, minutes: currentMinutes } = getDateTimeInTimezone();
-    const slot = [...FEED_REMINDER_SLOTS].reverse().find((candidate) => currentMinutes >= candidate.minutes);
+    const slot = FEED_REMINDER_SLOTS.find((candidate) => currentMinutes === candidate.minutes);
     if (!slot) return;
 
     const { data: batches, error: batchError } = await supabase
@@ -136,24 +136,9 @@ export const sendDailyFeedReminders = async () => {
     const activeBatches = allBatches.filter((batch) => batch.owner_id && (!batch.status || String(batch.status).toLowerCase() === 'active'));
     if (activeBatches.length === 0) return;
 
-    const { data: todaysRecords, error: feedError } = await supabase
-        .from('feed_records')
-        .select('batch_id')
-        .eq('feeding_date', today);
-    if (feedError) throw feedError;
-    const feedingCountByBatch = new Map();
-    for (const record of todaysRecords || []) {
-        const batchId = String(record.batch_id);
-        feedingCountByBatch.set(batchId, (feedingCountByBatch.get(batchId) || 0) + 1);
-    }
-    const missingBatches = activeBatches.filter((batch) =>
-        (feedingCountByBatch.get(String(batch.id)) || 0) < slot.expectedFeedings
-    );
-    if (missingBatches.length === 0) return;
-
     const displayNames = buildBatchDisplayNames(allBatches);
     const byOwner = new Map();
-    for (const batch of missingBatches) {
+    for (const batch of activeBatches) {
         if (!byOwner.has(batch.owner_id)) byOwner.set(batch.owner_id, []);
         byOwner.get(batch.owner_id).push(batch);
     }
@@ -162,18 +147,18 @@ export const sendDailyFeedReminders = async () => {
         const preferences = await preferencesFor(ownerId);
         if (!preferences.feed_reminders) continue;
         const batchNames = ownerBatches.map((batch) => displayNames.get(String(batch.id)) || 'Your batch');
-        const title = '⚠️ Feed Not Recorded';
-        const body = `The ${slot.label} feeding has not been recorded for ${batchNames.join(', ')}. Please record it after feeding.`;
+        const title = '🐖 Time to Feed Your Pigs';
+        const body = `It’s time for the ${slot.label} feeding for ${batchNames.join(', ')}. Please record the feeding after it is done.`;
         const inserted = await createNotificationOnce({
             ownerId,
             title,
             message: body,
-            type: 'feed_delayed',
-            dedupeKey: `feed_delayed:${today}:${slot.key}`,
+            type: 'feed_reminder',
+            dedupeKey: `feed_reminder:${today}:${slot.key}`,
         });
         if (!inserted) continue;
-        await sendPushNotification(ownerId, preferences, { type: 'feed_delayed', title, body });
-        console.log(JSON.stringify({ event: 'delayed_feed_notification_created', ownerId, batchCount: ownerBatches.length, date: today, slot: slot.key }));
+        await sendPushNotification(ownerId, preferences, { type: 'feed_reminder', title, body });
+        console.log(JSON.stringify({ event: 'scheduled_feed_notification_created', ownerId, batchCount: ownerBatches.length, date: today, slot: slot.key }));
     }
 };
 
