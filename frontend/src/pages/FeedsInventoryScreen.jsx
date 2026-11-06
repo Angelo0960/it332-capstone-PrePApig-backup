@@ -818,6 +818,7 @@ export default function FeedsInventoryScreen() {
                           const feedType = getFeedTypeForAge(batch.day);
                           const feedName = getFeedTypeName(feedType);
                           const dailyAmount = getDailyFeedForBatch(batch.day);
+                          const daysUntilChange = getDaysUntilFeedChange(batch.day);
                           const recordedFeedingsToday = feedRecords.filter((record) =>
                             String(record.batch_id) === String(batch.id)
                             && String(record.feeding_date || '').slice(0, 10) === todayStr
