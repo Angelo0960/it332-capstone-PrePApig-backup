@@ -12,6 +12,8 @@ import {
   X,
   AlertTriangle,
   Edit,
+  Search,
+  ChevronDown,
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
 import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.webp';
@@ -88,6 +90,8 @@ export default function FeedsInventoryScreen() {
   const [newPrice, setNewPrice] = useState('');
   const [selectedBatch, setSelectedBatch] = useState('all');
   const [showBatchMenu, setShowBatchMenu] = useState(false);
+  const [batchSearchTerm, setBatchSearchTerm] = useState('');
+  const [debouncedBatchSearchTerm, setDebouncedBatchSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -116,6 +120,13 @@ export default function FeedsInventoryScreen() {
     unitCost: '',
     date: formatLocalDate(),
   });
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedBatchSearchTerm(batchSearchTerm.trim().toLocaleLowerCase());
+    }, 300);
+    return () => window.clearTimeout(timeoutId);
+  }, [batchSearchTerm]);
 
   // Fetch functions
   const fetchBatches = async () => {
@@ -147,6 +158,7 @@ export default function FeedsInventoryScreen() {
             name: displayNames.get(String(batch.id)) || 'Batch',
             day: day,
             pigCount: batch.pig_count || 0,
+            dateAcquired: batch.date_acquired || '',
           };
         });
         setBatches(mapped);
@@ -493,6 +505,16 @@ export default function FeedsInventoryScreen() {
   };
 
   const selectedBatchData = batches.find((b) => String(b.id) === String(selectedBatch));
+  const filteredBatchOptions = useMemo(() => {
+    if (!debouncedBatchSearchTerm) return batches;
+    return batches.filter((batch) => [batch.name, batch.batch_code, batch.pigCount, batch.dateAcquired]
+      .join(' ')
+      .toLocaleLowerCase()
+      .includes(debouncedBatchSearchTerm));
+  }, [batches, debouncedBatchSearchTerm]);
+  const showAllBatchesOption = !debouncedBatchSearchTerm || 'all batches'.includes(debouncedBatchSearchTerm);
+  const batchSelectorValue = selectedBatch === 'all' ? 'All Batches' : selectedBatchData?.name || 'Select a batch';
+  const batchOptionDetails = (batch) => `${batch.pigCount ?? 0} pigs${batch.dateAcquired ? ` · Acquired ${String(batch.dateAcquired).slice(0, 10)}` : ''}`;
   const batchExpense = useMemo(() => calculateBatchFeedExpense(selectedBatch), [selectedBatch, feedRecords, feedStocks]);
   const recordedFeedExpense = useMemo(() => {
     const relevant = feedExpenses.filter((expense) => {
@@ -598,24 +620,98 @@ export default function FeedsInventoryScreen() {
 
         {/* Batch Selector */}
         <div className="px-4 md:px-8 lg:px-12 mb-4">
-          <div className="feeds-batch-selector relative z-50 isolate bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-3 shadow-lg">
-            <select
-              value={selectedBatch}
-              onChange={(event) => setSelectedBatch(event.target.value)}
-              className="md:hidden min-h-11 w-full rounded-xl border border-white/50 bg-white/45 px-3 text-base font-semibold text-gray-700 outline-none"
-              aria-label="Select batch"
-            >
-              <option value="all">All Available Batches</option>
-              {batches.map((batch) => (
-                <option key={batch.id} value={String(batch.id)}>{batch.name} ({batch.pigCount ?? 0} pigs)</option>
-              ))}
-            </select>
-            <div className="hidden md:flex items-center gap-2 overflow-x-auto">
-              <button type="button" onClick={() => setSelectedBatch('all')} className={`px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${selectedBatch === 'all' ? 'bg-[#ff2f72] text-white shadow-lg' : 'bg-white/30 text-gray-700'}`}>All Batches</button>
-              {batches.map((batch) => (
-                <button type="button" key={batch.id} onClick={() => setSelectedBatch(String(batch.id))} className={`px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${String(selectedBatch) === String(batch.id) ? 'bg-[#ff2f72] text-white shadow-lg' : 'bg-white/30 text-gray-700'}`}>{batch.name}</button>
-              ))}
+          <div
+            className="feeds-batch-selector relative z-50 isolate rounded-2xl border border-white/30 bg-white/20 p-3 shadow-lg backdrop-blur-lg"
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) setShowBatchMenu(false);
+            }}
+          >
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" aria-hidden="true" />
+              <input
+                type="search"
+                role="combobox"
+                aria-label="Search or select a batch"
+                aria-autocomplete="list"
+                aria-expanded={showBatchMenu}
+                aria-controls="feeds-batch-options"
+                value={showBatchMenu ? batchSearchTerm : batchSelectorValue}
+                onFocus={() => {
+                  if (!showBatchMenu) setBatchSearchTerm('');
+                  setShowBatchMenu(true);
+                }}
+                onChange={(event) => {
+                  setBatchSearchTerm(event.target.value);
+                  setShowBatchMenu(true);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') setShowBatchMenu(false);
+                  if (event.key === 'ArrowDown') setShowBatchMenu(true);
+                }}
+                placeholder="Search batches..."
+                className="min-h-11 w-full rounded-xl border border-white/60 bg-white/55 py-2 pl-10 pr-11 text-base font-semibold text-gray-800 outline-none transition focus:border-pink-300 focus:ring-2 focus:ring-pink-200"
+              />
+              <button
+                type="button"
+                aria-label={showBatchMenu ? 'Close batch options' : 'Open batch options'}
+                onClick={() => {
+                  if (!showBatchMenu) setBatchSearchTerm('');
+                  setShowBatchMenu((open) => !open);
+                }}
+                className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-gray-600 hover:bg-white/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-pink-500"
+              >
+                <ChevronDown size={18} className={showBatchMenu ? 'rotate-180 transition-transform' : 'transition-transform'} aria-hidden="true" />
+              </button>
             </div>
+            {showBatchMenu && (
+              <div
+                id="feeds-batch-options"
+                role="listbox"
+                aria-label="Batch options"
+                className="absolute left-3 right-3 top-full mt-2 max-h-72 overflow-y-auto rounded-xl border border-white/70 bg-white/95 p-1 shadow-2xl backdrop-blur-xl"
+              >
+                {showAllBatchesOption && (
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={selectedBatch === 'all'}
+                    onClick={() => {
+                      setSelectedBatch('all');
+                      setBatchSearchTerm('');
+                      setShowBatchMenu(false);
+                    }}
+                    className={`flex min-h-11 w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-semibold transition ${selectedBatch === 'all' ? 'bg-pink-100 text-pink-800' : 'text-gray-800 hover:bg-gray-100'}`}
+                  >
+                    <span>All Batches</span>
+                    {selectedBatch === 'all' && <Check size={16} aria-hidden="true" />}
+                  </button>
+                )}
+                {filteredBatchOptions.map((batch) => (
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={String(selectedBatch) === String(batch.id)}
+                    key={batch.id}
+                    onClick={() => {
+                      setSelectedBatch(String(batch.id));
+                      setBatchSearchTerm('');
+                      setShowBatchMenu(false);
+                    }}
+                    className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left transition ${String(selectedBatch) === String(batch.id) ? 'bg-pink-100 text-pink-800' : 'text-gray-800 hover:bg-gray-100'}`}
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold">{batch.name}</span>
+                      <span className="block truncate text-xs text-gray-500">{batchOptionDetails(batch)}</span>
+                    </span>
+                    {String(selectedBatch) === String(batch.id) && <Check size={16} className="shrink-0" aria-hidden="true" />}
+                  </button>
+                ))}
+                {!showAllBatchesOption && filteredBatchOptions.length === 0 && (
+                  <p className="px-3 py-3 text-sm text-gray-600">No matching batches.</p>
+                )}
+              </div>
+            )}
+            <p className="mt-2 text-xs text-gray-600">Search and select a batch to filter feed records and stock summaries.</p>
           </div>
         </div>
 
