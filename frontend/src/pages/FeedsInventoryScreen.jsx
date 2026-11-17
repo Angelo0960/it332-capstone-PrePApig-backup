@@ -24,6 +24,7 @@ import { buildFeedDonePayload } from '../utils/markDonePayloads.js';
 import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 import { formatLocalDate, formatLocalTime } from '../utils/dates.js';
 import { buildBatchDisplayNames } from '../utils/batchNames.js';
+import { shouldDisplayRecordNote } from '../utils/recordNotes.js';
 import useOfflineStatus from '../hooks/useOfflineStatus.js';
 // ────────────────────────────────────────────────────────────────
 
@@ -73,12 +74,6 @@ const FEED_TYPE_MAP = {
   starter: 'Starter Mash',
   grower: 'Grower Pellet',
   finisher: 'Finisher',
-};
-
-const SYNTHETIC_FORECAST_DEMO_NOTE = 'synthetic forecast demo data; sample feed log only; no stock or weight mutation.';
-const shouldDisplayFeedNote = (notes) => {
-  const normalized = String(notes || '').trim().replace(/^['"]|['"]$/g, '').trim().toLowerCase();
-  return Boolean(normalized) && normalized !== SYNTHETIC_FORECAST_DEMO_NOTE;
 };
 
 const InlineFieldError = ({ id, message }) => message ? (
@@ -989,7 +984,7 @@ export default function FeedsInventoryScreen() {
                                 <div className="text-xs text-gray-500 mt-1">
                                   {new Date(record.feeding_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                 </div>
-                                {shouldDisplayFeedNote(record.notes) && <div className="text-xs text-gray-600 mt-1 italic">"{record.notes}"</div>}
+                                {shouldDisplayRecordNote(record.notes) && <div className="text-xs text-gray-600 mt-1 italic">"{record.notes}"</div>}
                               </div>
                               {getBatchName(record.batch_id, record.batch_name) && (
                                 <span className="max-w-[45%] truncate whitespace-nowrap px-2 py-1 bg-green-100/80 border border-green-300/50 rounded-full text-xs text-green-700 font-semibold" title={getBatchName(record.batch_id, record.batch_name)}>

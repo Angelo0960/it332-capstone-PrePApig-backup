@@ -7,6 +7,7 @@ import BottomNav from '../components/BottomNav';
 import { API_BASE, getAuthHeaders } from '../api.js';
 import { getUserCacheKey } from '../utils/cache.js';
 import { buildBatchDisplayNames } from '../utils/batchNames.js';
+import { shouldDisplayRecordNote } from '../utils/recordNotes.js';
 import { useConfirmation } from '../components/ConfirmationDialog.jsx';
 // ────────────────────────────────────────────────────────────────
 
@@ -353,7 +354,7 @@ export default function BatchPigsScreen() {
                           {pig.health_status}
                         </span>
                       </div>
-                      {pig.notes && <div className="text-xs text-gray-500 mt-1">📝 {pig.notes}</div>}
+                      {shouldDisplayRecordNote(pig.notes) && <div className="text-xs text-gray-500 mt-1">📝 {pig.notes}</div>}
                     </div>
                     <div className="flex gap-1">
                       <button

@@ -19,6 +19,7 @@ import { API_BASE, getAuthHeaders } from '../api.js';
 import { buildVaccinationDonePayload } from '../utils/markDonePayloads.js';
 import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 import { buildBatchDisplayNames } from '../utils/batchNames.js';
+import { shouldDisplayRecordNote } from '../utils/recordNotes.js';
 import { formatLocalDate } from '../utils/dates.js';
 import useOfflineStatus from '../hooks/useOfflineStatus.js';
 import { getAgeOnDate, getVaccinationScheduleForAge, getCompletedVaccinationScheduleKeys, getScheduledVaccineNames } from '../utils/vaccinationSchedule.js';
@@ -850,7 +851,7 @@ export default function VaccinationScreen() {
                                 year: 'numeric',
                               })}
                             </div>
-                            {record.notes && (
+                            {shouldDisplayRecordNote(record.notes) && (
                               <div className="text-xs text-gray-600 mt-1 italic">
                                 "{record.notes}"
                               </div>
