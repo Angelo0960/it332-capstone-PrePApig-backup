@@ -1328,8 +1328,7 @@ export default function AnalyticsReportsScreen() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-2 flex items-center justify-between text-[10px] text-[#6B7280]">
-              <span>{feedHistoryLabel === 'Synthetic history' ? 'Illustrative uploaded data; not actual farm records.' : 'Recorded database feed logs.'}</span>
+            <div className="mt-2 flex items-center justify-end text-[10px] text-[#6B7280]">
               <span>Dashed styling and error bars show the forecast range · Unit: kg</span>
             </div>
             {feedForecastError && <p className="text-[10px] text-red-700 mb-2">{feedForecastError}</p>}
