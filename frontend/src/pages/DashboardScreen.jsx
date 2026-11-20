@@ -252,8 +252,8 @@ export default function DashboardScreen() {
   };
 
   const getFeedTypeName = (feedType) => {
-    const names = { starter: 'Starter Mash', grower: 'Grower Pellet', finisher: 'Finisher' };
-    return names[feedType];
+    const names = { starter: 'Starter', 'starter mash': 'Starter', grower: 'Grower', 'grower pellet': 'Grower', finisher: 'Finisher', 'super biik': 'Super Biik', super_biik: 'Super Biik', tmpbc5: 'Super Biik', 'hs-premium': 'Starter', 'hg-premium': 'Grower', hpspm: 'Finisher' };
+    return names[String(feedType || '').toLowerCase()] || feedType;
   };
 
   const getFeedLevelPercentage = (day) => {

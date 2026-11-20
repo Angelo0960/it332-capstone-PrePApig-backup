@@ -9,6 +9,13 @@ const DATA_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../
 const getMaxSourceDate = () => new Date().toISOString().slice(0, 10);
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
+export const FEED_RATION_STAGE_MAP = Object.freeze({
+  Tmpbc5: Object.freeze({ feedStage: 'Super Biik', feedType: 'Super Biik', stockAliases: ['Super Biik', 'super_biik', 'Tmpbc5'] }),
+  'HS-Premium': Object.freeze({ feedStage: 'Starter', feedType: 'Starter Mash', stockAliases: ['Starter', 'Starter Mash', 'starter', 'HS-Premium'] }),
+  'HG-Premium': Object.freeze({ feedStage: 'Grower', feedType: 'Grower Pellet', stockAliases: ['Grower', 'Grower Pellet', 'grower', 'HG-Premium'] }),
+  HPSPM: Object.freeze({ feedStage: 'Finisher', feedType: 'Finisher', stockAliases: ['Finisher', 'finisher', 'HPSPM'] }),
+});
+
 const regression = (points) => {
   const n = points.length;
   const meanX = points.reduce((sum, point) => sum + point.x, 0) / n;
@@ -276,7 +283,7 @@ export const getFeedConsumptionForecast = async ({ ownerId, batchId, horizonDays
     const forecastRows = aggregateUploadedDailyWeeks(dailyRows);
     const rationRows = aggregateUploadedDailyWeeks(dailyRows, { byRation: true });
     const historicalSummary = summarizeUploadedHistory(dailyRows, forecastRows, weeklyRows);
-    const grouped = new Map();
+    const grouped = new Map(Object.keys(FEED_RATION_STAGE_MAP).map((rationCode) => [rationCode, []]));
     rationRows.forEach((row) => {
       const rows = grouped.get(row.ration_code) || [];
       rows.push(row);
@@ -284,6 +291,7 @@ export const getFeedConsumptionForecast = async ({ ownerId, batchId, horizonDays
     });
     const rationForecasts = [...grouped.entries()].map(([rationCode, rows]) => ({
       rationCode,
+      ...(FEED_RATION_STAGE_MAP[rationCode] || {}),
       ...forecastUploadedWeeklyConsumption(rows, horizonWeeks, { averageRecentPricePer50kgBagPhp: historicalSummary.averageRecentPricePer50kgBagPhp }),
     }));
     const aggregate = forecastUploadedWeeklyConsumption(forecastRows, horizonWeeks, { averageRecentPricePer50kgBagPhp: historicalSummary.averageRecentPricePer50kgBagPhp, historicalSummary });
@@ -300,7 +308,7 @@ export const getFeedConsumptionForecast = async ({ ownerId, batchId, horizonDays
       historicalSummary,
       ...aggregate,
       rationForecasts,
-      limitations: [...(aggregate.limitations || []), 'Uploaded data is synthetic and is not actual farm-recorded consumption.', 'Ration codes are synthetic forecast categories and are not mapped to recorded feed-stock types.'],
+      limitations: [...(aggregate.limitations || []), 'Uploaded data is synthetic and is not actual farm-recorded consumption.', 'Synthetic ration codes are linked to feed-stage names using the explicit feed-stage mapping.'],
       generatedAt: new Date().toISOString(),
     };
   }

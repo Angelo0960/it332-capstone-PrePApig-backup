@@ -33,7 +33,7 @@ feedRouter.get('/forecast', async (req, res) => {
           .select('feed_type,stock_quantity,unit_price,last_updated')
           .eq('owner_id', req.user.id)
           .order('feed_type');
-        const stocks = stockError?.code === '42P01' ? [] : (feedStocks || []);
+        const stocks = stockError?.code === '42P01' ? null : (feedStocks || []);
         if (stockError && stockError.code !== '42P01') throw stockError;
         result.aiAnalysis = await generateFeedForecastAnalysis({ forecast: result, feedStocks: stocks });
         result.feedStockSnapshot = result.aiAnalysis.stockContext;

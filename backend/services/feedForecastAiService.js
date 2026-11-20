@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { FEED_RATION_STAGE_MAP } from './feedForecastService.js';
 
 const extractText = (payload) => payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('').trim() || '';
 
@@ -10,23 +11,46 @@ const parseJson = (text) => {
   }
 };
 
-const buildStockContext = (feedStocks = [], forecastRows = [], rationForecasts = []) => {
+const buildStockContext = (feedStocks = null, forecastRows = [], rationForecasts = []) => {
+  const stockAvailable = Array.isArray(feedStocks);
   const categories = rationForecasts.map((ration) => {
     const rows = ration.forecast || [];
-    const forecastKg = rows.reduce((sum, row) => sum + Math.max(0, Number(row.predictedKg) || 0), 0);
+    const hasForecast = ration.status === 'forecasted' && rows.length > 0;
+    const forecastKg = hasForecast ? rows.reduce((sum, row) => sum + Math.max(0, Number(row.predictedKg) || 0), 0) : null;
+    const mapping = FEED_RATION_STAGE_MAP[ration.rationCode];
+    const matchingStocks = mapping && stockAvailable
+      ? feedStocks.filter((stock) => mapping.stockAliases.some((alias) => String(stock.feed_type || '').trim().toLowerCase() === alias.toLowerCase()))
+      : [];
+    const stockQuantityKg = stockAvailable
+      ? matchingStocks.reduce((sum, stock) => sum + Math.max(0, Number(stock.stock_quantity) || 0), 0)
+      : null;
+    const coveragePercent = hasForecast && stockQuantityKg != null && forecastKg > 0
+      ? Number(((stockQuantityKg / forecastKg) * 100).toFixed(1))
+      : null;
+    const surplusKg = hasForecast && stockQuantityKg != null
+      ? Number(Math.max(0, stockQuantityKg - forecastKg).toFixed(3))
+      : null;
+    const shortfallKg = hasForecast && stockQuantityKg != null
+      ? Number(Math.max(0, forecastKg - stockQuantityKg).toFixed(3))
+      : null;
     return {
       rationCode: ration.rationCode,
-      forecastKg: Number(forecastKg.toFixed(3)),
-      averageWeeklyForecastKg: Number((rows.length ? forecastKg / rows.length : 0).toFixed(3)),
-      stockMatch: 'unmapped',
-      note: 'Synthetic ration code; no safe mapping to recorded stock feed type.',
+      feedStage: mapping?.feedStage || null,
+      forecastKg: hasForecast ? Number(forecastKg.toFixed(3)) : null,
+      averageWeeklyForecastKg: hasForecast ? Number((forecastKg / rows.length).toFixed(3)) : null,
+      stockMatch: !mapping ? 'unmapped' : stockAvailable ? 'mapped' : 'mapped_stock_unavailable',
+      stockQuantityKg: mapping && stockAvailable ? Number(stockQuantityKg.toFixed(3)) : null,
+      coveragePercent,
+      surplusKg,
+      shortfallKg,
+      note: !mapping ? 'No explicit mapping exists for this ration code.' : stockAvailable ? `Mapped to ${mapping.feedStage} feed stock by explicit ration-code mapping.` : 'Feed-stock data is unavailable.',
     };
   });
   return {
-    totalRecordedStockKg: Number(feedStocks.reduce((sum, row) => sum + Math.max(0, Number(row.stock_quantity) || 0), 0).toFixed(3)),
-    recordedStocks: feedStocks.map((row) => ({ feedType: row.feed_type, stockQuantityKg: Number(row.stock_quantity) || 0 })),
+    totalRecordedStockKg: stockAvailable ? Number(feedStocks.reduce((sum, row) => sum + Math.max(0, Number(row.stock_quantity) || 0), 0).toFixed(3)) : null,
+    recordedStocks: stockAvailable ? feedStocks.map((row) => ({ feedType: row.feed_type, stockQuantityKg: Number(row.stock_quantity) || 0 })) : [],
     rationForecasts: categories,
-    stockToForecastComparison: 'not_available_without_explicit_feed_type_mapping',
+    stockToForecastComparison: stockAvailable ? 'mapped_by_explicit_ration_code_to_feed_stage' : 'unavailable_stock_data',
   };
 };
 
@@ -74,7 +98,7 @@ const requestProvider = async ({ provider, model, apiKey, prompt, fetchImpl }) =
   return { structured, provider, model };
 };
 
-export const generateFeedForecastAnalysis = async ({ forecast, feedStocks = [], fetchImpl = fetch }) => {
+export const generateFeedForecastAnalysis = async ({ forecast, feedStocks = null, fetchImpl = fetch }) => {
   const prompt = [
     'Write for a busy pig farmer, not a software engineer. Use simple everyday words, short sentences, and explain any unavoidable farming or financial term immediately.',
     'Do not use technical model terms, statistical jargon, abbreviations, or unexplained phrases. Focus on what the farmer should understand and do next.',
@@ -82,9 +106,10 @@ export const generateFeedForecastAnalysis = async ({ forecast, feedStocks = [], 
     'Use only the supplied historical and forecast values. Do not invent measurements, prices, causes, or farm conditions.',
     'Treat the uploaded historical feed data as the active dataset for this analysis. Do not replace its values with invented measurements.',
     'Analyze the direction of weekly consumption, actual-versus-planned variance, projected bag requirements, projected cost, forecast error, and uncertainty.',
-    'Do not compare, combine, or map synthetic ration codes to recorded feed-stock names. Report stock separately unless an explicit safe mapping is supplied.',
-    'Analyze each ration forecast independently, including direction, uncertainty, and requirements. Do not make stock coverage or shortage claims for unmapped ration codes.',
-    'Give practical but qualified suggestions for feed purchasing and monitoring. Do not replace recorded feed, inventory, expense, financial, or FCR calculations.',
+    'Use the supplied explicit ration-code-to-feed-stage mapping to compare each forecast with its matching recorded feed stock. Do not infer any other mappings.',
+    'Analyze each ration forecast independently, including direction, uncertainty, requirements, and mapped stock. Do not make stock coverage or shortage claims for unmapped ration codes.',
+    'Recommend buying only when the computed per-stage shortfall supports it. If stock or forecast data is unavailable, say it is unavailable and recommend verifying records rather than assuming zero.',
+    'Do not replace recorded feed, inventory, expense, financial, or FCR calculations with this planning analysis.',
     'Return JSON only in this exact shape:',
     '{"analysis":"short evidence-based analysis","suggestion":"specific planning suggestion","riskLevel":"low|medium|high|unknown","actions":["action"],"limitations":["limitation"]}',
     `Forecast and stock data: ${JSON.stringify({ historicalSummary: forecast.historicalSummary, history: forecast.history, forecast: forecast.forecast, rationForecasts: forecast.rationForecasts, evaluation: forecast.evaluation, provenance: forecast.provenance, stockContext: buildStockContext(feedStocks, forecast.forecast || [], forecast.rationForecasts || []) })}`,

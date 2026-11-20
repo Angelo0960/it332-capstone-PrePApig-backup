@@ -1331,6 +1331,23 @@ export default function AnalyticsReportsScreen() {
             <div className="mt-2 flex items-center justify-end text-[10px] text-[#6B7280]">
               <span>Dashed styling and error bars show the forecast range · Unit: kg</span>
             </div>
+            {feedForecast?.rationForecasts?.length > 0 && (
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {feedForecast.rationForecasts.map((ration) => {
+                  const forecastKg = (ration.forecast || []).reduce((sum, point) => sum + Math.max(0, Number(point.predictedKg) || 0), 0);
+                  const forecastLabel = ration.status === 'forecasted' && ration.forecast?.length > 0 ? `${forecastKg.toFixed(2)} kg` : 'Insufficient history';
+                  return (
+                    <div key={ration.rationCode} className="rounded-xl border border-white/60 bg-white/55 px-3 py-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-gray-900">{ration.feedStage || ration.rationCode}</span>
+                        <span className="text-xs font-bold text-[#ad1457]">{forecastLabel}</span>
+                      </div>
+                      <div className="mt-1 text-[10px] text-gray-600">Forecast category: {ration.rationCode}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             {feedForecastError && <p className="text-[10px] text-red-700 mb-2">{feedForecastError}</p>}
 
             {feedForecastAi && (
@@ -1339,8 +1356,8 @@ export default function AnalyticsReportsScreen() {
                 <p className="text-left text-sm leading-6 text-[#252838] mb-3">{feedForecastAi.analysis}</p>
                 <p className="text-left text-sm leading-6 text-[#252838]"><strong className="text-[#ad1457]">Suggestion:</strong> {feedForecastAi.suggestion}</p>
                 {feedForecastAi.stockContext && <div className="mt-3 text-[10px] text-[#555B6E]">
-                  <p>Recorded stock (all feed types; not mapped to synthetic ration codes): <strong>{feedForecastAi.stockContext.totalRecordedStockKg} kg</strong></p>
-                  {feedForecastAi.stockContext.rationForecasts?.length > 0 && <div className="grid grid-cols-2 gap-2 mt-2">{feedForecastAi.stockContext.rationForecasts.map((ration) => <span key={ration.rationCode}>{ration.rationCode} need: <strong>{ration.forecastKg} kg</strong> · Stock match: unavailable</span>)}</div>}
+                  <p>Recorded feed stock by stage: <strong>{feedForecastAi.stockContext.totalRecordedStockKg == null ? 'unavailable' : `${feedForecastAi.stockContext.totalRecordedStockKg} kg total`}</strong></p>
+                  {feedForecastAi.stockContext.rationForecasts?.length > 0 && <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">{feedForecastAi.stockContext.rationForecasts.map((ration) => <span key={ration.rationCode}>{ration.feedStage || ration.rationCode} ({ration.rationCode}) need: <strong>{ration.forecastKg == null ? 'insufficient history' : `${ration.forecastKg} kg`}</strong> · stock: <strong>{ration.stockQuantityKg == null ? 'unavailable' : `${ration.stockQuantityKg} kg`}</strong> · coverage: <strong>{ration.coveragePercent == null ? 'unavailable' : `${ration.coveragePercent}%`}</strong> · surplus: <strong>{ration.surplusKg == null ? 'unavailable' : `${ration.surplusKg} kg`}</strong> · shortfall: <strong>{ration.shortfallKg == null ? 'unavailable' : `${ration.shortfallKg} kg`}</strong></span>)}</div>}
                 </div>}
                 {feedForecastAi.actions?.length > 0 && <ul className="list-disc pl-4 mt-3 text-[10px] text-[#555B6E]">{feedForecastAi.actions.map((action) => <li key={action}>{action}</li>)}</ul>}
                 <p className="text-[10px] text-[#6B7280] mt-3">AI interpretation only; it does not replace recorded feed, inventory, expense, financial, or FCR calculations.</p>

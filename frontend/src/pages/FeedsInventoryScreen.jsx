@@ -37,11 +37,12 @@ const getFeedTypeForAge = (day) => {
 
 const getFeedTypeName = (feedType) => {
   const names = {
-    starter: 'Starter Mash',
-    grower: 'Grower Pellet',
-    finisher: 'Finisher',
+    super_biik: 'Super Biik', 'super biik': 'Super Biik', tmpbc5: 'Super Biik',
+    starter: 'Starter', 'starter mash': 'Starter', 'hs-premium': 'Starter',
+    grower: 'Grower', 'grower pellet': 'Grower', 'hg-premium': 'Grower',
+    finisher: 'Finisher', hpspm: 'Finisher',
   };
-  return names[String(feedType).toLowerCase()] || String(feedType || 'Unknown Feed')
+  return names[String(feedType).trim().toLowerCase()] || String(feedType || 'Unknown Feed')
     .replaceAll('_', ' ')
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 };
@@ -71,9 +72,27 @@ const DAILY_FEEDING_RECORDS_REQUIRED = 2;
 const FEED_REMINDER_TIMES = ['8:00 AM', '5:00 PM'];
 
 const FEED_TYPE_MAP = {
+  super_biik: 'Super Biik',
   starter: 'Starter Mash',
   grower: 'Grower Pellet',
   finisher: 'Finisher',
+};
+
+const FEED_STAGE_STOCK_TYPES = [
+  { feedType: 'Super Biik', aliases: ['super biik', 'super_biik', 'tmpbc5'] },
+  { feedType: 'Starter Mash', aliases: ['starter', 'starter mash', 'hs-premium'] },
+  { feedType: 'Grower Pellet', aliases: ['grower', 'grower pellet', 'hg-premium'] },
+  { feedType: 'Finisher', aliases: ['finisher', 'hpspm'] },
+];
+
+const getFeedStocksByStage = (stocks) => {
+  const remaining = [...stocks];
+  const stageStocks = FEED_STAGE_STOCK_TYPES.map((stage) => {
+    const matchIndex = remaining.findIndex((stock) => stage.aliases.includes(String(stock.feed_type || '').trim().toLowerCase()));
+    if (matchIndex >= 0) return remaining.splice(matchIndex, 1)[0];
+    return { feed_type: stage.feedType, stock_quantity: 0, unit_price: null, last_updated: null, isPlaceholder: true };
+  });
+  return [...stageStocks, ...remaining];
 };
 
 const InlineFieldError = ({ id, message }) => message ? (
@@ -903,23 +922,20 @@ export default function FeedsInventoryScreen() {
                     </div>
                     <div className="divide-y divide-white/20">
                       {selectedBatch === 'all' ? (
-                        feedStocks.length === 0 ? (
-                          <div className="p-4 text-center text-gray-500 text-sm">No stock data available</div>
-                        ) : (
-                          feedStocks.map((feed) => (
-                            <div key={feed.feed_type} className={`p-4 flex items-center justify-between ${feed.stock_quantity < 50 ? 'bg-orange-50/40' : ''}`}>
-                              <div className="flex-1">
-                                <div className="font-medium text-gray-900">{getFeedTypeName(feed.feed_type)}</div>
-                                <div className="flex flex-wrap items-center gap-2 mt-1">
-                                  <span className="text-xs text-gray-600">
-                                    {feed.unit_price == null ? 'Unavailable' : `₱${Number(feed.unit_price).toFixed(2)}/kg`} · {feed.last_updated || 'N/A'}
-                                  </span>
-                                  {feed.stock_quantity < 50 && (
-                                    <span className="px-2 py-1 bg-orange-100/80 border border-orange-300/50 rounded-full text-xs text-orange-700 font-semibold">Low stock</span>
-                                  )}
-                                  <button onClick={() => handleEditPrice(feed.feed_type, feed.unit_price || 0)} className="w-6 h-6 rounded-full bg-white/40 backdrop-blur-sm flex items-center justify-center hover:bg-white/60 transition-all">
-                                    <Edit className="w-3 h-3 text-gray-700" />
-                                  </button>
+                          getFeedStocksByStage(feedStocks).map((feed, index) => (
+                              <div key={`${feed.feed_type}-${index}`} className={`p-4 flex items-center justify-between ${feed.stock_quantity < 50 ? 'bg-orange-50/40' : ''}`}>
+                                <div className="flex-1">
+                                  <div className="font-medium text-gray-900">{getFeedTypeName(feed.feed_type)}</div>
+                                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                                    <span className="text-xs text-gray-600">
+                                      {feed.unit_price == null ? 'Unavailable' : `₱${Number(feed.unit_price).toFixed(2)}/kg`} · {feed.last_updated || 'N/A'}
+                                    </span>
+                                    {feed.stock_quantity < 50 && (
+                                      <span className="px-2 py-1 bg-orange-100/80 border border-orange-300/50 rounded-full text-xs text-orange-700 font-semibold">Low stock</span>
+                                    )}
+                                    {!feed.isPlaceholder && <button onClick={() => handleEditPrice(feed.feed_type, feed.unit_price || 0)} className="w-6 h-6 rounded-full bg-white/40 backdrop-blur-sm flex items-center justify-center hover:bg-white/60 transition-all">
+                                      <Edit className="w-3 h-3 text-gray-700" />
+                                    </button>}
                                 </div>
                               </div>
                               <div className="text-right">
@@ -929,13 +945,12 @@ export default function FeedsInventoryScreen() {
                               </div>
                             </div>
                           ))
-                        )
                       ) : Object.keys(consumptionByFeedType).length === 0 ? (
                         <div className="p-4 text-center text-gray-500 text-sm">No feed consumption records for this batch</div>
                       ) : (
                         Object.entries(consumptionByFeedType).map(([feedType, totalKg]) => (
                           <div key={feedType} className="p-4 flex items-center justify-between">
-                            <div className="flex-1"><div className="font-medium text-gray-900">{feedType}</div></div>
+                            <div className="flex-1"><div className="font-medium text-gray-900">{getFeedTypeName(feedType)}</div></div>
                             <div className="text-right"><div className="font-bold text-orange-600">{formatKgQuantity(totalKg)} <span className="whitespace-nowrap">kg</span></div></div>
                           </div>
                         ))
@@ -980,7 +995,7 @@ export default function FeedsInventoryScreen() {
                                 {getBatchName(record.batch_id, record.batch_name) && (
                                   <div className="font-medium text-gray-900 text-sm">{getBatchName(record.batch_id, record.batch_name)}</div>
                                 )}
-                                <div className="text-xs text-gray-700 mt-1">{record.feed_type} · {record.quantity_kg} kg</div>
+                                <div className="text-xs text-gray-700 mt-1">{getFeedTypeName(record.feed_type)} · {record.quantity_kg} kg</div>
                                 <div className="text-xs text-gray-500 mt-1">
                                   {new Date(record.feeding_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                 </div>
@@ -1084,8 +1099,9 @@ export default function FeedsInventoryScreen() {
                       className={`w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${usageErrors.feedType ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
                     >
                     <option value="">Select feed type...</option>
-                    <option value="starter">Starter Mash</option>
-                    <option value="grower">Grower Pellet</option>
+                    <option value="super_biik">Super Biik</option>
+                    <option value="starter">Starter</option>
+                    <option value="grower">Grower</option>
                     <option value="finisher">Finisher</option>
                   </select>
                   {usageErrors.feedType && <AlertTriangle className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
@@ -1220,8 +1236,9 @@ export default function FeedsInventoryScreen() {
                       className={`w-full px-4 py-3 pr-11 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all ${purchaseErrors.feedType ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
                     >
                       <option value="">Select feed type...</option>
-                      <option value="starter">Starter Mash</option>
-                      <option value="grower">Grower Pellet</option>
+                      <option value="super_biik">Super Biik</option>
+                      <option value="starter">Starter</option>
+                      <option value="grower">Grower</option>
                       <option value="finisher">Finisher</option>
                     </select>
                     {purchaseErrors.feedType && <AlertTriangle className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
