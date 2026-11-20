@@ -1304,7 +1304,7 @@ export default function AnalyticsReportsScreen() {
                 </p>
               </div>
               <div className="flex items-center gap-2 text-[10px] font-semibold">
-                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-700">● {feedHistoryLabel}</span>
+                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-700">● Actual</span>
                 <span className="rounded-full bg-pink-100 px-2.5 py-1 text-pink-700">● Forecast</span>
               </div>
             </div>
@@ -1317,9 +1317,9 @@ export default function AnalyticsReportsScreen() {
                   <Tooltip
                     contentStyle={{ borderRadius: 12, border: '1px solid #ffd1df', boxShadow: '0 8px 20px rgba(37,40,56,0.12)', fontSize: 12 }}
                     labelStyle={{ color: '#252838', fontWeight: 700 }}
-                    formatter={(value, name) => [`${value} kg`, name === 'actual' ? feedHistoryLabel : 'Forecast']}
+                    formatter={(value, name) => [`${value} kg`, name === 'actual' ? 'Actual' : 'Forecast']}
                   />
-                  <Legend verticalAlign="top" align="right" height={26} iconType="circle" wrapperStyle={{ fontSize: 10, color: '#555B6E' }} formatter={(value) => value === 'actual' ? feedHistoryLabel : 'Forecast'} />
+                  <Legend verticalAlign="top" align="right" height={26} iconType="circle" wrapperStyle={{ fontSize: 10, color: '#555B6E' }} formatter={(value) => value === 'actual' ? 'Actual' : 'Forecast'} />
                   {forecastStartDate && <ReferenceLine x={forecastStartDate} stroke="#f77f9f" strokeDasharray="5 5" strokeWidth={1.5} label={{ value: 'Forecast starts', position: 'insideTopRight', fill: '#ad1457', fontSize: 10 }} />}
                   <Line type="monotone" dataKey="actual" stroke="#059669" strokeWidth={3} dot={{ fill: '#059669', stroke: '#FFFFFF', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }} name="actual" connectNulls={false} />
                   <Line type="monotone" dataKey="forecast" stroke="#f5125d" strokeWidth={3} strokeDasharray="7 5" dot={{ fill: '#f5125d', stroke: '#FFFFFF', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }} name="forecast" connectNulls={false}>
