@@ -234,7 +234,7 @@ export default function AnalyticsReportsScreen() {
     try {
       const batch = selectedBatch !== 'All Batches' ? batches.find((row) => row.batch_code === selectedBatch) : null;
       const batchId = batch?.batch_code || 'all';
-      const cacheKey = `feed-ai-analysis-v3:${getUserCacheKey()}:${batchId}:1`;
+      const cacheKey = `feed-ai-analysis-v4:${getUserCacheKey()}:${batchId}:1`;
       const cached = readCache(cacheKey, Number.POSITIVE_INFINITY);
       hasCachedForecast = Boolean(cached && typeof cached === 'object');
       if (cached && typeof cached === 'object') {
@@ -661,6 +661,8 @@ export default function AnalyticsReportsScreen() {
     return [...historical, ...forecast];
   }, [filteredFeedRecords, feedForecast, feedHistoryLabel]);
   const forecastStartDate = feedConsumptionData.find((point) => point.period === 'Forecast')?.date;
+  const feedForecastMetrics = feedForecast?.calculatedMetrics?.[0] || null;
+  const feedStockSnapshot = feedForecast?.feedStockSnapshot || feedForecastAi?.stockContext || null;
   const profitTrend = financial?.monthly || [];
   const expenseBreakdown = useMemo(() => getExpenseBreakdown(), [filteredExpenses]);
   const vaccinationSummary = useMemo(() => getVaccinationSummary(), [filteredVaccinationRecords]);
@@ -1349,23 +1351,50 @@ export default function AnalyticsReportsScreen() {
             </div>
             {feedForecastError && <p className="text-[10px] text-red-700 mb-2">{feedForecastError}</p>}
 
+            {feedForecastMetrics && (
+              <div className="bg-white/90 border border-[#dbeafe] rounded-xl p-4 mb-3 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <span className="text-sm font-bold text-[#252838]">Backend-calculated feed plan</span>
+                  <span className="text-[10px] text-[#555B6E]">week of {feedForecastMetrics.date}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#252838]">
+                  <span>Total projected need: <strong>{feedForecastMetrics.totalForecastKg} kg</strong></span>
+                  <span>50 kg bag equivalent: <strong>{feedForecastMetrics.bagEquivalent}</strong></span>
+                  <span>Rounded whole bags for total need: <strong>{feedForecastMetrics.wholeBagsForTotalNeed}</strong></span>
+                  <span>Estimated consumption cost: <strong>{formatCurrency(feedForecastMetrics.estimatedCostPhp)}</strong></span>
+                </div>
+                {feedForecastMetrics.reconciliationStatus === 'partial' && (
+                  <p className="mt-2 text-[10px] text-amber-800">This total is partial because one or more feed types have no usable forecast history.</p>
+                )}
+                <p className="mt-1 text-[10px] text-[#555B6E]">Whole-bag count covers the total projected need before considering stock; cost uses each ration type’s latest available uploaded price records.</p>
+                {feedForecastMetrics.costStatus === 'unavailable_missing_ration_price' && (
+                  <p className="mt-1 text-[10px] text-amber-800">Cost is unavailable because a projected feed type has no usable uploaded price record.</p>
+                )}
+                {feedStockSnapshot && (
+                  <div className="mt-3 border-t border-gray-200 pt-2 text-[10px] text-[#555B6E]">
+                    <p>Recorded feed stock: <strong>{feedStockSnapshot.totalRecordedStockKg == null ? 'unavailable' : `${feedStockSnapshot.totalRecordedStockKg} kg total`}</strong></p>
+                    {feedForecastMetrics.rationForecasts?.length > 0 && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                        {feedForecastMetrics.rationForecasts.map((ration) => {
+                          const stock = feedStockSnapshot.rationForecasts?.find((row) => row.rationCode === ration.rationCode);
+                          return (
+                            <span key={ration.rationCode}>
+                              {ration.feedStage || ration.rationCode} ({ration.rationCode}) need: <strong>{ration.forecastKg == null ? 'insufficient history' : `${ration.forecastKg} kg`}</strong> · stock: <strong>{stock?.stockQuantityKg == null ? 'unavailable' : `${stock.stockQuantityKg} kg`}</strong> · estimated cost: <strong>{formatCurrency(ration.estimatedCostPhp)}</strong>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {feedForecastAi && (
               <div className="bg-white/90 border border-[#ffd1df] rounded-xl p-4 mb-3 shadow-sm">
-                <div className="flex items-center justify-between gap-2 mb-2"><span className="text-sm font-bold text-[#ad1457]">AI Forecast Analysis</span><span className="text-[10px] uppercase font-bold text-[#f5125d]">{feedForecastAi.riskLevel || 'unknown'} risk</span></div>
+                <div className="flex items-center justify-between gap-2 mb-2"><span className="text-sm font-bold text-[#ad1457]">AI Interpretation</span><span className="text-[10px] uppercase font-bold text-[#f5125d]">{feedForecastAi.riskLevel || 'unknown'} risk</span></div>
                 <p className="text-left text-sm leading-6 text-[#252838] mb-3">{feedForecastAi.analysis}</p>
                 <p className="text-left text-sm leading-6 text-[#252838]"><strong className="text-[#ad1457]">Suggestion:</strong> {feedForecastAi.suggestion}</p>
-                {feedForecastAi.stockContext && <div className="mt-3 text-[10px] text-[#555B6E]">
-                  <p>Recorded feed stock by stage: <strong>{feedForecastAi.stockContext.totalRecordedStockKg == null ? 'unavailable' : `${feedForecastAi.stockContext.totalRecordedStockKg} kg total`}</strong></p>
-                  {feedForecastAi.stockContext.rationForecasts?.length > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                      {feedForecastAi.stockContext.rationForecasts.map((ration) => (
-                        <span key={ration.rationCode}>
-                          {ration.feedStage || ration.rationCode} ({ration.rationCode}) need: <strong>{ration.forecastKg == null ? 'insufficient history' : `${ration.forecastKg} kg`}</strong> · stock: <strong>{ration.stockQuantityKg == null ? 'unavailable' : `${ration.stockQuantityKg} kg`}</strong>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>}
                 {feedForecastAi.actions?.length > 0 && <ul className="list-disc pl-4 mt-3 text-[10px] text-[#555B6E]">{feedForecastAi.actions.map((action) => <li key={action}>{action}</li>)}</ul>}
               </div>
             )}

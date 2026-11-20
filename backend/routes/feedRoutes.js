@@ -3,7 +3,7 @@ import express from 'express';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 import { validateBody } from '../middlewares/validate.js';
 import { getFeedConsumptionForecast } from '../services/feedForecastService.js';
-import { generateFeedForecastAnalysis } from '../services/feedForecastAiService.js';
+import { generateFeedForecastAnalysis, buildStockContext } from '../services/feedForecastAiService.js';
 import { rateLimit } from '../middlewares/rateLimit.js';
 import supabase from '../config/supabase.js';
 
@@ -35,8 +35,8 @@ feedRouter.get('/forecast', async (req, res) => {
           .order('feed_type');
         const stocks = stockError?.code === '42P01' ? null : (feedStocks || []);
         if (stockError && stockError.code !== '42P01') throw stockError;
-        result.aiAnalysis = await generateFeedForecastAnalysis({ forecast: result, feedStocks: stocks });
-        result.feedStockSnapshot = result.aiAnalysis.stockContext;
+        result.feedStockSnapshot = buildStockContext(stocks, result.forecast || [], result.rationForecasts || []);
+        result.aiAnalysis = await generateFeedForecastAnalysis({ forecast: result, feedStocks: stocks, stockContext: result.feedStockSnapshot });
       } catch (error) {
         const message = String(error.message || '');
         console.error(JSON.stringify({ event: 'feed_forecast_ai_failed', requestId: req.requestId, message: message.slice(0, 1000) }));

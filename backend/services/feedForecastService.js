@@ -175,6 +175,14 @@ const loadUploadedHistoricalData = ({ batchId } = {}) => {
 
 const dateForWeeklyRow = (row) => row.week_end || row.week_start;
 
+const weightedPricePerBag = (rows) => {
+  const pricedRows = rows.filter((row) => Number(row.actual_weekly_kg) > 0 && Number(row.price_per_50kg_bag_php) > 0);
+  const pricedKg = pricedRows.reduce((sum, row) => sum + Number(row.actual_weekly_kg), 0);
+  return pricedKg > 0
+    ? Number((pricedRows.reduce((sum, row) => sum + (Number(row.price_per_50kg_bag_php) * Number(row.actual_weekly_kg)), 0) / pricedKg).toFixed(2))
+    : null;
+};
+
 const summarizeUploadedHistory = (dailyRows, weeklyRows, priceRows = weeklyRows) => {
   const actualKg = weeklyRows.reduce((sum, row) => sum + (Number(row.actual_weekly_kg) || 0), 0);
   const plannedKg = weeklyRows.reduce((sum, row) => sum + (Number(row.planned_weekly_kg) || 0), 0);
@@ -182,20 +190,27 @@ const summarizeUploadedHistory = (dailyRows, weeklyRows, priceRows = weeklyRows)
     [...new Set(priceRows.map((row) => calendarWeekStart(row.week_start)).filter(Boolean))].sort().slice(-12)
   );
   const recent = priceRows.filter((row) => recentWeekStarts.has(calendarWeekStart(row.week_start)));
-  const recentKg = recent.reduce((sum, row) => sum + (Number(row.actual_weekly_kg) || 0), 0);
-  const avgPricePerBag = recentKg > 0
-    ? recent.reduce((sum, row) => sum + ((Number(row.price_per_50kg_bag_php) || 0) * (Number(row.actual_weekly_kg) || 0)), 0) / recentKg
-    : null;
+  const recentRationCodes = [...new Set(priceRows.map((row) => String(row.ration_code || '').trim()).filter(Boolean))];
+  const averageRecentPricePer50kgBagPhpByRationCode = Object.fromEntries(
+    recentRationCodes.map((rationCode) => {
+      const rationPriceRows = priceRows
+        .filter((row) => String(row.ration_code || '').trim() === rationCode)
+        .sort((left, right) => String(left.week_start).localeCompare(String(right.week_start)))
+        .slice(-12);
+      return [rationCode, weightedPricePerBag(rationPriceRows)];
+    })
+  );
   const dates = weeklyRows.map(dateForWeeklyRow).sort();
   return {
     actualKg: Number(actualKg.toFixed(3)), plannedKg: Number(plannedKg.toFixed(3)), varianceKg: Number((actualKg - plannedKg).toFixed(3)),
     actualBagEquivalent: Number((actualKg / 50).toFixed(3)), plannedBagEquivalent: Number((plannedKg / 50).toFixed(3)),
-    averageRecentPricePer50kgBagPhp: avgPricePerBag ? Number(avgPricePerBag.toFixed(2)) : null,
+    averageRecentPricePer50kgBagPhp: weightedPricePerBag(recent),
+    averageRecentPricePer50kgBagPhpByRationCode,
     sourceRows: dailyRows.length, sourceWeeks: weeklyRows.length, sourceDateStart: dates[0] || null, sourceDateEnd: dates.at(-1) || null,
   };
 };
 
-const forecastUploadedWeeklyConsumption = (weeklyRows, horizonWeeks = 4, options = {}) => {
+const forecastUploadedWeeklyConsumption = (weeklyRows, horizonWeeks = 4, options = {}, includeEvaluationRows = false) => {
   const weekly = weeklyRows.slice(-Math.max(8, 16));
   if (weekly.length < 8) {
     return { status: 'insufficient_data', granularity: 'weekly', historyWeeks: weekly.length, requiredHistoryWeeks: 8, forecast: [], evaluation: null, history: weekly.map((row) => ({ date: dateForWeeklyRow(row), quantityKg: Number(row.actual_weekly_kg || 0), plannedKg: Number(row.planned_weekly_kg || 0) })), ...options };
@@ -204,34 +219,122 @@ const forecastUploadedWeeklyConsumption = (weeklyRows, horizonWeeks = 4, options
   const holdoutCount = Math.max(2, Math.floor(points.length * 0.2));
   const training = points.slice(0, -holdoutCount);
   const holdout = points.slice(-holdoutCount);
-  const model = regression(training);
-  const errors = holdout.map((point) => point.y - model.predict(point.x));
-  const mae = errors.reduce((sum, value) => sum + Math.abs(value), 0) / errors.length;
+  const validationModel = regression(training);
+  const errors = holdout.map((point) => point.y - Math.max(0, validationModel.predict(point.x)));
   const residualMean = errors.reduce((sum, value) => sum + value, 0) / errors.length;
   const residualStdDev = Math.sqrt(errors.reduce((sum, value) => sum + ((value - residualMean) ** 2), 0) / Math.max(1, errors.length - 1));
+  const mae = errors.reduce((sum, value) => sum + Math.abs(value), 0) / errors.length;
   const interval = Math.max(mae, residualStdDev * 1.96);
   const pricePerKg = Number(options.averageRecentPricePer50kgBagPhp) > 0 ? Number(options.averageRecentPricePer50kgBagPhp) / 50 : null;
   const recentAverageKg = points.slice(-4).reduce((sum, point) => sum + point.y, 0) / Math.min(4, points.length);
   const lastDate = new Date(`${dateForWeeklyRow(weekly.at(-1))}T00:00:00Z`);
+  const forecastModel = regression(points);
   const forecast = Array.from({ length: clamp(Number(horizonWeeks) || 4, 1, 8) }, (_, index) => {
     const date = new Date(lastDate);
     date.setUTCDate(date.getUTCDate() + ((index + 1) * 7));
-    const predicted = Math.max(0, model.predict(points.length + index));
+    const predicted = Math.max(0, forecastModel.predict(points.length + index));
     const stablePredicted = predicted < (recentAverageKg * 0.5) ? recentAverageKg : predicted;
+    const projectedCostPhp = stablePredicted === 0
+      ? 0
+      : pricePerKg ? Number((stablePredicted * pricePerKg).toFixed(2)) : null;
     return {
       date: date.toISOString().slice(0, 10), predictedKg: Number(stablePredicted.toFixed(3)),
       lowerKg: Number(Math.max(0, stablePredicted - interval).toFixed(3)), upperKg: Number((stablePredicted + interval).toFixed(3)),
-      projectedBagEquivalent: Number((stablePredicted / 50).toFixed(3)), projectedCostPhp: pricePerKg ? Number((stablePredicted * pricePerKg).toFixed(2)) : null,
+      projectedBagEquivalent: Number((stablePredicted / 50).toFixed(3)), projectedBagCount: Math.ceil(stablePredicted / 50), projectedCostPhp,
     };
   });
+  const evaluationRows = holdout.map((point, index) => ({
+    date: dateForWeeklyRow(weekly[training.length + index]),
+    actualKg: Number(point.y.toFixed(3)),
+    predictedKg: Number(Math.max(0, validationModel.predict(point.x)).toFixed(3)),
+  }));
   return {
     status: 'forecasted', granularity: 'weekly', historyWeeks: weekly.length, requiredHistoryWeeks: 8,
     lastObservedDate: dateForWeeklyRow(weekly.at(-1)),
     evaluation: { holdoutWeeks: holdoutCount, meanAbsoluteErrorKg: Number(mae.toFixed(3)) },
     history: weekly.map((row) => ({ date: dateForWeeklyRow(row), quantityKg: Number(Number(row.actual_weekly_kg).toFixed(3)), plannedKg: Number(Number(row.planned_weekly_kg).toFixed(3)) })),
-    forecast, limitations: ['Forecast uses weekly-grouped rows from the uploaded historical dataset.', 'Forecast does not replace recorded feed, inventory, expense, or FCR calculations.'], ...options,
+    forecast, limitations: ['Forecast uses weekly-grouped rows from the uploaded historical dataset.', 'Forecast does not replace recorded feed, inventory, expense, or FCR calculations.'],
+    ...(includeEvaluationRows ? { evaluationRows } : {}),
+    ...options,
   };
 };
+
+const sumRationEvaluation = (rationForecasts) => {
+  const byDate = new Map();
+  rationForecasts.forEach((ration) => {
+    (ration.evaluationRows || []).forEach((row) => {
+      const sums = byDate.get(row.date) || { actualKg: 0, predictedKg: 0 };
+      sums.actualKg += row.actualKg;
+      sums.predictedKg += row.predictedKg;
+      byDate.set(row.date, sums);
+    });
+  });
+  const errors = [...byDate.values()].map((row) => row.actualKg - row.predictedKg);
+  return errors.length
+    ? { holdoutWeeks: errors.length, meanAbsoluteErrorKg: Number((errors.reduce((sum, error) => sum + Math.abs(error), 0) / errors.length).toFixed(3)) }
+    : null;
+};
+
+const reconcileAggregateForecast = (aggregate, rationForecasts) => {
+  const forecastable = rationForecasts.filter((ration) => ration.status === 'forecasted' && Array.isArray(ration.forecast));
+  if (aggregate.status !== 'forecasted' || !forecastable.length) {
+    return { ...aggregate, status: 'insufficient_data', forecast: [], evaluation: null };
+  }
+  const forecast = (aggregate.forecast || []).map((period, index) => {
+    const rationRows = forecastable.map((ration) => ration.forecast[index]).filter(Boolean);
+    const predictedKg = rationRows.reduce((sum, row) => sum + Math.max(0, Number(row.predictedKg) || 0), 0);
+    const lowerKg = rationRows.reduce((sum, row) => sum + Math.max(0, Number(row.lowerKg) || 0), 0);
+    const upperKg = rationRows.reduce((sum, row) => sum + Math.max(0, Number(row.upperKg) || 0), 0);
+    const costUnavailable = rationRows.some((row) => Number(row.predictedKg) > 0 && row.projectedCostPhp == null);
+    const projectedCostPhp = costUnavailable
+      ? null
+      : Number(rationRows.reduce((sum, row) => sum + (Number(row.projectedCostPhp) || 0), 0).toFixed(2));
+    return {
+      ...period,
+      predictedKg: Number(predictedKg.toFixed(3)),
+      lowerKg: Number(lowerKg.toFixed(3)),
+      upperKg: Number(upperKg.toFixed(3)),
+      errorRange: [Number(Math.max(0, upperKg - predictedKg).toFixed(3)), Number(Math.max(0, predictedKg - lowerKg).toFixed(3))],
+      projectedBagEquivalent: Number((predictedKg / 50).toFixed(3)),
+      projectedBagCount: Math.ceil(predictedKg / 50),
+      projectedCostPhp,
+    };
+  });
+  const missingRations = rationForecasts.filter((ration) => ration.status !== 'forecasted').map((ration) => ration.rationCode);
+  return {
+    ...aggregate,
+    forecast,
+    evaluation: sumRationEvaluation(rationForecasts),
+    limitations: [
+      ...(aggregate.limitations || []),
+      'Aggregate forecast, bag equivalents, and cost are calculated by summing the ration-level results.',
+      ...(missingRations.length ? [`No ration forecast was available for: ${missingRations.join(', ')}.`] : []),
+    ],
+    reconciliationStatus: missingRations.length ? 'partial' : 'reconciled',
+  };
+};
+
+const buildCalculatedMetrics = (forecastRows = [], rationForecasts = [], reconciliationStatus = 'reconciled') => forecastRows.map((period, index) => ({
+  date: period.date,
+  bagSizeKg: 50,
+  totalForecastKg: Number(period.predictedKg),
+  bagEquivalent: Number((Number(period.predictedKg) / 50).toFixed(3)),
+  wholeBagsForTotalNeed: Math.ceil(Math.max(0, Number(period.predictedKg) || 0) / 50),
+  estimatedCostPhp: period.projectedCostPhp == null ? null : Number(period.projectedCostPhp),
+  costStatus: period.projectedCostPhp == null ? 'unavailable_missing_ration_price' : 'estimated_from_uploaded_ration_prices',
+  reconciliationStatus,
+  rationForecasts: rationForecasts.map((ration) => {
+    const rationPeriod = ration.forecast?.[index];
+    return {
+      rationCode: ration.rationCode,
+      feedStage: ration.feedStage || null,
+      forecastKg: rationPeriod?.predictedKg == null ? null : Number(rationPeriod.predictedKg),
+      bagEquivalent: rationPeriod?.projectedBagEquivalent == null ? null : Number(rationPeriod.projectedBagEquivalent),
+      estimatedCostPhp: rationPeriod?.projectedCostPhp == null ? null : Number(rationPeriod.projectedCostPhp),
+      status: rationPeriod ? 'forecasted' : ration.status,
+    };
+  }),
+}));
 
 const forecastFeedConsumption = (dailyRows, horizonDays = 7, windowDays = DEFAULT_WINDOW_DAYS, options = {}) => {
   const daily = dailyRows.slice(-Math.max(MIN_DAILY_POINTS, windowDays));
@@ -260,6 +363,7 @@ const forecastFeedConsumption = (dailyRows, horizonDays = 7, windowDays = DEFAUL
       lowerKg: Number(Math.max(0, predicted - interval).toFixed(3)),
       upperKg: Number((predicted + interval).toFixed(3)),
       projectedBagEquivalent: Number((predicted / 50).toFixed(3)),
+      projectedBagCount: Math.ceil(predicted / 50),
       projectedCostPhp: pricePerKg ? Number((predicted * pricePerKg).toFixed(2)) : null,
     };
   });
@@ -289,12 +393,36 @@ export const getFeedConsumptionForecast = async ({ ownerId, batchId, horizonDays
       rows.push(row);
       grouped.set(row.ration_code, rows);
     });
-    const rationForecasts = [...grouped.entries()].map(([rationCode, rows]) => ({
-      rationCode,
-      ...(FEED_RATION_STAGE_MAP[rationCode] || {}),
-      ...forecastUploadedWeeklyConsumption(rows, horizonWeeks, { averageRecentPricePer50kgBagPhp: historicalSummary.averageRecentPricePer50kgBagPhp }),
-    }));
-    const aggregate = forecastUploadedWeeklyConsumption(forecastRows, horizonWeeks, { averageRecentPricePer50kgBagPhp: historicalSummary.averageRecentPricePer50kgBagPhp, historicalSummary });
+    const rationForecastsWithEvaluation = [...grouped.entries()].map(([rationCode, rows]) => {
+      const mapping = FEED_RATION_STAGE_MAP[rationCode] || {};
+      const averageRecentPricePer50kgBagPhp = historicalSummary.averageRecentPricePer50kgBagPhpByRationCode[rationCode] ?? null;
+      if (!rows.length) {
+        return {
+          rationCode,
+          ...mapping,
+          ...forecastUploadedWeeklyConsumption([], horizonWeeks, { averageRecentPricePer50kgBagPhp }, true),
+        };
+      }
+      const rowsByWeek = new Map(rows.map((row) => [row.week_start, row]));
+      const alignedRows = forecastRows.map((week) => {
+        const rationWeek = rowsByWeek.get(week.week_start);
+        return {
+          ...week,
+          ration_code: rationCode,
+          actual_weekly_kg: rationWeek?.actual_weekly_kg || 0,
+          planned_weekly_kg: rationWeek?.planned_weekly_kg || 0,
+        };
+      });
+      return {
+        rationCode,
+        ...mapping,
+        ...forecastUploadedWeeklyConsumption(alignedRows, horizonWeeks, { averageRecentPricePer50kgBagPhp }, true),
+      };
+    });
+    const aggregateBase = forecastUploadedWeeklyConsumption(forecastRows, horizonWeeks, { historicalSummary });
+    const aggregate = reconcileAggregateForecast(aggregateBase, rationForecastsWithEvaluation);
+    const rationForecasts = rationForecastsWithEvaluation.map(({ evaluationRows, ...ration }) => ration);
+    const reconciliationStatus = aggregate.reconciliationStatus || 'reconciled';
     return {
       success: true,
       batchId: batchId || 'all',
@@ -308,6 +436,7 @@ export const getFeedConsumptionForecast = async ({ ownerId, batchId, horizonDays
       historicalSummary,
       ...aggregate,
       rationForecasts,
+      calculatedMetrics: buildCalculatedMetrics(aggregate.forecast, rationForecasts, reconciliationStatus),
       limitations: [...(aggregate.limitations || []), 'Uploaded data is synthetic and is not actual farm-recorded consumption.', 'Synthetic ration codes are linked to feed-stage names using the explicit feed-stage mapping.'],
       generatedAt: new Date().toISOString(),
     };
@@ -322,11 +451,13 @@ export const getFeedConsumptionForecast = async ({ ownerId, batchId, horizonDays
   const { data, error } = await query;
   if (error) throw error;
   const daily = aggregateDaily(data || []);
+  const recordedForecast = forecastFeedConsumption(daily, horizonDays, windowDays);
   return {
     success: true,
     batchId: batchId || 'all',
     dataType: 'recorded_database_feed_usage',
-    ...forecastFeedConsumption(daily, horizonDays, windowDays),
+    ...recordedForecast,
+    calculatedMetrics: buildCalculatedMetrics(recordedForecast.forecast || [], [], 'not_applicable'),
     generatedAt: new Date().toISOString(),
   };
 };

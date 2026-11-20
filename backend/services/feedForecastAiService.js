@@ -21,7 +21,7 @@ const buildStockContext = (feedStocks = null, forecastRows = [], rationForecasts
     const matchingStocks = mapping && stockAvailable
       ? feedStocks.filter((stock) => mapping.stockAliases.some((alias) => String(stock.feed_type || '').trim().toLowerCase() === alias.toLowerCase()))
       : [];
-    const stockQuantityKg = stockAvailable
+    const stockQuantityKg = mapping && stockAvailable && matchingStocks.length > 0
       ? matchingStocks.reduce((sum, stock) => sum + Math.max(0, Number(stock.stock_quantity) || 0), 0)
       : null;
     const coveragePercent = hasForecast && stockQuantityKg != null && forecastKg > 0
@@ -38,19 +38,25 @@ const buildStockContext = (feedStocks = null, forecastRows = [], rationForecasts
       feedStage: mapping?.feedStage || null,
       forecastKg: hasForecast ? Number(forecastKg.toFixed(3)) : null,
       averageWeeklyForecastKg: hasForecast ? Number((forecastKg / rows.length).toFixed(3)) : null,
-      stockMatch: !mapping ? 'unmapped' : stockAvailable ? 'mapped' : 'mapped_stock_unavailable',
-      stockQuantityKg: mapping && stockAvailable ? Number(stockQuantityKg.toFixed(3)) : null,
+      stockMatch: !mapping ? 'unmapped' : !stockAvailable ? 'mapped_stock_unavailable' : matchingStocks.length ? 'mapped' : 'mapped_no_stock_record',
+      stockQuantityKg: mapping && stockAvailable && matchingStocks.length > 0 ? Number(stockQuantityKg.toFixed(3)) : null,
       coveragePercent,
       surplusKg,
       shortfallKg,
-      note: !mapping ? 'No explicit mapping exists for this ration code.' : stockAvailable ? `Mapped to ${mapping.feedStage} feed stock by explicit ration-code mapping.` : 'Feed-stock data is unavailable.',
+      note: !mapping ? 'No explicit mapping exists for this ration code.' : !stockAvailable ? 'Feed-stock data is unavailable.' : matchingStocks.length ? `Mapped to ${mapping.feedStage} feed stock by explicit ration-code mapping.` : `No stock record exists for ${mapping.feedStage}; quantity is unavailable.`,
     };
   });
   return {
-    totalRecordedStockKg: stockAvailable ? Number(feedStocks.reduce((sum, row) => sum + Math.max(0, Number(row.stock_quantity) || 0), 0).toFixed(3)) : null,
+    totalRecordedStockKg: stockAvailable && feedStocks.length > 0 ? Number(feedStocks.reduce((sum, row) => sum + Math.max(0, Number(row.stock_quantity) || 0), 0).toFixed(3)) : null,
     recordedStocks: stockAvailable ? feedStocks.map((row) => ({ feedType: row.feed_type, stockQuantityKg: Number(row.stock_quantity) || 0 })) : [],
     rationForecasts: categories,
-    stockToForecastComparison: stockAvailable ? 'mapped_by_explicit_ration_code_to_feed_stage' : 'unavailable_stock_data',
+    stockToForecastComparison: !stockAvailable
+      ? 'unavailable_stock_data'
+      : !feedStocks.length
+        ? 'no_stock_records'
+        : categories.some((ration) => ration.stockMatch === 'mapped_no_stock_record')
+          ? 'partially_mapped_by_explicit_ration_code_to_feed_stage'
+          : 'mapped_by_explicit_ration_code_to_feed_stage',
   };
 };
 
@@ -98,22 +104,68 @@ const requestProvider = async ({ provider, model, apiKey, prompt, fetchImpl }) =
   return { structured, provider, model };
 };
 
-export const generateFeedForecastAnalysis = async ({ forecast, feedStocks = null, fetchImpl = fetch }) => {
+const narrativeContainsNumericFigure = (structured = {}) => {
+  const fields = [structured.analysis, structured.suggestion, ...(Array.isArray(structured.actions) ? structured.actions : []), ...(Array.isArray(structured.limitations) ? structured.limitations : [])].filter((value) => value != null);
+  return fields.some((value) => typeof value !== 'string' || /[0-9₀-₉]|[₱$€£]/u.test(value));
+};
+
+const validateForecastCalculations = (forecast) => {
+  const metrics = forecast?.calculatedMetrics;
+  if (!Array.isArray(metrics)) {
+    if (forecast?.status === 'forecasted' && Array.isArray(forecast.rationForecasts) && forecast.rationForecasts.length) {
+      throw new Error('Backend feed forecast metrics are missing; AI interpretation was not generated.');
+    }
+    return;
+  }
+  metrics.forEach((metric) => {
+    const totalKg = Number(metric.totalForecastKg);
+    if (!Number.isFinite(totalKg) || !Number.isFinite(Number(metric.bagEquivalent)) || !Number.isFinite(Number(metric.wholeBagsForTotalNeed))) {
+      throw new Error('Backend feed forecast metrics contain an invalid total or bag calculation.');
+    }
+    if (metric.reconciliationStatus === 'not_applicable') return;
+    const rationRows = (metric.rationForecasts || []).filter((row) => row.forecastKg != null && Number.isFinite(Number(row.forecastKg)));
+    const rationTotalKg = rationRows.reduce((sum, row) => sum + Number(row.forecastKg), 0);
+    if (Math.abs(rationTotalKg - totalKg) > 0.001 || Math.abs(Number(metric.bagEquivalent) - (totalKg / 50)) > 0.001) {
+      throw new Error('Backend feed forecast total does not reconcile with its ration and bag calculations.');
+    }
+    if (Number(metric.wholeBagsForTotalNeed) !== Math.ceil(Math.max(0, totalKg) / 50)) {
+      throw new Error('Backend feed forecast whole-bag calculation failed validation.');
+    }
+    if (metric.estimatedCostPhp != null) {
+      const pricedRows = rationRows.filter((row) => Number(row.forecastKg) > 0);
+      if (pricedRows.some((row) => row.estimatedCostPhp == null)) {
+        throw new Error('Backend feed forecast total cost is present while a ration cost is unavailable.');
+      }
+      const rationCost = pricedRows.reduce((sum, row) => sum + Number(row.estimatedCostPhp), 0);
+      if (Math.abs(rationCost - Number(metric.estimatedCostPhp)) > 0.01) {
+        throw new Error('Backend feed forecast total cost does not reconcile with ration costs.');
+      }
+    }
+  });
+};
+
+export const generateFeedForecastAnalysis = async ({ forecast, feedStocks = null, stockContext = null, fetchImpl = fetch }) => {
+  validateForecastCalculations(forecast);
+  const deterministicStockContext = stockContext || buildStockContext(feedStocks, forecast.forecast || [], forecast.rationForecasts || []);
   const prompt = [
     'Write for a busy pig farmer, not a software engineer. Use simple everyday words, short sentences, and explain any unavoidable farming or financial term immediately.',
     'Do not use technical model terms, statistical jargon, abbreviations, or unexplained phrases. Focus on what the farmer should understand and do next.',
     'You are an agricultural feed-planning advisor reviewing a weekly feed-consumption forecast for a pig farm.',
     'Use only the supplied historical and forecast values. Do not invent measurements, prices, causes, or farm conditions.',
     'Treat the uploaded historical feed data as the active dataset for this analysis. Do not replace its values with invented measurements.',
-    'Analyze the direction of weekly consumption, actual-versus-planned variance, projected bag requirements, projected cost, forecast error, and uncertainty.',
-    'Use the supplied explicit ration-code-to-feed-stage mapping to compare each forecast with its matching recorded feed stock. Do not infer any other mappings.',
-    'Analyze each ration forecast independently, including direction, uncertainty, requirements, and mapped stock. Do not make stock coverage or shortage claims for unmapped ration codes.',
-    'Recommend buying only when the computed per-stage shortfall supports it. If stock or forecast data is unavailable, say it is unavailable and recommend verifying records rather than assuming zero.',
+    'The backend has already calculated the quantities, bag equivalents, costs, and stock comparisons. Its reconciliation status indicates whether the plan is complete; backend figures are authoritative.',
+    'Interpret the direction, uncertainty, and operational meaning of those calculated results. Do not calculate, change, round, or restate any numerical figure in your prose.',
+    'Do not include digits, currency amounts, percentages, dates, bag counts, feed-code identifiers, or numbers written as words in analysis, suggestion, actions, or limitations. The application displays authoritative figures separately.',
+    'If the reconciliation status is partial, explain that the overall plan is incomplete and ask the farmer to verify the missing feed history before acting on the total.',
+    'Use the supplied explicit ration-code-to-feed-stage mapping to interpret each forecast with its matching recorded feed stock. Do not infer any other mappings.',
+    'Analyze each ration forecast independently. Do not make stock or shortage claims for unmapped ration codes, incomplete forecasts, or unavailable stock data.',
+    'Recommend buying only when the backend-calculated per-stage shortfall supports it. If stock or forecast data is unavailable, say it is unavailable and recommend verifying records rather than assuming zero.',
     'Do not replace recorded feed, inventory, expense, financial, or FCR calculations with this planning analysis.',
     'Return JSON only in this exact shape:',
-    '{"analysis":"short evidence-based analysis","suggestion":"specific planning suggestion","riskLevel":"low|medium|high|unknown","actions":["action"],"limitations":["limitation"]}',
-    `Forecast and stock data: ${JSON.stringify({ historicalSummary: forecast.historicalSummary, history: forecast.history, forecast: forecast.forecast, rationForecasts: forecast.rationForecasts, evaluation: forecast.evaluation, provenance: forecast.provenance, stockContext: buildStockContext(feedStocks, forecast.forecast || [], forecast.rationForecasts || []) })}`,
+    '{"analysis":"short qualitative interpretation without figures","suggestion":"qualitative planning suggestion without figures","riskLevel":"low|medium|high|unknown","actions":["qualitative action without figures"],"limitations":["qualitative limitation without figures"]}',
+    `Authoritative forecast and calculation data: ${JSON.stringify({ dataType: forecast.dataType, reconciliationStatus: forecast.reconciliationStatus, historicalSummary: forecast.historicalSummary, history: forecast.history, forecast: forecast.forecast, rationForecasts: forecast.rationForecasts, calculatedMetrics: forecast.calculatedMetrics, evaluation: forecast.evaluation, provenance: forecast.provenance, stockContext: deterministicStockContext })}`,
   ].join('\n');
+
   const providers = [
     { provider: 'gemini', apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY, model: process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite' },
     { provider: 'openrouter', apiKey: process.env.OPENROUTER_API_KEY, model: process.env.OPENROUTER_MODEL || 'openrouter/free' },
@@ -125,16 +177,21 @@ export const generateFeedForecastAnalysis = async ({ forecast, feedStocks = null
   for (const entry of providers) {
     try {
       const { structured, provider, model } = await requestProvider({ ...entry, apiKey: String(entry.apiKey).trim(), prompt, fetchImpl });
+      if (narrativeContainsNumericFigure(structured)) {
+        failures.push(`${entry.provider}: numeric figure found in narrative`);
+        console.warn(`Feed forecast provider ${entry.provider} returned numeric narrative content; trying next configured provider.`);
+        continue;
+      }
       return {
         success: true,
         provider,
         model,
         analysis: structured.analysis || '',
         suggestion: structured.suggestion || '',
-        riskLevel: structured.riskLevel || 'unknown',
+        riskLevel: ['low', 'medium', 'high', 'unknown'].includes(String(structured.riskLevel || '').toLowerCase()) ? String(structured.riskLevel).toLowerCase() : 'unknown',
         actions: Array.isArray(structured.actions) ? structured.actions : [],
         limitations: Array.isArray(structured.limitations) ? structured.limitations : [],
-        stockContext: buildStockContext(feedStocks, forecast.forecast || [], forecast.rationForecasts || []),
+        stockContext: deterministicStockContext,
         generatedAt: new Date().toISOString(),
       };
     } catch (error) {
