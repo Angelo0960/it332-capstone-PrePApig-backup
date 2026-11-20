@@ -1340,7 +1340,6 @@ export default function AnalyticsReportsScreen() {
                   {feedForecastAi.stockContext.rationForecasts?.length > 0 && <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">{feedForecastAi.stockContext.rationForecasts.map((ration) => <span key={ration.rationCode}>{ration.feedStage || ration.rationCode} ({ration.rationCode}) need: <strong>{ration.forecastKg == null ? 'insufficient history' : `${ration.forecastKg} kg`}</strong> · stock: <strong>{ration.stockQuantityKg == null ? 'unavailable' : `${ration.stockQuantityKg} kg`}</strong> · coverage: <strong>{ration.coveragePercent == null ? 'unavailable' : `${ration.coveragePercent}%`}</strong> · surplus: <strong>{ration.surplusKg == null ? 'unavailable' : `${ration.surplusKg} kg`}</strong> · shortfall: <strong>{ration.shortfallKg == null ? 'unavailable' : `${ration.shortfallKg} kg`}</strong></span>)}</div>}
                 </div>}
                 {feedForecastAi.actions?.length > 0 && <ul className="list-disc pl-4 mt-3 text-[10px] text-[#555B6E]">{feedForecastAi.actions.map((action) => <li key={action}>{action}</li>)}</ul>}
-                <p className="text-[10px] text-[#6B7280] mt-3">AI interpretation only; it does not replace recorded feed, inventory, expense, financial, or FCR calculations.</p>
               </div>
             )}
             {feedForecastAiError && <p className="text-[10px] text-amber-800 mb-2">AI suggestion unavailable: {feedForecastAiError}</p>}
