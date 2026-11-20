@@ -1328,9 +1328,6 @@ export default function AnalyticsReportsScreen() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-2 flex items-center justify-end text-[10px] text-[#6B7280]">
-              <span>Dashed styling and error bars show the forecast range · Unit: kg</span>
-            </div>
             {feedForecast?.rationForecasts?.length > 0 && (
               <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {feedForecast.rationForecasts.map((ration) => {
