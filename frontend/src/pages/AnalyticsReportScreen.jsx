@@ -654,6 +654,10 @@ export default function AnalyticsReportsScreen() {
       errorRange: [Math.max(0, row.upperKg - row.predictedKg), Math.max(0, row.predictedKg - row.lowerKg)],
       period: 'Forecast',
     }));
+    if (historical.length && forecast.length) {
+      const lastIndex = historical.length - 1;
+      historical[lastIndex] = { ...historical[lastIndex], forecast: historical[lastIndex].actual, forecastAnchor: true };
+    }
     return [...historical, ...forecast];
   }, [filteredFeedRecords, feedForecast, feedHistoryLabel]);
   const forecastStartDate = feedConsumptionData.find((point) => point.period === 'Forecast')?.date;
@@ -1296,11 +1300,11 @@ export default function AnalyticsReportsScreen() {
           <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg mb-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h3 className="font-semibold text-gray-900">Feed Consumption Forecast</h3>
+                <h3 className="font-semibold text-gray-900">Feed Consumption: Actual vs Forecast</h3>
                 <p className="mt-1 text-[10px] text-[#555B6E]">
                   {feedHistoryLabel === 'Synthetic history'
-                    ? 'Synthetic uploaded history, not actual farm records, compared with next-week estimate'
-                    : 'Recorded usage compared with the next-week estimate'}
+                    ? 'Synthetic uploaded history, not actual farm records, compared with next-week forecast'
+                    : 'Recorded usage compared with the next-week forecast'}
                 </p>
               </div>
               <div className="flex items-center gap-2 text-[10px] font-semibold">
@@ -1317,12 +1321,27 @@ export default function AnalyticsReportsScreen() {
                   <Tooltip
                     contentStyle={{ borderRadius: 12, border: '1px solid #ffd1df', boxShadow: '0 8px 20px rgba(37,40,56,0.12)', fontSize: 12 }}
                     labelStyle={{ color: '#252838', fontWeight: 700 }}
-                    formatter={(value, name) => [`${value} kg`, name === 'actual' ? 'Actual' : 'Forecast']}
+                    formatter={(value, name, item) => [
+                      `${value} kg`,
+                      item?.payload?.forecastAnchor && name === 'forecast'
+                        ? 'Forecast baseline'
+                        : name === 'actual' ? 'Actual' : 'Forecast',
+                    ]}
                   />
                   <Legend verticalAlign="top" align="right" height={26} iconType="circle" wrapperStyle={{ fontSize: 10, color: '#555B6E' }} formatter={(value) => value === 'actual' ? 'Actual' : 'Forecast'} />
                   {forecastStartDate && <ReferenceLine x={forecastStartDate} stroke="#f77f9f" strokeDasharray="5 5" strokeWidth={1.5} label={{ value: 'Forecast starts', position: 'insideTopRight', fill: '#ad1457', fontSize: 10 }} />}
                   <Line type="monotone" dataKey="actual" stroke="#059669" strokeWidth={3} dot={{ fill: '#059669', stroke: '#FFFFFF', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }} name="actual" connectNulls={false} />
-                  <Line type="monotone" dataKey="forecast" stroke="#f5125d" strokeWidth={3} strokeDasharray="7 5" dot={{ fill: '#f5125d', stroke: '#FFFFFF', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }} name="forecast" connectNulls={false}>
+                  <Line
+                    type="monotone"
+                    dataKey="forecast"
+                    stroke="#f5125d"
+                    strokeWidth={3}
+                    strokeDasharray="7 5"
+                    dot={(props) => props.payload?.period === 'Forecast' ? <circle cx={props.cx} cy={props.cy} r={4} fill="#f5125d" stroke="#FFFFFF" strokeWidth={2} /> : null}
+                    activeDot={(props) => props.payload?.period === 'Forecast' ? <circle cx={props.cx} cy={props.cy} r={6} fill="#f5125d" stroke="#FFFFFF" strokeWidth={2} /> : null}
+                    name="forecast"
+                    connectNulls={false}
+                  >
                     <ErrorBar dataKey="errorRange" width={4} strokeWidth={1.5} stroke="#ffd1df" />
                   </Line>
                 </LineChart>
