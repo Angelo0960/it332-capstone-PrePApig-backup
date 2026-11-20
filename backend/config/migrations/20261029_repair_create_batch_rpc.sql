@@ -51,7 +51,7 @@ BEGIN
     SELECT
         new_batch.id,
         p_owner_id,
-        COALESCE(new_batch.current_weight, 0) / NULLIF(pig_total, 0),
+        COALESCE(new_batch.current_weight, 0),
         'Healthy',
         'Auto-generated on batch creation'
     FROM generate_series(1, pig_total);

@@ -1090,7 +1090,7 @@ export default function DashboardScreen() {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-2">
-                    Start Weight (kg) <span className="text-red-700" aria-hidden="true">*</span>
+                    Average Starting Weight per Pig (kg) <span className="text-red-700" aria-hidden="true">*</span>
                   </label>
                   <div className="relative">
                     <input
