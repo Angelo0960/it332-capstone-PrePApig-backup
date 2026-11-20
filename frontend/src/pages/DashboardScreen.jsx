@@ -817,11 +817,9 @@ export default function DashboardScreen() {
                       ? formatCurrency(currentBatchTotalWeightKg * currentBatch.pricePerKg - Number(currentBatch.expenses))
                       : '—'}
                   </div>
-                  <div className="dashboard-primary-metric-note">
-                    {currentBatch?.expenses === null || currentBatch?.expenses === undefined
-                      ? 'Net estimate unavailable until recorded cost data is complete.'
-                      : 'After all recorded feed, vaccine & manual costs; check for duplicates.'}
-                  </div>
+                  {currentBatch?.expenses === null || currentBatch?.expenses === undefined ? (
+                    <div className="dashboard-primary-metric-note">Net estimate unavailable until recorded cost data is complete.</div>
+                  ) : null}
                 </div>
                 <div className="dashboard-card dashboard-primary-metric dashboard-primary-metric--count min-w-0 overflow-hidden flex flex-col justify-center rounded-2xl p-3 text-left">
                   <div className="dashboard-primary-metric-label">Pigs in Batch</div>
