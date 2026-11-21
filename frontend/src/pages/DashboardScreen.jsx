@@ -244,8 +244,10 @@ export default function DashboardScreen() {
   const user = getUserFromToken();
 
 
-  // Helper functions for feed scheduling
+  // Match the existing feed-stage transitions: Super Biik through day 28,
+  // Starter from day 29, Grower from day 71, and Finisher from day 106.
   const getFeedTypeForAge = (day) => {
+    if (day <= 28) return 'super_biik';
     if (day <= 70) return 'starter';
     if (day <= 105) return 'grower';
     return 'finisher';
@@ -256,12 +258,10 @@ export default function DashboardScreen() {
     return names[String(feedType || '').toLowerCase()] || feedType;
   };
 
-  const getFeedLevelPercentage = (day) => {
-    const feedType = getFeedTypeForAge(day);
-    return feedType === 'starter' ? 33 : feedType === 'grower' ? 66 : 100;
-  };
+  const getFeedLevelPercentage = (day) => ({ super_biik: 25, starter: 50, grower: 75, finisher: 100 }[getFeedTypeForAge(day)]);
 
   const getDaysUntilFeedChange = (day) => {
+    if (day < 29) return 29 - day;
     if (day < 71) return 71 - day;
     if (day < 106) return 106 - day;
     return null;
