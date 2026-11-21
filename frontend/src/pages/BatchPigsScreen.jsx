@@ -33,7 +33,7 @@ export default function BatchPigsScreen() {
 
   // Form states
   const [newPig, setNewPig] = useState({ weight: '', health_status: 'Healthy', notes: '' });
-  const [editPig, setEditPig] = useState({ weight: '', health_status: '', notes: '' });
+  const [editPig, setEditPig] = useState({ weight: '', notes: '' });
   const [saleForm, setSaleForm] = useState({ sale_date: new Date().toISOString().slice(0, 10), revenue: '', buyer: '', notes: '' });
 
   // Fetch pigs and batch metadata together, hydrating cached pigs first.
@@ -137,7 +137,6 @@ export default function BatchPigsScreen() {
     setEditingPig(pig);
     setEditPig({
       weight: pig.weight.toString(),
-      health_status: pig.health_status || 'Healthy',
       notes: pig.notes || '',
     });
     setShowEditModal(true);
@@ -155,7 +154,6 @@ export default function BatchPigsScreen() {
         headers: getAuthHeaders(),
         body: JSON.stringify({
           weight: parseFloat(editPig.weight),
-          health_status: editPig.health_status || 'Healthy',
           notes: editPig.notes || '',
         }),
       });
@@ -178,7 +176,7 @@ export default function BatchPigsScreen() {
         if (!json.queued) window.dispatchEvent(new Event('prepapig:financial-data-changed'));
         setShowEditModal(false);
         setEditingPig(null);
-        setEditPig({ weight: '', health_status: '', notes: '' });
+        setEditPig({ weight: '', notes: '' });
       } else {
         throw new Error(json.message);
       }
@@ -468,20 +466,6 @@ export default function BatchPigsScreen() {
                   step="0.1"
                   className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-2">
-                  Health Status
-                </label>
-                <select
-                  value={editPig.health_status}
-                  onChange={(e) => setEditPig({ ...editPig, health_status: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border border-white/50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
-                >
-                  <option value="Healthy">Healthy</option>
-                  <option value="Sick">Sick</option>
-                  <option value="Recovering">Recovering</option>
-                </select>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-800 mb-2">Notes</label>

@@ -463,8 +463,9 @@ export const updatePig = async (req, res) => {
     try {
         const { id } = req.params;
         const { weight, health_status, notes } = req.body;
-
-        const result = await mutatePig(req.user.id, 'update', id, { weight, health_status, notes });
+        const pigUpdates = { weight, notes };
+        if (Object.hasOwn(req.body, 'health_status')) pigUpdates.health_status = health_status;
+        const result = await mutatePig(req.user.id, 'update', id, pigUpdates);
         res.status(200).json({
             success: true,
             data: result.pig,
