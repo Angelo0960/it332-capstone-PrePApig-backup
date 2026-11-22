@@ -436,14 +436,17 @@ export default function FeedsInventoryScreen() {
     const feedType = FEED_TYPE_MAP[purchaseForm.feedType];
     const quantityText = String(purchaseForm.quantity).trim();
     const quantity = quantityText ? Number(purchaseForm.quantity) : null;
-    const unitCostText = String(purchaseForm.unitCost).trim();
-    const unitCost = unitCostText ? Number(purchaseForm.unitCost) : null;
+    const totalCostText = String(purchaseForm.unitCost).trim();
+    const totalCost = totalCostText ? Number(purchaseForm.unitCost) : null;
+    const unitPricePerKg = totalCost !== null && Number.isFinite(quantity) && quantity > 0
+      ? Number((totalCost / quantity).toFixed(2))
+      : null;
 
     if (!feedType) errors.feedType = 'Feed type is required';
     if (!quantityText) errors.quantity = 'Quantity is required';
     else if (!Number.isFinite(quantity) || quantity <= 0) errors.quantity = 'Enter a quantity greater than 0';
     if (!purchaseForm.date) errors.date = 'Date is required';
-    if (unitCost !== null && (!Number.isFinite(unitCost) || unitCost < 0)) errors.unitCost = 'Enter a valid non-negative cost';
+    if (totalCost !== null && (!Number.isFinite(totalCost) || totalCost < 0)) errors.unitCost = 'Enter a valid non-negative total price';
     setPurchaseErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
@@ -454,7 +457,7 @@ export default function FeedsInventoryScreen() {
         body: JSON.stringify({
           feed_type: feedType,
           stock_quantity: quantity,
-          ...(unitCost === null ? {} : { unit_price: unitCost }),
+          ...(unitPricePerKg === null ? {} : { unit_price: unitPricePerKg }),
           last_updated: purchaseForm.date,
         }),
       });
@@ -1287,7 +1290,7 @@ export default function FeedsInventoryScreen() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">Unit Cost (₱ per kg) <span className="text-gray-600 font-normal">(Optional)</span></label>
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Total Purchase Price (₱) <span className="text-gray-600 font-normal">(Optional)</span></label>
                   <div className="relative">
                     <input
                       type="number"
@@ -1298,14 +1301,20 @@ export default function FeedsInventoryScreen() {
                         setPurchaseForm({ ...purchaseForm, unitCost: e.target.value });
                         setPurchaseErrors((current) => ({ ...current, unitCost: '', form: '' }));
                       }}
-                      placeholder="28.50"
+                      placeholder="1500"
                       aria-invalid={Boolean(purchaseErrors.unitCost)}
-                      aria-describedby={purchaseErrors.unitCost ? 'purchase-unit-cost-error' : undefined}
+                      aria-describedby={purchaseErrors.unitCost ? 'purchase-unit-cost-error' : 'purchase-unit-cost-help'}
                       className={`w-full px-4 py-3 pr-11 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all ${purchaseErrors.unitCost ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
                     />
                     {purchaseErrors.unitCost && <AlertTriangle className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
                   </div>
                   <InlineFieldError id="purchase-unit-cost-error" message={purchaseErrors.unitCost} />
+                  <p id="purchase-unit-cost-help" className="mt-2 text-xs text-gray-700">Enter the full price you paid; the per-kg price is calculated from the quantity.</p>
+                  {purchaseForm.quantity && purchaseForm.unitCost && Number(purchaseForm.quantity) > 0 && Number.isFinite(Number(purchaseForm.unitCost)) && Number(purchaseForm.unitCost) >= 0 && (
+                    <p className="mt-2 rounded-lg bg-emerald-50/80 px-3 py-2 text-sm font-semibold text-emerald-800">
+                      Calculated price: ₱{(Number(purchaseForm.unitCost) / Number(purchaseForm.quantity)).toFixed(2)} per kg
+                    </p>
+                  )}
                 </div>
 
                 <div>
