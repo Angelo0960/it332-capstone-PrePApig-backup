@@ -840,7 +840,6 @@ export default function FeedsInventoryScreen() {
                         {FEED_REMINDER_TIMES.join(' · ')}
                       </div>
                     </div>
-                    <p className="mb-3 text-xs text-gray-600">Reminders are sent at these times whether or not a feeding has been recorded.</p>
                     <div className="space-y-3">
                       {batches
                         .filter((batch) => (selectedBatch === 'all' ? true : String(batch.id) === String(selectedBatch)))
