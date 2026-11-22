@@ -3,7 +3,7 @@ const PRICE_SOURCE_URL =
   `https://openstat.psa.gov.ph/PXWeb/api/v1/en/DB/2M/NFG/${PSA_SERIES_ID}.px`;
 const BATANGAS_PSGC = '0401000000';
 const CAVITE_PSGC = '0402100000';
-// The static PXWeb display URL errors without its session-specific rxid. Link to the stable official table API metadata instead.
+// The PXWeb display route errors without an rxid; use the stable official table API endpoint for source metadata.
 const PSA_HOG_FARMGATE_SOURCE_URL = PRICE_SOURCE_URL;
 const PRICE_SOURCE_LOCATIONS = ['Lemery', 'Calaca', 'Tuy', 'Balayan', 'Lian', 'Nasugbu', 'Taal'];
 const CALACA_FACEBOOK_URL = 'https://www.facebook.com/share/1HmN99yxmE/';
