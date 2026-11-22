@@ -9,7 +9,6 @@ import {
   Home,
   FileText,
   MapPin,
-  Radio,
   Sparkles,
   RefreshCw,
 
@@ -798,7 +797,7 @@ export default function AnalyticsReportsScreen() {
       }).join(' ')
       : 'No dated price observations are currently available.'),
     diagnostic: getAnalysisText(aiAnalysis?.analytics?.diagnostic) || (marketPriceObservations.length ? [
-      officialPricePoints.length ? 'PSA figures are province-level monthly averages, not municipality-specific buyer offers.' : null,
+      officialPricePoints.length ? 'Provincial prices are monthly averages, not municipality-specific buyer offers.' : null,
       provinceComparison,
       calacaPriceReference ? 'The Calaca value comes from a dated user-provided reference and is not independently verified.' : null,
       otherLocalPricePoints.length
@@ -1135,13 +1134,8 @@ export default function AnalyticsReportsScreen() {
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-gray-900">Hog Price Benchmarks & Analysis</h3>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
-                    <Radio size={10} /> {aiAnalysisLoading ? 'Updating' : officialPricePoints.length > 0 ? 'Official + local references' : 'Search'}
-                  </span>
+                  <h3 className="font-semibold text-gray-900">Hog Prices</h3>
                 </div>
-                <p className="text-xs text-gray-600">Local public listings plus official PSA provincial farmgate benchmarks</p>
-
               </div>
               <button
                 type="button"
@@ -1156,7 +1150,7 @@ export default function AnalyticsReportsScreen() {
             <div className="space-y-2">
               {marketPriceObservations.length === 0 && !loading && (
                 <p className="rounded-2xl border border-white/70 bg-white/65 px-3 py-4 text-sm text-gray-600">
-                  No sourced price benchmarks are available to display right now.
+                  No sourced price references are available to display right now.
                 </p>
               )}
               {marketPriceObservations.map((point) => {
@@ -1169,11 +1163,6 @@ export default function AnalyticsReportsScreen() {
                 const displayedPrice = hasRange
                   ? `${formatPricePerKg(point.priceMinPhpPerKg)}–${formatPricePerKg(point.priceMaxPhpPerKg)}`
                   : hasPrice ? formatPricePerKg(point.pricePhpPerKg) : '—';
-                const pointSourceLabel = point.sourceKind === 'official_statistic'
-                  ? 'PSA provincial benchmark'
-                  : point.verificationStatus === 'user-provided-screenshot'
-                    ? 'Dated user-provided reference'
-                    : point.source || 'Public search result';
                 return (
                   <div key={point.location}>
                     <button
@@ -1192,8 +1181,6 @@ export default function AnalyticsReportsScreen() {
                       <span className="min-w-0 flex-1">
                         <span className="flex flex-wrap items-center gap-2 text-xs font-semibold text-gray-900">
                           {point.location}
-                          {point.sourceKind === 'official_statistic' && <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] font-bold text-blue-700">PSA BENCHMARK</span>}
-                          {point.dataStatus === 'preliminary' && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800">PRELIMINARY</span>}
                           {point.verificationStatus === 'user-provided-screenshot' && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800">NOT INDEPENDENTLY VERIFIED</span>}
                         </span>
                         <span className="mt-1 block truncate text-[10px] text-gray-500">
@@ -1207,11 +1194,10 @@ export default function AnalyticsReportsScreen() {
                     </button>
                     {(point.source || point.sourceUrl) && (
                       <div className="px-3 pt-1 text-[10px] text-gray-500">
-                        {pointSourceLabel}
                         {point.sourceUrl && point.sourceUrl !== 'unavailable' && (
-                          <> · <a href={point.sourceUrl} target="_blank" rel="noreferrer" className="font-semibold text-blue-700 underline">Open source</a></>
+                          <a href={point.sourceUrl} target="_blank" rel="noreferrer" className="font-semibold text-blue-700 underline">View source</a>
                         )}
-                        {point.note && <span> · {point.note}</span>}
+                        {(!point.sourceUrl || point.sourceUrl === 'unavailable') && 'Source recorded'}
                       </div>
                     )}
                   </div>
@@ -1219,8 +1205,8 @@ export default function AnalyticsReportsScreen() {
               })}
             </div>
 
-            {pigPriceReference && (
-              <div className="mt-3 text-[10px] text-gray-500">Batangas province PSA benchmark: {formatPricePerKg(pigPriceReference.pricePhpPerKg)} ({pigPriceReference.period}); a monthly provincial average, not a municipality-specific buyer quote.</div>
+            {officialPricePoints.length > 0 && (
+              <div className="mt-3 text-[10px] text-gray-500">Provincial prices are broad references; local buyer offers may differ.</div>
             )}
             {pigPriceError && <div className="mt-2 text-xs text-red-600">{pigPriceError}</div>}
             {marketRefreshError && <div className="mt-2 text-xs text-red-600">{marketRefreshError}</div>}
