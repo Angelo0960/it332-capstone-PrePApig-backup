@@ -106,7 +106,7 @@ export const createVaccination = async (req, res) => {
     } catch (error) {
         console.error('Error in createVaccination:', error);
         const rawMessage = String(error.message || '');
-        const stockConflict = /insufficient vaccine stock|vaccine stock not found/i.test(rawMessage);
+        const stockConflict = /insufficient (?:unexpired )?vaccine stock|vaccine stock not found/i.test(rawMessage);
         const message = rawMessage.includes('vaccine_stocks.owner_id')
             ? 'Database migration required: run backend/config/migrations/20261010_vaccine_stock_owner.sql in Supabase.'
             : rawMessage.includes("'owner_id' column")
