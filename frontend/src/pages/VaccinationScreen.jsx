@@ -1248,7 +1248,7 @@ export default function VaccinationScreen() {
               <div className="mt-6 flex justify-end">
                 <button
                   autoFocus
-                  className="min-h-11 rounded-xl bg-emerald-700 px-5 py-2 font-semibold text-white hover:bg-emerald-800"
+                  className="min-h-11 rounded-xl border border-green-900 bg-green-700 px-5 py-2 font-semibold text-white shadow-md shadow-green-900/20 transition-colors hover:bg-green-800 active:bg-green-900 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-green-300"
                   onClick={() => setVaccinationSaveError('')}
                   type="button"
                 >
