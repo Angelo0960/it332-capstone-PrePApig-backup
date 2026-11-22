@@ -71,11 +71,13 @@ const getDailyFeedForBatch = (day) => {
 const DAILY_FEEDING_RECORDS_REQUIRED = 2;
 const FEED_REMINDER_TIMES = ['8:00 AM', '5:00 PM'];
 
+// These identifiers must match the feed_stocks.feed_type values used by the
+// stock-deduction RPC, not the human-readable labels shown in the UI.
 const FEED_TYPE_MAP = {
-  super_biik: 'Super Biik',
-  starter: 'Starter Mash',
-  grower: 'Grower Pellet',
-  finisher: 'Finisher',
+  super_biik: 'Tmpbc5',
+  starter: 'HS-Premium',
+  grower: 'HG-Premium',
+  finisher: 'HPSPM',
 };
 
 const FEED_STAGE_STOCK_TYPES = [
@@ -382,7 +384,7 @@ export default function FeedsInventoryScreen() {
     setPendingDone((current) => ({ ...current, [batchId]: true }));
     const payload = buildFeedDonePayload({
       batchId,
-      feedType,
+      feedType: FEED_TYPE_MAP[String(feedType).trim().toLowerCase()] || feedType,
       amount,
     });
     const saved = await handleSaveFeedUsage(payload);
