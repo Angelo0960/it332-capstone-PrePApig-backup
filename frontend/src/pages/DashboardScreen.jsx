@@ -599,28 +599,58 @@ export default function DashboardScreen() {
     window.location.href = '/';
   };
 
-  // ---------- Render "no batches" state ----------
+  // ---------- Render the empty/error batch state ----------
   if (!loading && batches.length === 0) {
+    const hasLoadError = Boolean(error);
     return (
-      <div className="min-h-screen w-full relative overflow-hidden flex flex-col">
-        <div className="absolute inset-0">
-          <img src={backgroundImage} alt="Farm Background" className="w-full h-full object-cover" />
+      <div className="relative flex min-h-screen w-full flex-col overflow-hidden">
+        <div className="absolute inset-0" aria-hidden="true">
+          <img src={backgroundImage} alt="" className="h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-b from-sky-900/5 via-white/10 to-emerald-950/20" />
         </div>
-        <div className="relative z-10 flex-1 flex items-center justify-center">
-          <div className="bg-white/30 backdrop-blur-lg p-8 rounded-2xl shadow-lg text-center">
-            <p className="text-gray-700">No batches available</p>
-            {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
-            <button onClick={fetchBatches} className="mt-4 px-4 py-2 bg-green-500 text-white rounded-xl shadow-lg">
-              Retry
-            </button>
-            <button
-              onClick={() => setShowAddBatch(true)}
-              className="mt-2 ml-2 px-4 py-2 bg-blue-500 text-white rounded-xl shadow-lg"
-            >
-              Add Batch
-            </button>
-          </div>
-        </div>
+        <main className="relative z-10 flex flex-1 items-center justify-center px-4 py-10 sm:px-6">
+          <section
+            aria-labelledby="empty-batches-title"
+            className="w-full max-w-lg rounded-[2rem] border border-white/70 bg-white/75 p-7 text-center shadow-[0_24px_80px_-28px_rgba(15,23,42,0.4)] backdrop-blur-xl sm:p-10"
+          >
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-700 shadow-inner">
+              <PiggyBank className="h-8 w-8" aria-hidden="true" />
+            </div>
+            <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">
+              Batch management
+            </p>
+            <h1 id="empty-batches-title" className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              {hasLoadError ? 'We couldn’t load your batches' : 'No pig batches yet'}
+            </h1>
+            <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-600 sm:text-base">
+              {hasLoadError
+                ? 'There was a problem retrieving your pig batches. Please try again, or add a batch if you’re just getting started.'
+                : 'There are currently no pig batches available. Would you like to add a batch?'}
+            </p>
+            {hasLoadError && (
+              <p className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800" role="alert">
+                {error}
+              </p>
+            )}
+            <div className="mt-7 flex flex-col-reverse justify-center gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={fetchBatches}
+                className="inline-flex min-h-12 items-center justify-center rounded-xl border border-slate-300 bg-white/80 px-5 py-3 font-semibold text-slate-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200"
+              >
+                Retry
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAddBatch(true)}
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 font-semibold text-white shadow-lg shadow-emerald-900/15 transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Add a batch
+              </button>
+            </div>
+          </section>
+        </main>
         <BottomNav active="Home" className="dashboard-bottom-nav" />
       </div>
     );
