@@ -188,6 +188,8 @@ export default function DashboardScreen() {
   const [editPigCount, setEditPigCount] = useState('');
 
   const [notifications, setNotifications] = useState([]);
+  const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
+  const [notificationActionFeedback, setNotificationActionFeedback] = useState(null);
   const [vaccinationRecords, setVaccinationRecords] = useState(() => (
     readCache(`vaccination-records:${getUserCacheKey()}:all`) || []
   ));
@@ -272,29 +274,55 @@ export default function DashboardScreen() {
   const fetchNotifications = async () => {
     try {
       const res = await fetch(`${API_BASE}/notifications/all?limit=20`, { headers: getAuthHeaders() });
-      if (!res.ok) throw new Error('Failed to fetch notifications');
       const json = await res.json();
-      if (json.success) {
-        setNotifications(json.data || []);
+      if (!res.ok || !json.success || !Array.isArray(json.data)) {
+        throw new Error(json.message || 'Failed to fetch notifications');
       }
+      setNotifications(json.data);
+      return json.data;
     } catch (err) {
       console.error('Error fetching notifications:', err);
-      setNotifications([]);
+      return null;
     }
   };
 
   // ---------- Mark all as read ----------
   const markAllAsRead = async () => {
-    const unread = notifications.filter((n) => !n.is_read);
-    if (unread.length === 0) return;
+    if (isMarkingAllRead) return;
+    setIsMarkingAllRead(true);
+    setNotificationActionFeedback(null);
     try {
-      await fetch(`${API_BASE}/notifications/read-all`, {
+      const response = await fetch(`${API_BASE}/notifications/read-all`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
       });
-      await fetchNotifications();
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Could not mark notifications as read');
+      }
+
+      const refreshedNotifications = await fetchNotifications();
+      if (!refreshedNotifications) {
+        throw new Error('The update could not be verified. Refresh notifications and try again.');
+      }
+      if (refreshedNotifications.some((notification) => !notification.is_read)) {
+        throw new Error('Some notifications are still unread. Please try again.');
+      }
+
+      setNotificationActionFeedback({
+        type: 'success',
+        message: result.count > 0
+          ? `Marked ${result.count} notification${result.count === 1 ? '' : 's'} as read.`
+          : 'There were no unread notifications.',
+      });
     } catch (err) {
       console.error('Error marking all as read:', err);
+      setNotificationActionFeedback({
+        type: 'error',
+        message: err.message || 'Could not mark notifications as read. Please try again.',
+      });
+    } finally {
+      setIsMarkingAllRead(false);
     }
   };
 
@@ -747,7 +775,10 @@ export default function DashboardScreen() {
                 onClick={() => {
                   const opening = !showNotifications;
                   setShowNotifications(opening);
-                  if (opening) void fetchNotifications();
+                  if (opening) {
+                    setNotificationActionFeedback(null);
+                    void fetchNotifications();
+                  }
                 }}
                 className="w-11 h-11 rounded-2xl bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-lg transition-all relative"
               >
@@ -1237,27 +1268,35 @@ export default function DashboardScreen() {
             <div className="responsive-modal bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-[90%] md:w-[70%] lg:w-[50%] max-h-[70%] overflow-y-auto">
               <div className="flex items-center justify-between p-4 border-b border-white/30">
                 <h2 className="text-lg font-bold text-gray-900">Notifications</h2>
-                <div className="flex items-center gap-2">
-                  {unreadCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={markAllAsRead}
-                      className="text-xs font-semibold text-blue-700 hover:text-blue-900"
-                    >
-                      Mark all as read
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setShowNotifications(false)}
-                    className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all"
-                  >
+                <button
+                  type="button"
+                  onClick={() => setShowNotifications(false)}
+                  aria-label="Close notifications"
+                  className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all"
+                >
                   <X className="w-4 h-4 text-gray-700" />
                 </button>
-                </div>
               </div>
 
               <div className="p-4 space-y-3">
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={markAllAsRead}
+                    disabled={isMarkingAllRead}
+                    className="min-h-11 w-full rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-bold text-blue-900 shadow-sm transition hover:bg-blue-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700 disabled:cursor-wait disabled:opacity-70 sm:w-auto"
+                  >
+                    {isMarkingAllRead ? 'Marking as read…' : 'Mark all as read'}
+                  </button>
+                </div>
+                {notificationActionFeedback && (
+                  <p
+                    role={notificationActionFeedback.type === 'error' ? 'alert' : 'status'}
+                    className={`rounded-lg px-3 py-2 text-sm font-semibold ${notificationActionFeedback.type === 'error' ? 'bg-red-50 text-red-800' : 'bg-green-50 text-green-800'}`}
+                  >
+                    {notificationActionFeedback.message}
+                  </p>
+                )}
                 {notifications.length === 0 ? (
                   <p className="text-gray-500 text-center py-4">No notifications</p>
                 ) : (
