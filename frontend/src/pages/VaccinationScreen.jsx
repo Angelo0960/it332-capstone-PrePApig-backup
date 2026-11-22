@@ -85,7 +85,7 @@ export default function VaccinationScreen() {
   const [restockForm, setRestockForm] = useState({
     vaccineType: '',
     doses: '',
-    cost: '',
+    totalCost: '',
     expiryDate: '',
     purchaseDate: formatLocalDate(),
   });
@@ -313,9 +313,11 @@ export default function VaccinationScreen() {
 
   // Direct "Mark as Done" – no modal
   const handleDirectMarkAsDone = async (batchId, vaccineName, doses, notes) => {
+    const batch = batches.find((item) => String(item.id) === String(batchId));
+    const doseCount = Number(doses);
+    if (!batch || Number(batch.pigCount) <= 0 || !Number.isSafeInteger(doseCount) || doseCount <= 0) return;
     setPendingDone((current) => ({ ...current, [batchId]: true }));
     const vaccinationDate = formatLocalDate();
-    const batch = batches.find((item) => String(item.id) === String(batchId));
     const payload = buildVaccinationDonePayload({
       batchId,
       vaccineName,
@@ -342,9 +344,13 @@ export default function VaccinationScreen() {
   // Modal submit
   const handleFormSubmit = () => {
     const errors = {};
+    const dosage = Number(vaccinationForm.doses);
+    const selectedFormBatch = batches.find((batch) => String(batch.id) === String(vaccinationForm.batch));
     if (!vaccinationForm.batch) errors.batch = 'Batch is required';
+    else if (Number(selectedFormBatch?.pigCount ?? 0) <= 0) errors.batch = 'Add at least one pig to this batch before recording vaccination';
     if (!vaccinationForm.vaccineType) errors.vaccineType = 'Vaccine type is required';
     if (!String(vaccinationForm.doses).trim()) errors.doses = 'Doses are required';
+    else if (!Number.isSafeInteger(dosage) || dosage < 1 || dosage > 10000) errors.doses = 'Enter a whole number of doses from 1 to 10,000';
     if (!vaccinationForm.date) errors.date = 'Date is required';
     setVaccinationErrors(errors);
     if (Object.keys(errors).length > 0) return;
@@ -353,7 +359,7 @@ export default function VaccinationScreen() {
       batch_id: vaccinationForm.batch,
       vaccine_name: vaccinationForm.vaccineType,
       vaccination_date: vaccinationForm.date,
-      dosage: parseInt(vaccinationForm.doses, 10) || 0,
+      dosage,
       notes: vaccinationForm.notes,
       next_due_date: getNextScheduledDate(
         batches.find((batch) => String(batch.id) === String(vaccinationForm.batch)),
@@ -370,15 +376,16 @@ export default function VaccinationScreen() {
     const errors = {};
     const vaccineName = String(restockForm.vaccineType || '').trim();
     const quantity = Number(restockForm.doses);
-    const price = Number(restockForm.cost);
+    const totalPurchaseCost = Number(restockForm.totalCost);
     const expiryDate = String(restockForm.expiryDate || '').trim();
     const today = formatLocalDate();
 
     if (!vaccineName) errors.vaccineType = 'Vaccine type is required';
     if (!String(restockForm.doses).trim()) errors.doses = 'Doses added are required';
     else if (!Number.isSafeInteger(quantity) || quantity <= 0 || quantity > 10000) errors.doses = 'Enter a whole number of doses from 1 to 10,000';
-    if (!String(restockForm.cost).trim()) errors.cost = 'Cost per dose is required';
-    else if (!Number.isFinite(price) || price < 0) errors.cost = 'Enter a valid non-negative cost';
+    if (!String(restockForm.totalCost).trim()) errors.totalCost = 'Total purchase cost is required';
+    else if (!Number.isFinite(totalPurchaseCost) || totalPurchaseCost < 0) errors.totalCost = 'Enter a valid non-negative total purchase cost';
+    else if (Math.abs(totalPurchaseCost * 100 - Math.round(totalPurchaseCost * 100)) > 1e-7) errors.totalCost = 'Use no more than two decimal places';
     if (!expiryDate) errors.expiryDate = 'Expiry date is required';
     else if (!/^\d{4}-\d{2}-\d{2}$/.test(expiryDate) || !Number.isFinite(Date.parse(`${expiryDate}T00:00:00Z`)) || new Date(`${expiryDate}T00:00:00Z`).toISOString().slice(0, 10) !== expiryDate) errors.expiryDate = 'Enter a valid expiry date';
     else if (expiryDate < today) errors.expiryDate = 'Expiry date cannot be in the past';
@@ -394,7 +401,7 @@ export default function VaccinationScreen() {
           vaccine_name: vaccineName,
           stock_quantity: quantity,
           expiry_date: expiryDate,
-          price_per_dose: price,
+          purchase_total_cost: totalPurchaseCost,
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -409,7 +416,7 @@ export default function VaccinationScreen() {
           ? 'Vaccine restock saved on this device; waiting to sync.'
           : 'Stock updated successfully!');
       setShowRestockVaccine(false);
-      setRestockForm({ vaccineType: '', doses: '', cost: '', expiryDate: '', purchaseDate: formatLocalDate() });
+      setRestockForm({ vaccineType: '', doses: '', totalCost: '', expiryDate: '', purchaseDate: formatLocalDate() });
       void fetchVaccineStock();
       window.dispatchEvent(new Event('prepapig:financial-data-changed'));
     } catch (err) {
@@ -440,16 +447,26 @@ export default function VaccinationScreen() {
   const calculateBatchVaccinationExpense = (batchId) => {
     const filtered = batchId === 'all'
       ? vaccinationRecords
-      : vaccinationRecords.filter((r) => r.batch_id === batchId);
+      : vaccinationRecords.filter((r) => String(r.batch_id) === String(batchId));
     let total = 0;
     for (const rec of filtered) {
+      if (rec.dosage === null || rec.dosage === undefined || rec.dosage === ''
+        || rec.price_per_dose_at_usage === null || rec.price_per_dose_at_usage === undefined || rec.price_per_dose_at_usage === '') return null;
       const dosage = Number(rec.dosage);
       const priceAtUsage = Number(rec.price_per_dose_at_usage);
-      if (!Number.isFinite(priceAtUsage) || priceAtUsage < 0 || !Number.isFinite(dosage) || dosage < 0) return null;
+      if (!Number.isSafeInteger(dosage) || dosage <= 0 || !Number.isFinite(priceAtUsage) || priceAtUsage < 0) return null;
       total += dosage * priceAtUsage;
     }
     return total;
   };
+
+  const countMissingVaccineCostSnapshots = (records) => records.filter((record) => {
+    if (record.dosage === null || record.dosage === undefined || record.dosage === ''
+      || record.price_per_dose_at_usage === null || record.price_per_dose_at_usage === undefined || record.price_per_dose_at_usage === '') return true;
+    const dosage = Number(record.dosage);
+    const price = Number(record.price_per_dose_at_usage);
+    return !Number.isSafeInteger(dosage) || dosage <= 0 || !Number.isFinite(price) || price < 0;
+  }).length;
 
   const selectedBatchData = batches.find((b) => String(b.id) === String(selectedBatch));
   const filteredBatchOptions = useMemo(() => {
@@ -466,6 +483,9 @@ export default function VaccinationScreen() {
     () => calculateBatchVaccinationExpense(selectedBatch),
     [selectedBatch, vaccinationRecords, vaccineStock]
   );
+  const missingVaccineCostCount = useMemo(() => countMissingVaccineCostSnapshots(
+    selectedBatch === 'all' ? vaccinationRecords : vaccinationRecords.filter((record) => String(record.batch_id) === String(selectedBatch))
+  ), [selectedBatch, vaccinationRecords]);
   const filteredRecords = vaccinationRecords;
   const scheduleBatches = batches;
 
@@ -473,6 +493,13 @@ export default function VaccinationScreen() {
     () => vaccinationRecords.reduce((sum, r) => sum + (Number(r.dosage) || 0), 0),
     [vaccinationRecords]
   );
+  const restockQuantity = Number(restockForm.doses);
+  const restockTotal = Number(restockForm.totalCost);
+  const restockPricePerDose = String(restockForm.totalCost).trim()
+    && Number.isSafeInteger(restockQuantity) && restockQuantity > 0
+    && Number.isFinite(restockTotal) && restockTotal >= 0
+    ? Math.round((restockTotal / restockQuantity + Number.EPSILON) * 1_000_000) / 1_000_000
+    : null;
 
   return (
     <div className="dashboard-theme mobile-screen-shell min-h-screen w-full relative overflow-hidden flex flex-col">
@@ -653,9 +680,9 @@ export default function VaccinationScreen() {
                     {batchExpense == null ? 'Unavailable' : `₱${batchExpense.toLocaleString('en-PH', { maximumFractionDigits: 0 })}`}
                   </div>
                   <div className="vaccination-summary-caption mt-2 text-xs text-gray-600">
-                    {selectedBatch === 'all'
-                      ? 'Across all batches'
-                      : 'Vaccination expenses for this batch'}
+                    {missingVaccineCostCount > 0
+                      ? `Unavailable: ${missingVaccineCostCount} record(s) lack a valid dose or transaction-time price`
+                      : selectedBatch === 'all' ? 'Across all batches' : 'Vaccination expenses for this batch'}
                   </div>
                 </div>
               </div>
@@ -895,7 +922,7 @@ export default function VaccinationScreen() {
                               if (!dueVax) return null;
                               return (
                                 <button
-                                  disabled={isPending}
+                                  disabled={isPending || pigCount <= 0}
                                   onClick={() => {
                                     const doses = String(dueVax.dosesPerPig * pigCount);
                                     const notes = `${dueVax.label}: ${dueVax.doseMlPerPig} mL per pig; ${dueVax.doseMlPerPig * pigCount} mL total for ${pigCount} pigs.`;
@@ -903,7 +930,7 @@ export default function VaccinationScreen() {
                                   }}
                                   className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-semibold py-2 rounded-lg shadow-lg active:scale-95 transition-all"
                                 >
-                                  {isPending ? 'Saving...' : 'Mark as Done'}
+                                  {isPending ? 'Saving...' : pigCount <= 0 ? 'No pigs in batch' : 'Mark as Done'}
                                 </button>
                               );
                             })()}
@@ -1037,6 +1064,9 @@ export default function VaccinationScreen() {
                   <div className="relative">
                     <input
                       type="number"
+                      min="1"
+                      max="10000"
+                      step="1"
                       value={vaccinationForm.doses}
                       onChange={(e) => {
                         setVaccinationForm({ ...vaccinationForm, doses: e.target.value });
@@ -1164,26 +1194,31 @@ export default function VaccinationScreen() {
                   <InlineFieldError id="restock-doses-error" message={restockErrors.doses} />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">Cost (₱) <span className="text-red-700" aria-hidden="true">*</span></label>
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Total Purchase Cost (₱) <span className="text-red-700" aria-hidden="true">*</span></label>
                   <div className="relative">
                     <input
                       type="number"
-                      value={restockForm.cost}
+                      value={restockForm.totalCost}
                       onChange={(e) => {
-                        setRestockForm({ ...restockForm, cost: e.target.value });
-                        setRestockErrors((current) => ({ ...current, cost: '', form: '' }));
+                        setRestockForm({ ...restockForm, totalCost: e.target.value });
+                        setRestockErrors((current) => ({ ...current, totalCost: '', form: '' }));
                       }}
                       placeholder="3250"
                       min="0"
                       step="0.01"
                       aria-required="true"
-                      aria-invalid={Boolean(restockErrors.cost)}
-                      aria-describedby={restockErrors.cost ? 'restock-cost-error' : undefined}
-                      className={`w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${restockErrors.cost ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
+                      aria-invalid={Boolean(restockErrors.totalCost)}
+                      aria-describedby={restockErrors.totalCost ? 'restock-total-cost-error' : undefined}
+                      className={`w-full px-4 py-3 rounded-xl bg-white/40 backdrop-blur-lg border text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all pr-11 ${restockErrors.totalCost ? 'border-red-500 ring-1 ring-red-400/60' : 'border-white/50'}`}
                     />
-                    {restockErrors.cost && <AlertTriangle className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
+                    {restockErrors.totalCost && <AlertTriangle className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-red-600" aria-hidden="true" />}
                   </div>
-                  <InlineFieldError id="restock-cost-error" message={restockErrors.cost} />
+                  <InlineFieldError id="restock-total-cost-error" message={restockErrors.totalCost} />
+                  <p className="mt-1 text-xs text-gray-700">
+                    {restockPricePerDose == null
+                      ? 'Enter the receipt total; cost per dose is calculated from the doses added.'
+                      : `Calculated cost: ₱${restockPricePerDose.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 6 })} per dose`}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-2">Expiry Date <span className="text-red-700" aria-hidden="true">*</span></label>

@@ -188,7 +188,16 @@ function queuedResponse(path, method, payload, localId) {
   if (path === '/feeds/stock/update' || path === '/vaccinations/stock/update') {
     action = payload?.stock_quantity !== undefined ? 'restock' : 'price';
     data = [];
-    optimistic = { action, record: payload };
+    const record = { ...(payload || {}) };
+    if (path === '/vaccinations/stock/update' && record.purchase_total_cost !== undefined) {
+      const quantity = Number(record.stock_quantity);
+      const totalCost = Number(record.purchase_total_cost);
+      record.price_per_dose = Number.isSafeInteger(quantity) && quantity > 0 && Number.isFinite(totalCost) && totalCost >= 0
+        ? Math.round((totalCost / quantity + Number.EPSILON) * 1_000_000) / 1_000_000
+        : null;
+      delete record.purchase_total_cost;
+    }
+    optimistic = { action, record };
   } else {
     const pathId = path.split('/').filter(Boolean).at(-1);
     const record = method === 'POST' ? optimisticRecord(path, payload, localId)

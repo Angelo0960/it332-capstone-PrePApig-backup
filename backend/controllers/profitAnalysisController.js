@@ -137,17 +137,28 @@ export const generateAiProfitAnalysis = async (req, res) => {
         estimatedStandingValue: row.weightDataComplete && pricePerKg !== null ? round(row.totalWeightKg * pricePerKg) : null,
       };
     });
+    const missingFeedCostCount = feeds.filter((row) => !numeric(row.unit_price_at_usage)).length;
+    const missingVaccineCostCount = vaccinations.filter((row) => {
+      const dosage = Number(row.dosage);
+      return !numeric(row.dosage) || !Number.isSafeInteger(dosage) || dosage <= 0 || !numeric(row.price_per_dose_at_usage) || Number(row.price_per_dose_at_usage) < 0;
+    }).length;
+    const feedUsageCostPhp = round(feeds.reduce((sum, row) => sum + (numeric(row.quantity_kg) && numeric(row.unit_price_at_usage) && Number(row.quantity_kg) >= 0 && Number(row.unit_price_at_usage) >= 0 ? Number(row.quantity_kg) * Number(row.unit_price_at_usage) : 0), 0));
+    const vaccineUsageCostPhp = missingVaccineCostCount === 0
+      ? round(vaccinations.reduce((sum, row) => sum + Number(row.dosage) * Number(row.price_per_dose_at_usage), 0))
+      : null;
     const costRows = {
       recordedExpensesPhp: round(expenses.reduce((sum, row) => sum + (numeric(row.amount) && Number(row.amount) >= 0 ? Number(row.amount) : 0), 0)),
-      feedUsageCostPhp: round(feeds.reduce((sum, row) => sum + (numeric(row.quantity_kg) && numeric(row.unit_price_at_usage) && Number(row.quantity_kg) >= 0 && Number(row.unit_price_at_usage) >= 0 ? Number(row.quantity_kg) * Number(row.unit_price_at_usage) : 0), 0)),
-      vaccineUsageCostPhp: round(vaccinations.reduce((sum, row) => sum + (numeric(row.dosage) && numeric(row.price_per_dose_at_usage) && Number(row.dosage) >= 0 && Number(row.price_per_dose_at_usage) >= 0 ? Number(row.dosage) * Number(row.price_per_dose_at_usage) : 0), 0)),
+      feedUsageCostPhp,
+      vaccineUsageCostPhp,
     };
-    const missingFeedCostCount = feeds.filter((row) => !numeric(row.unit_price_at_usage)).length;
-    const missingVaccineCostCount = vaccinations.filter((row) => !numeric(row.price_per_dose_at_usage) || !numeric(row.dosage)).length;
-    const totalRecordedCostsPhp = round(Object.values(costRows).reduce((sum, value) => sum + value, 0));
+    const totalRecordedCostsPhp = vaccineUsageCostPhp === null
+      ? null
+      : round(costRows.recordedExpensesPhp + costRows.feedUsageCostPhp + vaccineUsageCostPhp);
     const allValuationsAvailable = valuation.every((row) => row.estimatedStandingValue !== null);
     const estimatedStandingValuePhp = allValuationsAvailable ? round(valuation.reduce((sum, row) => sum + row.estimatedStandingValue, 0)) : null;
-    const estimatedStandingValueLessSelectedPeriodCostsPhp = estimatedStandingValuePhp === null ? null : round(estimatedStandingValuePhp - totalRecordedCostsPhp);
+    const estimatedStandingValueLessSelectedPeriodCostsPhp = estimatedStandingValuePhp === null || totalRecordedCostsPhp === null
+      ? null
+      : round(estimatedStandingValuePhp - totalRecordedCostsPhp);
     const limitations = [];
     if (!weightHistoryAvailable) limitations.push('Stored weight-history snapshots are not available in the database; growth rates use the recorded batch start weight and the current individual-pig weights when those dates are consistent.');
     if (growth.some((row) => !row.weightDataComplete)) limitations.push('At least one batch is missing a complete individual-pig weight total; its standing value and growth are unavailable.');
@@ -156,7 +167,7 @@ export const generateAiProfitAnalysis = async (req, res) => {
     if (growth.some((row) => row.growth?.previousSnapshotSource === 'auto_feed')) limitations.push('Some growth rates start from a feed-based calculated weight snapshot, not a direct physical weigh-in.');
     if (!allValuationsAvailable) limitations.push('A selling-price basis is missing for at least one batch; combined standing value and estimated margin are unavailable.');
     if (missingFeedCostCount) limitations.push(`${missingFeedCostCount} feed usage record(s) lack a transaction-time unit price and are excluded from calculated feed costs.`);
-    if (missingVaccineCostCount) limitations.push(`${missingVaccineCostCount} vaccination record(s) lack dosage or a transaction-time price and are excluded from calculated vaccine costs.`);
+    if (missingVaccineCostCount) limitations.push(`${missingVaccineCostCount} vaccination record(s) lack a valid positive whole-number dosage or a transaction-time price; vaccine costs and the total recorded-cost estimate are unavailable.`);
     limitations.push('Manual expense entries and feed/vaccine usage costs are both included; possible overlap cannot be determined from the records.');
     if (batchId) limitations.push('Unassigned expenses are excluded from a single-batch analysis because they cannot be reliably allocated to that batch.');
     else limitations.push('All-batch expense totals cover farm records in the selected period, including expenses linked to batches that may no longer be active; standing value covers only active batches.');

@@ -6,7 +6,7 @@ const dateFields = ['date_acquired', 'feeding_date', 'vaccination_date', 'next_d
 const textLimits = { batch_code: 50, status: 20, health_status: 50, feeding_time: 20, email: 254 };
 const textFields = ['batch_code', 'breed', 'status', 'health_status', 'feed_type', 'vaccine_name', 'expense_type', 'feeding_time', 'administered_by', 'notes', 'description', 'title', 'message', 'type', 'token', 'email', 'password'];
 
-export const validateBody = ({ required = [], nonNegative = [], integers = [], forbidden = [], nullable = [], update = false } = {}) => (req, res, next) => {
+export const validateBody = ({ required = [], nonNegative = [], integers = [], positiveIntegers = [], forbidden = [], nullable = [], update = false } = {}) => (req, res, next) => {
   const body = req.body;
   const reject = (message) => res.status(400).json({ success: false, message });
   if (!body || typeof body !== 'object' || Array.isArray(body)) return reject('A JSON object is required');
@@ -15,10 +15,11 @@ export const validateBody = ({ required = [], nonNegative = [], integers = [], f
   if (update && !Object.keys(body).length) return reject('At least one update field is required');
   const missing = required.filter((field) => isMissing(body[field]));
   if (missing.length) return reject(`Missing required fields: ${missing.join(', ')}`);
-  for (const field of [...new Set([...nonNegative, ...integers])]) {
+  for (const field of [...new Set([...nonNegative, ...integers, ...positiveIntegers])]) {
     if (body[field] === undefined || (body[field] === null && nullable.includes(field))) continue;
     const value = body[field];
     if (isMissing(value) || !['number', 'string'].includes(typeof value) || !Number.isFinite(Number(value)) || Number(value) < 0) return reject(`${field} must be a non-negative number`);
+    if (positiveIntegers.includes(field) && (!Number.isSafeInteger(Number(value)) || Number(value) < 1 || Number(value) > 10000)) return reject(`${field} must be a positive integer from 1 to 10000`);
     if (integers.includes(field) && (!Number.isSafeInteger(Number(value)) || Number(value) > 10000)) return reject(`${field} must be an integer from 0 to 10000`);
     body[field] = Number(value);
   }

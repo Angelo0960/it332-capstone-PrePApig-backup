@@ -550,14 +550,27 @@ export default function AnalyticsReportsScreen() {
     return Math.round(total * 100) / 100;
   };
   const totalFeedCost = useMemo(() => getFeedCost(), [filteredFeedRecords]);
-  const totalVaccineCost = useMemo(() => filteredVaccinationRecords.reduce((total, record) => {
-    const dosage = Number(record.dosage);
-    const priceAtUsage = Number(record.price_per_dose_at_usage);
-    return Number.isFinite(dosage) && dosage >= 0 && Number.isFinite(priceAtUsage) && priceAtUsage >= 0
-      ? total + dosage * priceAtUsage
-      : total;
-  }, 0), [filteredVaccinationRecords]);
-  const totalRecordedCosts = financial
+  const vaccineCostSummary = useMemo(() => {
+    let total = 0;
+    let missingCount = 0;
+    filteredVaccinationRecords.forEach((record) => {
+      if (record.dosage === null || record.dosage === undefined || record.dosage === ''
+        || record.price_per_dose_at_usage === null || record.price_per_dose_at_usage === undefined || record.price_per_dose_at_usage === '') {
+        missingCount += 1;
+        return;
+      }
+      const dosage = Number(record.dosage);
+      const priceAtUsage = Number(record.price_per_dose_at_usage);
+      if (!Number.isSafeInteger(dosage) || dosage <= 0 || !Number.isFinite(priceAtUsage) || priceAtUsage < 0) {
+        missingCount += 1;
+        return;
+      }
+      total += dosage * priceAtUsage;
+    });
+    return { total: missingCount ? null : Math.round(total * 100) / 100, missingCount };
+  }, [filteredVaccinationRecords]);
+  const totalVaccineCost = vaccineCostSummary.total;
+  const totalRecordedCosts = financial && totalVaccineCost != null
     ? Math.round((Number(financial.recordedExpenses || 0) + totalFeedCost + totalVaccineCost) * 100) / 100
     : null;
   const selectedBatches = selectedBatch === 'All Batches'
@@ -894,12 +907,15 @@ export default function AnalyticsReportsScreen() {
       const vaccineByBatch = new Map();
       (reportData.vaccinationRecords || []).forEach((record) => {
         if (String(record.status || '').toLowerCase() !== 'completed') return;
-        const current = vaccineByBatch.get(record.batch_id) || { dosage: 0, cost: 0, names: [] };
-        const dosage = Number(record.dosage) || 0;
+        const current = vaccineByBatch.get(record.batch_id) || { dosage: 0, cost: 0, costComplete: true, names: [] };
+        const dosage = Number(record.dosage);
         const price = Number(record.price_per_dose_at_usage);
-        current.dosage += dosage;
+        if (Number.isFinite(dosage) && dosage >= 0) current.dosage += dosage;
         if (record.vaccine_name && !current.names.includes(record.vaccine_name)) current.names.push(record.vaccine_name);
-        if (Number.isFinite(price) && price >= 0) current.cost += dosage * price;
+        const validDosage = record.dosage !== null && record.dosage !== undefined && record.dosage !== '' && Number.isSafeInteger(dosage) && dosage > 0;
+        const validPrice = record.price_per_dose_at_usage !== null && record.price_per_dose_at_usage !== undefined && record.price_per_dose_at_usage !== '' && Number.isFinite(price) && price >= 0;
+        if (validDosage && validPrice) current.cost += dosage * price;
+        else current.costComplete = false;
         vaccineByBatch.set(record.batch_id, current);
       });
       const expensesByBatch = new Map();
@@ -913,7 +929,7 @@ export default function AnalyticsReportsScreen() {
         const pigs = pigMap.get(batch.id) || [];
         const pigRows = pigs.length > 0 ? pigs : [{ id: '', weight: batch.current_weight }];
         const feed = feedByBatch.get(batch.id) || { kg: 0, cost: 0 };
-        const vaccine = vaccineByBatch.get(batch.id) || { dosage: 0, cost: 0, names: [] };
+        const vaccine = vaccineByBatch.get(batch.id) || { dosage: 0, cost: 0, costComplete: true, names: [] };
         const otherExpenses = expensesByBatch.get(batch.id) || 0;
         const sale = salesByBatch.get(String(batch.id));
         const salePrice = Number.isFinite(Number(batch.sale_price_per_kg)) && Number(batch.sale_price_per_kg) > 0
@@ -924,8 +940,9 @@ export default function AnalyticsReportsScreen() {
         pigRows.forEach((pig, index) => {
           const finalWeight = Number(pig.weight ?? batch.current_weight);
           const revenue = Number.isFinite(salePrice) && salePrice > 0 && Number.isFinite(finalWeight) ? finalWeight * salePrice : 0;
-          const totalCost = feed.cost + vaccine.cost + (index === 0 ? otherExpenses : 0);
-          const totalProfit = revenue - totalCost;
+          const vaccineCost = vaccine.costComplete ? vaccine.cost : null;
+          const totalCost = vaccineCost === null ? null : feed.cost + vaccineCost + (index === 0 ? otherExpenses : 0);
+          const totalProfit = totalCost === null ? null : revenue - totalCost;
           rows.push([
             reportBatchName(batch),
             pig.id ? `Pig-${String(pig.id).slice(0, 8)}` : '',
@@ -938,19 +955,29 @@ export default function AnalyticsReportsScreen() {
             feed.cost || '',
             vaccine.names.join(', '),
             vaccine.dosage || '',
-            vaccine.cost || '',
+            vaccineCost == null ? '' : vaccineCost,
             index === 0 ? otherExpenses : '',
-            totalCost || '',
-            revenue || totalCost ? totalProfit : '',
-            revenue > 0 ? totalProfit / revenue : '',
+            totalCost == null ? '' : totalCost,
+            totalProfit == null ? '' : totalProfit,
+            totalProfit != null && revenue > 0 ? totalProfit / revenue : '',
           ]);
         });
       });
       const totalRow = ['TOTALS', '', '', '', 0, 0, 0, 0, 0, '', 0, 0, 0, 0, 0, 0];
+      const allVaccineCostsAvailable = reportBatches.every((batch) => {
+        const vaccine = vaccineByBatch.get(batch.id);
+        return !vaccine || vaccine.costComplete;
+      });
       rows.slice(3).forEach((row) => {
         [4, 5, 6, 7, 8, 10, 11, 12, 13, 14].forEach((index) => { totalRow[index] += Number(row[index]) || 0; });
       });
       totalRow[15] = totalRow[6] > 0 ? totalRow[14] / totalRow[6] : 0;
+      if (!allVaccineCostsAvailable) {
+        totalRow[11] = '';
+        totalRow[13] = '';
+        totalRow[14] = '';
+        totalRow[15] = '';
+      }
       rows.push(totalRow);
 
       const sheet = XLSX.utils.aoa_to_sheet(rows);
@@ -1425,8 +1452,13 @@ export default function AnalyticsReportsScreen() {
                 </div>
                 <div className="analytics-cost-row flex items-center justify-between text-sm mb-1">
                   <span className="text-gray-700 ml-2">Vaccines (transaction-time cost)</span>
-                  <span className="analytics-financial-value text-gray-900">{formatCurrency(totalVaccineCost)}</span>
+                  <span className="analytics-financial-value text-gray-900">{totalVaccineCost == null ? 'Unavailable' : formatCurrency(totalVaccineCost)}</span>
                 </div>
+                {vaccineCostSummary.missingCount > 0 && (
+                  <div className="ml-2 mb-2 text-xs text-amber-700">
+                    {vaccineCostSummary.missingCount} vaccination record(s) lack a valid dose or transaction-time price; vaccine and total costs are unavailable.
+                  </div>
+                )}
                 {expenseBreakdown.length > 0 && (
                   <div className="analytics-cost-row flex items-center justify-between text-sm mb-1">
                     <span className="text-gray-700 ml-2">Recorded expenses</span>
@@ -1477,7 +1509,7 @@ export default function AnalyticsReportsScreen() {
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3 text-xs">
                       <div className="rounded-lg bg-white/70 p-2"><span className="block text-gray-600">Estimated standing value</span><strong>{context.estimatedStandingValuePhp == null ? 'Unavailable' : formatCurrency(context.estimatedStandingValuePhp)}</strong></div>
-                      <div className="rounded-lg bg-white/70 p-2"><span className="block text-gray-600">Recorded costs ({context.period.from} to {context.period.to})</span><strong>{formatCurrency(context.totalRecordedCostsPhp)}</strong></div>
+                      <div className="rounded-lg bg-white/70 p-2"><span className="block text-gray-600">Recorded costs ({context.period.from} to {context.period.to})</span><strong>{context.totalRecordedCostsPhp == null ? 'Unavailable' : formatCurrency(context.totalRecordedCostsPhp)}</strong></div>
                       <div className="rounded-lg bg-white/70 p-2"><span className="block text-gray-600">Standing value less selected-period costs</span><strong>{context.estimatedStandingValueLessSelectedPeriodCostsPhp == null ? 'Unavailable' : formatCurrency(context.estimatedStandingValueLessSelectedPeriodCostsPhp)}</strong></div>
                     </div>
 

@@ -29,6 +29,20 @@ export const createVaccination = async (req, res) => {
             status
         } = req.body;
 
+        const dosageNumber = Number(dosage);
+        if (!Number.isSafeInteger(dosageNumber) || dosageNumber < 1 || dosageNumber > 10000) {
+            return res.status(400).json({ success: false, message: 'Dosage must be a positive whole number from 1 to 10,000' });
+        }
+
+        const { count: pigCount, error: pigCountError } = await supabase
+            .from('pigs')
+            .select('id', { count: 'exact', head: true })
+            .eq('batch_id', batch_id);
+        if (pigCountError) throw pigCountError;
+        if (!pigCount) {
+            return res.status(409).json({ success: false, message: 'Cannot record vaccination for a batch with no pigs' });
+        }
+
         const { data: result, error } = await supabase.rpc('create_vaccination_with_stock', {
             p_owner_id: req.user.id,
             p_vaccination: {
@@ -107,6 +121,8 @@ export const createVaccination = async (req, res) => {
         console.error('Error in createVaccination:', error);
         const rawMessage = String(error.message || '');
         const stockConflict = /insufficient (?:unexpired )?vaccine stock|vaccine stock not found/i.test(rawMessage);
+        const dosageValidationError = /dosage must be a positive whole number/i.test(rawMessage);
+        const emptyBatchConflict = /batch with no pigs/i.test(rawMessage);
         const message = rawMessage.includes('vaccine_stocks.owner_id')
             ? 'Database migration required: run backend/config/migrations/20261010_vaccine_stock_owner.sql in Supabase.'
             : rawMessage.includes("'owner_id' column")
@@ -114,7 +130,7 @@ export const createVaccination = async (req, res) => {
                 : stockConflict
                     ? rawMessage
                     : rawMessage || 'Unable to record vaccination';
-        res.status(stockConflict ? 409 : 500).json({
+        res.status(stockConflict || emptyBatchConflict ? 409 : dosageValidationError ? 400 : 500).json({
             success: false,
             message
         });
@@ -297,21 +313,32 @@ export const getVaccineStock = async (req, res) => {
 // UPDATE (or insert) vaccine stock
 export const updateVaccineStock = async (req, res) => {
     try {
-        const { vaccine_name, stock_quantity, expiry_date, price_per_dose, notes } = req.body;
+        const { vaccine_name, stock_quantity, expiry_date, price_per_dose, purchase_total_cost, notes } = req.body;
+        const hasUnitPrice = Object.hasOwn(req.body, 'price_per_dose');
+        const hasPurchaseTotal = Object.hasOwn(req.body, 'purchase_total_cost');
         if (typeof vaccine_name !== 'string' || !vaccine_name.trim()
             || stock_quantity === undefined || stock_quantity === null || stock_quantity === ''
             || expiry_date === undefined || expiry_date === null || expiry_date === ''
-            || price_per_dose === undefined || price_per_dose === null || price_per_dose === '') {
-            return res.status(400).json({ success: false, message: 'Vaccine type, doses, cost per dose, and expiry date are required' });
+            || hasUnitPrice === hasPurchaseTotal) {
+            return res.status(400).json({ success: false, message: 'Provide vaccine type, doses, expiry date, and exactly one price: total purchase cost or legacy cost per dose' });
         }
 
         const addedQuantity = Number(stock_quantity);
-        const pricePerDose = Number(price_per_dose);
         if (!Number.isSafeInteger(addedQuantity) || addedQuantity <= 0 || addedQuantity > 10000) {
             return res.status(400).json({ success: false, message: 'Doses added must be a whole number from 1 to 10,000' });
         }
-        if (!Number.isFinite(pricePerDose) || pricePerDose < 0) {
-            return res.status(400).json({ success: false, message: 'Cost per dose must be a valid non-negative amount' });
+        const submittedPrice = Number(hasPurchaseTotal ? purchase_total_cost : price_per_dose);
+        if (!Number.isFinite(submittedPrice) || submittedPrice < 0) {
+            return res.status(400).json({ success: false, message: hasPurchaseTotal ? 'Total purchase cost must be a valid non-negative amount' : 'Cost per dose must be a valid non-negative amount' });
+        }
+        if (hasPurchaseTotal && Math.abs(submittedPrice * 100 - Math.round(submittedPrice * 100)) > 1e-7) {
+            return res.status(400).json({ success: false, message: 'Total purchase cost may have no more than two decimal places' });
+        }
+        const pricePerDose = hasPurchaseTotal
+            ? Math.round((submittedPrice / addedQuantity + Number.EPSILON) * 1_000_000) / 1_000_000
+            : submittedPrice;
+        if (!Number.isFinite(pricePerDose) || pricePerDose < 0 || pricePerDose > 99999999.99) {
+            return res.status(400).json({ success: false, message: 'Calculated cost per dose is outside the supported range' });
         }
         const expiryDateIsValid = typeof expiry_date === 'string'
             && /^\d{4}-\d{2}-\d{2}$/.test(expiry_date)
