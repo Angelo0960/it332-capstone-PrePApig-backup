@@ -781,7 +781,7 @@ export default function DashboardScreen() {
           onTouchCancel={handleTouchCancel}
         >
           {!loading && batches.length === 0 && (
-            <div className="grid min-h-[55vh] place-items-center py-8">
+            <div className="col-span-full row-span-full flex min-h-[55vh] w-full items-center justify-center py-8 lg:min-h-0">
               <section
                 aria-labelledby="empty-batches-title"
                 className="w-full max-w-lg rounded-[2rem] border border-white/70 bg-white/75 p-7 text-center shadow-[0_24px_80px_-28px_rgba(15,23,42,0.4)] backdrop-blur-xl sm:p-10"
@@ -797,7 +797,7 @@ export default function DashboardScreen() {
                 </h2>
                 <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-600 sm:text-base">
                   {error
-                    ? 'There was a problem retrieving your pig batches. Please try again, or add a batch if you’re just getting started.'
+                    ? 'There was a problem retrieving your pig batches. You can still add a batch from the button in the upper-right corner.'
                     : 'There are currently no pig batches available. Would you like to add a batch?'}
                 </p>
                 {error && (
@@ -805,23 +805,6 @@ export default function DashboardScreen() {
                     {error}
                   </p>
                 )}
-                <div className="mt-7 flex flex-col-reverse justify-center gap-3 sm:flex-row">
-                  <button
-                    type="button"
-                    onClick={fetchBatches}
-                    className="inline-flex min-h-12 items-center justify-center rounded-xl border border-slate-300 bg-white/80 px-5 py-3 font-semibold text-slate-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200"
-                  >
-                    Retry
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddBatch(true)}
-                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 font-semibold text-white shadow-lg shadow-emerald-900/15 transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200"
-                  >
-                    <Plus className="h-4 w-4" aria-hidden="true" />
-                    Add a batch
-                  </button>
-                </div>
               </section>
             </div>
           )}
