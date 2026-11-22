@@ -745,9 +745,6 @@ export default function VaccinationScreen() {
                   </div>
                 </div>
 
-                <p className="mb-3 text-xs text-gray-600">
-                  Monthly Vitamin B-Complex and Ivermectin repeat every 30 days, beginning Day 65. Doses are schedule entries only; confirm the product, route, and weight-based amount with your veterinarian before use.
-                </p>
                 <div className="space-y-3">
                   {scheduleBatches
                     .filter((batch) => (selectedBatch === 'all' ? true : String(batch.id) === String(selectedBatch)))
