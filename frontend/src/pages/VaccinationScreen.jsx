@@ -91,6 +91,7 @@ export default function VaccinationScreen() {
   });
   const [vaccinationErrors, setVaccinationErrors] = useState({});
   const [restockErrors, setRestockErrors] = useState({});
+  const [vaccinationSaveError, setVaccinationSaveError] = useState('');
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       setDebouncedBatchSearchTerm(batchSearchTerm.trim().toLocaleLowerCase());
@@ -270,17 +271,17 @@ export default function VaccinationScreen() {
 
   // Save vaccination (used by both modal and direct marking)
   const handleSaveVaccination = async (formData) => {
+    setVaccinationSaveError('');
     try {
       const res = await fetch(`${API_BASE}/vaccinations/create`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(formData),
       });
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`Failed to save: ${errorText}`);
+        throw new Error(json.message || `Unable to save vaccination (HTTP ${res.status}).`);
       }
-      const json = await res.json();
       if (json.success) {
         const savedRecord = Array.isArray(json.data) ? json.data[0] : json.data;
         if (savedRecord && (selectedBatch === 'all' || String(savedRecord.batch_id) === String(selectedBatch))) {
@@ -302,10 +303,10 @@ export default function VaccinationScreen() {
         window.dispatchEvent(new Event('prepapig:financial-data-changed'));
         return true;
       } else {
-        throw new Error(json.message || 'Unknown error');
+        throw new Error(json.message || 'Unable to save vaccination. Please try again.');
       }
     } catch (err) {
-      alert('Error saving vaccination: ' + err.message);
+      setVaccinationSaveError(err.message || 'Unable to save vaccination. Please try again.');
       return false;
     }
   };
@@ -1224,6 +1225,39 @@ export default function VaccinationScreen() {
           </div>
         )}
 
+        {vaccinationSaveError && (
+          <div className="responsive-modal-overlay fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+            <section
+              aria-describedby="vaccination-save-error-message"
+              aria-labelledby="vaccination-save-error-title"
+              aria-modal="true"
+              className="responsive-modal w-full max-w-md rounded-3xl border border-white/40 bg-white/90 p-6 shadow-2xl backdrop-blur-xl"
+              onKeyDown={(event) => { if (event.key === 'Escape') setVaccinationSaveError(''); }}
+              role="alertdialog"
+              tabIndex={-1}
+            >
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 rounded-full bg-red-100 p-2 text-red-700">
+                  <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                  <h2 id="vaccination-save-error-title" className="text-lg font-bold text-gray-900">Unable to save vaccination</h2>
+                  <p id="vaccination-save-error-message" className="mt-2 break-words text-sm leading-6 text-gray-700">{vaccinationSaveError}</p>
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end">
+                <button
+                  autoFocus
+                  className="min-h-11 rounded-xl bg-emerald-700 px-5 py-2 font-semibold text-white hover:bg-emerald-800"
+                  onClick={() => setVaccinationSaveError('')}
+                  type="button"
+                >
+                  Close
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
         <BottomNav active="Vaccination" />
       </div>
     </div>
