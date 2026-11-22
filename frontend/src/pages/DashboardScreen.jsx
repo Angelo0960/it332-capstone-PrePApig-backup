@@ -110,6 +110,15 @@ const getTodayDate = () => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
 
+const getAcquisitionDateFromAge = (ageDays) => {
+  const days = Number(ageDays);
+  if (!Number.isFinite(days) || days < 0) return '';
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() - Math.floor(days));
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
 const getCurrentBatchDay = (batch) => {
   if (!batch) return 0;
   const acquiredValue = batch.date_acquired || batch.dateAcquired;
@@ -626,7 +635,9 @@ export default function DashboardScreen() {
           breed: newBatch.breed || 'Unknown',
           start_weight: parseFloat(newBatch.start_weight),
           current_weight: parseFloat(newBatch.start_weight),
-          age_on_acquisition: parseInt(newBatch.age_on_acquisition, 10) || 0,
+          // The entered age is represented by the derived acquisition date, so
+          // elapsed days are counted once instead of being added twice.
+          age_on_acquisition: 0,
           date_acquired: dateAcquired,
           status: 'Active',
         }),
@@ -1101,7 +1112,7 @@ export default function DashboardScreen() {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-2">
-                    Pig Age (days) <span className="text-red-700" aria-hidden="true">*</span>
+                    Pig Age / days since acquisition <span className="text-red-700" aria-hidden="true">*</span>
                   </label>
                   <div className="relative">
                     <input
@@ -1113,7 +1124,7 @@ export default function DashboardScreen() {
                         setNewBatch((current) => ({
                           ...current,
                           age_on_acquisition: age,
-                          date_acquired: age === '' ? '' : getTodayDate(),
+                          date_acquired: age === '' ? '' : getAcquisitionDateFromAge(age),
                         }));
                         setBatchFieldErrors((current) => ({ ...current, age_on_acquisition: '' }));
                       }}
@@ -1164,7 +1175,7 @@ export default function DashboardScreen() {
                     className="w-full px-4 py-3 rounded-xl bg-white/55 backdrop-blur-lg border border-white/70 text-gray-950 font-semibold focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
                   />
                   <p id="date-acquired-help" className="text-xs text-gray-700 mt-2">
-                    Defaults to today; the entered age is preserved as the age at acquisition.
+                    Calculated by subtracting the entered age in days from today.
                   </p>
                 </div>
 
