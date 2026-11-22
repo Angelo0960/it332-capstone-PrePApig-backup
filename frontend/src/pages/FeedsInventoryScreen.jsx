@@ -571,6 +571,22 @@ export default function FeedsInventoryScreen() {
     };
   }, [feedRecords, feedStocks, selectedBatch]);
 
+  const consumptionHistoryByStage = useMemo(() => {
+    const stageTotals = new Map(FEED_STAGE_STOCK_TYPES.map(({ feedType }) => [feedType, 0]));
+    const otherTotals = new Map();
+    Object.entries(consumptionByFeedType).forEach(([feedType, totalKg]) => {
+      const normalizedType = String(feedType || '').trim().toLowerCase();
+      const stage = FEED_STAGE_STOCK_TYPES.find((item) => item.aliases.includes(normalizedType));
+      if (stage) {
+        stageTotals.set(stage.feedType, (stageTotals.get(stage.feedType) || 0) + Number(totalKg || 0));
+      } else {
+        const label = getFeedTypeName(feedType);
+        otherTotals.set(label, (otherTotals.get(label) || 0) + Number(totalKg || 0));
+      }
+    });
+    return [...stageTotals.entries(), ...otherTotals.entries()];
+  }, [consumptionByFeedType]);
+
   const chartData = useMemo(() => {
     const actualByDate = new Map();
     feedRecords.forEach((record) => {
@@ -965,7 +981,7 @@ export default function FeedsInventoryScreen() {
                         {Object.keys(consumptionByFeedType).length === 0 ? (
                           <div className="p-4 text-center text-gray-500 text-sm">No feed consumption records</div>
                         ) : (
-                          Object.entries(consumptionByFeedType).map(([feedType, totalKg]) => (
+                          consumptionHistoryByStage.map(([feedType, totalKg]) => (
                             <div key={feedType} className="p-4 flex items-center justify-between">
                               <div className="font-medium text-gray-900">{getFeedTypeName(feedType)}</div>
                               <div className="font-bold text-orange-600">{formatKgQuantity(totalKg)} kg consumed</div>
