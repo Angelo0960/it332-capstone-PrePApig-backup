@@ -672,7 +672,7 @@ export default function FeedsInventoryScreen() {
                   if (event.key === 'ArrowDown') setShowBatchMenu(true);
                 }}
                 placeholder="Search batches..."
-                className="min-h-11 w-full rounded-xl border border-white/60 bg-white/55 py-2 pl-10 pr-11 text-base font-semibold text-gray-800 outline-none transition focus:border-pink-300 focus:ring-2 focus:ring-pink-200"
+                className="min-h-11 w-full rounded-xl border border-gray-300 bg-white py-2 pl-10 pr-11 text-base font-semibold text-gray-900 outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-200"
               />
               <button
                 type="button"
@@ -691,7 +691,7 @@ export default function FeedsInventoryScreen() {
                 id="feeds-batch-options"
                 role="listbox"
                 aria-label="Batch options"
-                className="absolute left-3 right-3 top-full mt-2 max-h-72 overflow-y-auto rounded-xl border border-white/70 bg-white/95 p-1 shadow-2xl backdrop-blur-xl"
+                className="absolute left-3 right-3 top-full z-50 mt-2 max-h-72 overflow-y-auto rounded-xl border border-gray-300 bg-white p-1 shadow-2xl ring-1 ring-black/10"
               >
                 {showAllBatchesOption && (
                   <button
@@ -703,7 +703,7 @@ export default function FeedsInventoryScreen() {
                       setBatchSearchTerm('');
                       setShowBatchMenu(false);
                     }}
-                    className={`flex min-h-11 w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-semibold transition ${selectedBatch === 'all' ? 'bg-pink-100 text-pink-800' : 'text-gray-800 hover:bg-gray-100'}`}
+                    className={`flex min-h-11 w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-semibold transition ${selectedBatch === 'all' ? 'bg-pink-100 text-pink-900' : 'text-gray-900 hover:bg-gray-100'}`}
                   >
                     <span>All Batches</span>
                     {selectedBatch === 'all' && <Check size={16} aria-hidden="true" />}
@@ -720,11 +720,11 @@ export default function FeedsInventoryScreen() {
                       setBatchSearchTerm('');
                       setShowBatchMenu(false);
                     }}
-                    className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left transition ${String(selectedBatch) === String(batch.id) ? 'bg-pink-100 text-pink-800' : 'text-gray-800 hover:bg-gray-100'}`}
+                    className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left transition ${String(selectedBatch) === String(batch.id) ? 'bg-pink-100 text-pink-900' : 'text-gray-900 hover:bg-gray-100'}`}
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-semibold">{batch.name}</span>
-                      <span className="block truncate text-xs text-gray-500">{batchOptionDetails(batch)}</span>
+                      <span className="block truncate text-xs text-gray-600">{batchOptionDetails(batch)}</span>
                     </span>
                     {String(selectedBatch) === String(batch.id) && <Check size={16} className="shrink-0" aria-hidden="true" />}
                   </button>
