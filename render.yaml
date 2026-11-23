@@ -23,6 +23,12 @@ services:
         sync: false
       - key: OPENAI_MODEL
         sync: false
+      - key: OPENAI_BASE_URL
+        sync: false
+      - key: OPENAI_RESPONSES_URL
+        sync: false
+      - key: OPENAI_CHAT_COMPLETIONS_URL
+        sync: false
       - key: OPENROUTER_API_KEY
         sync: false
       - key: OPENROUTER_MODEL

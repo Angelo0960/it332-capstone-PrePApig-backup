@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { generatePigPriceAnalysis as generateGeminiPigPriceAnalysis, LIVE_WEIGHT_SEARCH_QUERIES } from './geminiPigPriceService.js';
+import { getOpenAiEndpoint } from './openAiEndpoint.js';
 
 const DEFAULT_MODEL = 'gpt-4.1-mini';
 const DEFAULT_OPENROUTER_MODEL = 'openrouter/free';
@@ -118,7 +119,7 @@ export const generatePigPriceAnalysis = async ({
   const timeout = setTimeout(() => controller.abort(), 30_000);
   let response;
   try {
-    response = await fetchImpl('https://api.openai.com/v1/responses', {
+    response = await fetchImpl(getOpenAiEndpoint('responses'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

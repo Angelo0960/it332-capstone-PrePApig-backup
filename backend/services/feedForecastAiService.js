@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { FEED_RATION_STAGE_MAP } from './feedForecastService.js';
 import { getGeminiModel } from './geminiModel.js';
+import { getOpenAiEndpoint } from './openAiEndpoint.js';
 
 const extractText = (payload) => payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('').trim() || '';
 
@@ -82,7 +83,7 @@ const requestProvider = async ({ provider, model, apiKey, prompt, fetchImpl }) =
       });
     } else {
       const isOpenRouter = provider === 'openrouter';
-      response = await fetchImpl(isOpenRouter ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions', {
+      response = await fetchImpl(isOpenRouter ? 'https://openrouter.ai/api/v1/chat/completions' : getOpenAiEndpoint('chatCompletions'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
