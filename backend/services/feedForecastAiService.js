@@ -90,7 +90,7 @@ const requestProvider = async ({ provider, model, apiKey, prompt, fetchImpl }) =
           Authorization: `Bearer ${apiKey}`,
           ...(isOpenRouter ? { 'HTTP-Referer': 'https://prepapig.onrender.com', 'X-Title': 'PrepAPig Feed Forecast' } : {}),
         },
-        body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0.2 }),
+        body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0.2, stream: false }),
         signal: controller.signal,
       });
     }

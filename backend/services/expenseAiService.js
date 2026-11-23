@@ -39,7 +39,7 @@ export const generateExpenseAnalysis = async ({ summary, fetchImpl = fetch, apiK
         ? { 'Content-Type': 'application/json', Authorization: `Bearer ${configuredKey}` }
         : { 'Content-Type': 'application/json', 'x-goog-api-key': configuredKey },
       body: JSON.stringify(useOpenAi
-        ? { model: configuredModel, messages: [{ role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0.2 }
+        ? { model: configuredModel, messages: [{ role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0.2, stream: false }
         : { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json' } }),
       signal: controller.signal,
     },

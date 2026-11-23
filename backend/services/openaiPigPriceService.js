@@ -131,6 +131,7 @@ export const generatePigPriceAnalysis = async ({
         model,
         tools: [{ type: 'web_search' }],
         input: prompt,
+        stream: false,
       }),
       signal: controller.signal,
     });

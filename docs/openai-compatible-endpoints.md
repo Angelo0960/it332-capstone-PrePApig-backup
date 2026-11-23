@@ -15,6 +15,6 @@ Example base URL:
 OPENAI_BASE_URL=https://provider.example/v1
 ```
 
-Pig-price analysis uses the Responses API request format and its `web_search` tool, so its custom endpoint must support both. Feed-forecast, expense, and estimated-profit analyses use Chat Completions with JSON response format. These settings select OpenAI when the base URL is non-empty; the app will not silently fall back to Gemini in that mode.
+Pig-price analysis uses the Responses API request format and its `web_search` tool, so its custom endpoint must support both. Feed-forecast, expense, and estimated-profit analyses use Chat Completions with JSON response format. All four requests explicitly set `stream: false` and expect a normal JSON response; this avoids parsing Server-Sent Events from compatible gateways that stream by default. These settings select OpenAI when the base URL is non-empty; the app will not silently fall back to Gemini in that mode.
 
 Configure the variables in the backend deployment environment (for example, Render's `prepapig-backend` service). Do not put API keys in frontend variables or commit secrets.
