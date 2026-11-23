@@ -9,6 +9,7 @@ import {
   refreshPigMarketPrices,
 } from '../services/pigMarketPriceHistoryService.js';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
+import { getGeminiModel } from '../services/geminiModel.js';
 
 import { rateLimit } from '../middlewares/rateLimit.js';
 
@@ -102,9 +103,7 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
     if (process.env.SERPER_API_KEY || (process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_ENGINE_ID)) {
       webSearchResult = await searchPigPricesWeb({ locations });
     }
-    const configuredGeminiModel = ['gemini-2.5-flash', 'gemini-3.5-flash', 'gemini-3.8-flash'].includes(process.env.GEMINI_MODEL)
-      ? 'gemini-3.5-flash-lite'
-      : process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
+    const configuredGeminiModel = getGeminiModel();
     const configuredModel = process.env.GEMINI_API_KEY
       ? configuredGeminiModel
       : process.env.OPENROUTER_MODEL || process.env.OPENAI_MODEL || 'openrouter/free';
@@ -177,7 +176,7 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
       event: 'pig_price_ai_failed',
       requestId: req.requestId,
       provider: error.provider || (process.env.GEMINI_API_KEY ? 'gemini' : process.env.OPENROUTER_API_KEY ? 'openrouter' : process.env.OPENAI_API_KEY ? 'openai' : 'none'),
-      model: error.model || process.env.GEMINI_MODEL || process.env.OPENROUTER_MODEL || process.env.OPENAI_MODEL || 'openrouter/free',
+      model: error.model || (process.env.GEMINI_API_KEY ? getGeminiModel() : process.env.OPENROUTER_MODEL || process.env.OPENAI_MODEL || 'openrouter/free'),
       providerStatus: error.providerStatus || null,
       message: safeMessage,
     }));

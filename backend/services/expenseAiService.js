@@ -1,6 +1,6 @@
 import 'dotenv/config';
+import { getGeminiModel } from './geminiModel.js';
 
-const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 const getApiKey = () => process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY || '';
 const extractText = (payload) => payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('').trim() || '';
 const parseJson = (text) => {
@@ -11,7 +11,7 @@ const parseJson = (text) => {
   }
 };
 
-export const generateExpenseAnalysis = async ({ summary, fetchImpl = fetch, apiKey = getApiKey(), model = process.env.GEMINI_MODEL || DEFAULT_MODEL }) => {
+export const generateExpenseAnalysis = async ({ summary, fetchImpl = fetch, apiKey = getApiKey(), model = getGeminiModel() }) => {
   const configuredKey = String(apiKey || '').trim();
   if (!configuredKey) throw new Error('Gemini API key is not configured. Set GEMINI_API_KEY in the backend environment.');
   const prompt = [

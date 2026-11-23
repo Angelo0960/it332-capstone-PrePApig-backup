@@ -1,6 +1,5 @@
 import 'dotenv/config';
-
-const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
+import { getGeminiModel } from './geminiModel.js';
 const LIVE_WEIGHT_SEARCH_QUERIES = [
   'magkano ang presyo ng buhay na baboy sa lemery',
   'magkano ang presyo ng buhay na baboy sa calaca',
@@ -10,15 +9,6 @@ const LIVE_WEIGHT_SEARCH_QUERIES = [
   'magkano ang presyo ng buhay na baboy sa nasugbu',
   'magkano ang presyo ng buhay na baboy sa taal',
 ];
-
-const normalizeModel = (value) => {
-  const configured = String(value || '').trim();
-  // Normalize the previous defaults so existing Render values switch to the
-  // requested low-latency Flash-Lite model without requiring a secret change.
-  return ['gemini-2.5-flash', 'gemini-3.8-flash'].includes(configured)
-    ? DEFAULT_MODEL
-    : configured || DEFAULT_MODEL;
-};
 
 const getConfiguredApiKey = () =>
   process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY || '';
@@ -58,7 +48,7 @@ export const generatePigPriceAnalysis = async ({
   localPricePoints = [],
   fetchImpl = fetch,
   apiKey = getConfiguredApiKey(),
-  model = normalizeModel(process.env.GEMINI_MODEL),
+  model = getGeminiModel(),
 }) => {
   const configuredApiKey = String(apiKey || '').trim();
   if (!configuredApiKey) {

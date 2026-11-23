@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { FEED_RATION_STAGE_MAP } from './feedForecastService.js';
+import { getGeminiModel } from './geminiModel.js';
 
 const extractText = (payload) => payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('').trim() || '';
 
@@ -167,7 +168,7 @@ export const generateFeedForecastAnalysis = async ({ forecast, feedStocks = null
   ].join('\n');
 
   const providers = [
-    { provider: 'gemini', apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY, model: process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite' },
+    { provider: 'gemini', apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY, model: getGeminiModel() },
     { provider: 'openrouter', apiKey: process.env.OPENROUTER_API_KEY, model: process.env.OPENROUTER_MODEL || 'openrouter/free' },
     { provider: 'openai', apiKey: process.env.OPENAI_API_KEY, model: process.env.OPENAI_MODEL || 'gpt-4.1-mini' },
   ].filter((item) => String(item.apiKey || '').trim());
