@@ -1442,10 +1442,10 @@ export default function AnalyticsReportsScreen() {
               <div className="analytics-cost-row flex justify-between"><span>Actual recorded sales (period)</span><strong className="analytics-financial-value">{financial ? formatCurrency(financial.actualRevenue) : 'Unavailable'}</strong></div>
               <div className="analytics-cost-row flex justify-between"><span>Manual expenses (period)</span><strong className="analytics-financial-value">{financial ? formatCurrency(financial.recordedExpenses) : 'Unavailable'}</strong></div>
               <div className="analytics-cost-row flex justify-between"><span>Recorded ledger profit (sales minus manual expenses)</span><strong className="analytics-financial-value">{financial ? formatCurrency(financial.recordedProfit) : 'Unavailable'}</strong></div>
-              <p className="text-xs text-gray-600">Ledger profit uses sales minus manual expenses by transaction date. Feed and vaccine usage costs are shown separately and included in total costs below.</p>
+
               {financialError && <p className="text-xs text-red-700">{financialError}</p>}
             </div>
-            <p className="text-xs text-gray-600 mb-3">Estimates below use the sum of recorded individual pig weights in each batch and explicitly selected or recorded prices, not historical revenue. Feed and vaccine usage costs use transaction-time snapshots when available. Manual expenses may be incomplete.</p>
+
             {batchWeightError && <p className="text-xs text-amber-800 mb-2">{batchWeightError}</p>}
             {batchWeightLoading && <p className="text-xs text-gray-600 mb-2">Calculating total batch weight…</p>}
             <div className="space-y-2 mb-3">
