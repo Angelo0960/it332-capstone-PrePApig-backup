@@ -676,6 +676,13 @@ export default function AnalyticsReportsScreen() {
   const feedForecastMetrics = feedForecast?.calculatedMetrics?.[0] || null;
   const feedStockSnapshot = feedForecast?.feedStockSnapshot || feedForecastAi?.stockContext || null;
   const profitTrend = financial?.monthly || [];
+  const expenseRecords = useMemo(() => {
+    const records = Array.isArray(financial?.expenseRecords) ? financial.expenseRecords : filteredExpenses;
+    return [...records].sort((left, right) => (
+      String(right.expense_date || '').localeCompare(String(left.expense_date || ''))
+      || String(right.id || '').localeCompare(String(left.id || ''))
+    ));
+  }, [financial, filteredExpenses]);
   const expenseBreakdown = useMemo(() => {
     const expenseRows = Array.isArray(financial?.expenseBreakdown)
       ? financial.expenseBreakdown.map((row) => ({ expense_type: row.expense_type, amount: row.amount }))
@@ -1566,7 +1573,8 @@ export default function AnalyticsReportsScreen() {
                       <div key={item.name} className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
                         <div className="text-xs text-gray-700 flex-1">{item.name}</div>
-                        <div className="text-xs font-semibold text-gray-900">
+                        <div className="text-right text-xs font-semibold text-gray-900">
+                          <div>{formatCurrency(item.value)}</div>
                           {Math.round(
                             (item.value /
                               (expenseBreakdown.reduce((sum, entry) => sum + entry.value, 0) || 1)) *
@@ -1583,6 +1591,31 @@ export default function AnalyticsReportsScreen() {
                   {financial ? 'No expenses recorded in this period.' : 'Expense breakdown is unavailable until financial records load.'}
                 </p>
               )}
+              <div className="mt-3 border-t border-gray-200/70 pt-3">
+                <div className="mb-2 text-xs font-semibold text-gray-800">Expense records ({expenseRecords.length})</div>
+                {expenseRecords.length > 0 ? (
+                  <div className="space-y-2">
+                    {expenseRecords.slice(0, 10).map((record) => (
+                      <div key={record.id} className="flex items-start justify-between gap-3 rounded-lg bg-white/55 px-3 py-2">
+                        <div className="min-w-0">
+                          <div className="truncate text-xs font-semibold text-gray-800">{record.expense_type || 'Expense'}</div>
+                          <div className="mt-0.5 text-[10px] text-gray-600">
+                            {record.expense_date ? new Date(`${String(record.expense_date).slice(0, 10)}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date unavailable'}
+                            {batchDisplayNames.get(String(record.batch_id)) ? ` · ${batchDisplayNames.get(String(record.batch_id))}` : ''}
+                            {record.description ? ` · ${record.description}` : ''}
+                          </div>
+                        </div>
+                        <strong className="shrink-0 text-xs text-gray-900">{formatCurrency(record.amount)}</strong>
+                      </div>
+                    ))}
+                    {expenseRecords.length > 10 && (
+                      <p className="text-right text-[10px] text-gray-500">Showing the 10 most recent of {expenseRecords.length} records</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-600">No expense records in this period.</p>
+                )}
+              </div>
             </div>
 
             <div className="rounded-xl border border-[#ffd1df] bg-white/90 p-4 mb-3 shadow-sm">

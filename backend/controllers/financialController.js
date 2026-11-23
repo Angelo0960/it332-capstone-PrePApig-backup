@@ -14,7 +14,7 @@ export const getFinancialReport = async (req, res) => {
         };
         const [salesResult, expensesResult] = await Promise.allSettled([
             readAll(() => query('harvest_sales', 'id,sale_date,revenue,batch_id', 'sale_date')),
-            readAll(() => query('expenses', 'id,expense_date,amount,batch_id,expense_type', 'expense_date')),
+            readAll(() => query('expenses', 'id,expense_date,amount,batch_id,expense_type,description', 'expense_date')),
         ]);
         if (expensesResult.status === 'rejected') throw expensesResult.reason;
 
@@ -47,6 +47,14 @@ export const getFinancialReport = async (req, res) => {
         res.json({ success: true, data: {
             from, to, actualRevenue, recordedExpenses, recordedProfit,
             expenseCount: expenses.length,
+            expenseRecords: expenses.map((row) => ({
+                id: row.id,
+                batch_id: row.batch_id,
+                expense_type: row.expense_type,
+                amount: Number(row.amount),
+                expense_date: row.expense_date,
+                description: row.description || '',
+            })),
             expenseBreakdown: [...expenseBreakdown.entries()]
                 .map(([expense_type, amount]) => ({ expense_type, amount: round(amount) }))
                 .sort((left, right) => left.expense_type.localeCompare(right.expense_type)),
