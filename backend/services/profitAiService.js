@@ -30,14 +30,37 @@ export const generateProfitAnalysis = async ({ context, fetchImpl = fetch, apiKe
   const response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': configuredKey },
-    body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 512 } }),
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        thinkingConfig: { thinkingLevel: 'MINIMAL' },
+        maxOutputTokens: 4096,
+      },
+    }),
     signal: controller.signal,
   }).finally(() => clearTimeout(timeout));
-  const payload = await response.json();
-  if (!response.ok) throw new Error(`AI provider returned HTTP ${response.status}`);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(payload?.error?.message || `Gemini returned HTTP ${response.status}`);
+    error.providerStatus = response.status;
+    error.providerCode = payload?.error?.status || payload?.error?.code || null;
+    error.model = model;
+    error.responseId = payload?.responseId || null;
+    error.modelVersion = payload?.modelVersion || null;
+    throw error;
+  }
+  const finishReason = payload?.candidates?.[0]?.finishReason || 'unknown';
   const structured = parseJson(extractText(payload));
   if (!structured || typeof structured.analysis !== 'string' || typeof structured.suggestion !== 'string') {
-    throw new Error('AI provider returned invalid structured profit analysis');
+    const error = new Error(`Gemini returned incomplete structured profit analysis (finish reason: ${finishReason})`);
+    error.providerStatus = response.status;
+    error.providerCode = finishReason;
+    error.model = payload?.modelVersion || model;
+    error.responseId = payload?.responseId || null;
+    error.modelVersion = payload?.modelVersion || null;
+    error.usageMetadata = payload?.usageMetadata || null;
+    throw error;
   }
   return {
     success: true,

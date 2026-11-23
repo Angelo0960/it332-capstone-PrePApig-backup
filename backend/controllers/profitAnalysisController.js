@@ -194,6 +194,21 @@ export const generateAiProfitAnalysis = async (req, res) => {
     try {
       aiAnalysis = await generateProfitAnalysis({ context });
     } catch (aiError) {
+      const safeMessage = String(aiError.message || 'AI provider request failed')
+        .replace(/AIza[0-9A-Za-z_-]+/g, '[REDACTED]')
+        .slice(0, 300);
+      console.error(JSON.stringify({
+        event: 'profit_ai_analysis_failed',
+        timestamp: new Date().toISOString(),
+        requestId: req.requestId || null,
+        model: aiError.model || null,
+        modelVersion: aiError.modelVersion || null,
+        providerStatus: aiError.providerStatus || null,
+        providerCode: aiError.providerCode || null,
+        responseId: aiError.responseId || null,
+        usageMetadata: aiError.usageMetadata || null,
+        message: safeMessage,
+      }));
       aiAnalysisError = String(aiError.message || '').includes('not configured')
         ? 'AI profit analysis is not configured.'
         : 'AI interpretation is temporarily unavailable.';
