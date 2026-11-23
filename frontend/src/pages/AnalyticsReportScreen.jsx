@@ -1316,11 +1316,9 @@ export default function AnalyticsReportsScreen() {
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="font-semibold text-gray-900">Feed Consumption: Actual vs Forecast</h3>
-                <p className="mt-1 text-[10px] text-[#555B6E]">
-                  {feedHistoryLabel === 'Synthetic history'
-                    ? 'Synthetic uploaded history, not actual farm records, compared with next-week forecast'
-                    : 'Recorded usage compared with the next-week forecast'}
-                </p>
+                {feedHistoryLabel !== 'Synthetic history' && (
+                  <p className="mt-1 text-[10px] text-[#555B6E]">Recorded usage compared with the next-week forecast</p>
+                )}
               </div>
               <div className="flex items-center gap-2 text-[10px] font-semibold">
                 <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-700">● Actual</span>
