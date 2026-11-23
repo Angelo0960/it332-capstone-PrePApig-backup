@@ -735,7 +735,7 @@ export default function AnalyticsReportsScreen() {
       breakdown,
       recordCount,
     };
-    const cacheKey = `expense-ai-analysis-v5:${getUserCacheKey()}:${dateRange}:${selectedBatch}:${summary.totalRecordedExpenses}:${summary.recordCount}:${JSON.stringify(breakdown)}`;
+    const cacheKey = `expense-ai-analysis-v6:${getUserCacheKey()}:${dateRange}:${selectedBatch}:${summary.totalRecordedExpenses}:${summary.recordCount}:${JSON.stringify(breakdown)}`;
     const cached = readCache(cacheKey, AI_ANALYSIS_CACHE_TTL_MS);
     if (cached?.success === true) {
       setExpenseAiAnalysis(cached);
@@ -796,7 +796,7 @@ export default function AnalyticsReportsScreen() {
       : referencePriceForAnalysis
         ? 'Batangas provincial farmgate reference'
         : null;
-    const cacheKey = `profit-ai-analysis-v2:${getUserCacheKey()}:${hashAnalysisInputs({
+    const cacheKey = `profit-ai-analysis-v3:${getUserCacheKey()}:${hashAnalysisInputs({
       request: {
         from,
         to,

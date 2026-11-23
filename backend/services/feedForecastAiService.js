@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { FEED_RATION_STAGE_MAP } from './feedForecastService.js';
 import { getGeminiModel } from './geminiModel.js';
-import { getOpenAiEndpoint } from './openAiEndpoint.js';
+import { getOpenAiEndpoint, isOpenAiBaseUrlConfigured } from './openAiEndpoint.js';
 
 const extractText = (payload) => payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('').trim() || '';
 
@@ -168,12 +168,19 @@ export const generateFeedForecastAnalysis = async ({ forecast, feedStocks = null
     `Authoritative forecast and calculation data: ${JSON.stringify({ dataType: forecast.dataType, reconciliationStatus: forecast.reconciliationStatus, historicalSummary: forecast.historicalSummary, history: forecast.history, forecast: forecast.forecast, rationForecasts: forecast.rationForecasts, calculatedMetrics: forecast.calculatedMetrics, evaluation: forecast.evaluation, provenance: forecast.provenance, stockContext: deterministicStockContext })}`,
   ].join('\n');
 
-  const providers = [
+  const configuredProviders = [
     { provider: 'gemini', apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY, model: getGeminiModel() },
     { provider: 'openrouter', apiKey: process.env.OPENROUTER_API_KEY, model: process.env.OPENROUTER_MODEL || 'openrouter/free' },
     { provider: 'openai', apiKey: process.env.OPENAI_API_KEY, model: process.env.OPENAI_MODEL || 'gpt-4.1-mini' },
-  ].filter((item) => String(item.apiKey || '').trim());
-  if (!providers.length) throw new Error('No AI provider is configured. Set GEMINI_API_KEY, OPENROUTER_API_KEY, or OPENAI_API_KEY in the backend environment.');
+  ];
+  const useOpenAi = isOpenAiBaseUrlConfigured();
+  const providers = useOpenAi
+    ? configuredProviders.filter((item) => item.provider === 'openai' && String(item.apiKey || '').trim())
+    : configuredProviders.filter((item) => String(item.apiKey || '').trim());
+  if (!providers.length) {
+    if (useOpenAi) throw new Error('OPENAI_BASE_URL is set; OPENAI_API_KEY is required to use the selected OpenAI endpoint.');
+    throw new Error('No AI provider is configured. Set GEMINI_API_KEY, OPENROUTER_API_KEY, or OPENAI_API_KEY in the backend environment.');
+  }
 
   const failures = [];
   for (const entry of providers) {

@@ -19,6 +19,8 @@ const validateHttpUrl = (value, variableName) => {
   return parsed.toString().replace(/\/$/, '');
 };
 
+export const isOpenAiBaseUrlConfigured = () => Boolean(String(process.env.OPENAI_BASE_URL || '').trim());
+
 export const getOpenAiEndpoint = (endpoint) => {
   const path = ENDPOINT_PATHS[endpoint];
   if (!path) throw new Error(`Unsupported OpenAI endpoint: ${endpoint}`);

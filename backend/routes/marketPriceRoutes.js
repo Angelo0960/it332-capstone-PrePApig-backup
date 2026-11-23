@@ -10,6 +10,7 @@ import {
 } from '../services/pigMarketPriceHistoryService.js';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 import { getGeminiModel } from '../services/geminiModel.js';
+import { isOpenAiBaseUrlConfigured } from '../services/openAiEndpoint.js';
 
 import { rateLimit } from '../middlewares/rateLimit.js';
 
@@ -104,15 +105,17 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
       webSearchResult = await searchPigPricesWeb({ locations });
     }
     const configuredGeminiModel = getGeminiModel();
-    const configuredModel = process.env.GEMINI_API_KEY
-      ? configuredGeminiModel
-      : process.env.OPENROUTER_MODEL || process.env.OPENAI_MODEL || 'openrouter/free';
+    const configuredModel = isOpenAiBaseUrlConfigured()
+      ? process.env.OPENAI_MODEL || 'gpt-4.1-mini'
+      : process.env.GEMINI_API_KEY
+        ? configuredGeminiModel
+        : process.env.OPENROUTER_MODEL || process.env.OPENAI_MODEL || 'openrouter/free';
     console.log(JSON.stringify({
       event: 'pig_price_ai_started',
       requestId: req.requestId,
       userId: req.user?.id,
       locations,
-      provider: process.env.GEMINI_API_KEY ? 'gemini' : process.env.OPENROUTER_API_KEY ? 'openrouter' : process.env.OPENAI_API_KEY ? 'openai' : 'none',
+      provider: isOpenAiBaseUrlConfigured() ? 'openai' : process.env.GEMINI_API_KEY ? 'gemini' : process.env.OPENROUTER_API_KEY ? 'openrouter' : process.env.OPENAI_API_KEY ? 'openai' : 'none',
       model: configuredModel,
       webSearchRequested: !/(?:\/free|:free)$/.test(configuredModel),
     }));
@@ -175,8 +178,8 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
     console.error(JSON.stringify({
       event: 'pig_price_ai_failed',
       requestId: req.requestId,
-      provider: error.provider || (process.env.GEMINI_API_KEY ? 'gemini' : process.env.OPENROUTER_API_KEY ? 'openrouter' : process.env.OPENAI_API_KEY ? 'openai' : 'none'),
-      model: error.model || (process.env.GEMINI_API_KEY ? getGeminiModel() : process.env.OPENROUTER_MODEL || process.env.OPENAI_MODEL || 'openrouter/free'),
+      provider: error.provider || (isOpenAiBaseUrlConfigured() ? 'openai' : process.env.GEMINI_API_KEY ? 'gemini' : process.env.OPENROUTER_API_KEY ? 'openrouter' : process.env.OPENAI_API_KEY ? 'openai' : 'none'),
+      model: error.model || (isOpenAiBaseUrlConfigured() ? process.env.OPENAI_MODEL || 'gpt-4.1-mini' : process.env.GEMINI_API_KEY ? getGeminiModel() : process.env.OPENROUTER_MODEL || process.env.OPENAI_MODEL || 'openrouter/free'),
       providerStatus: error.providerStatus || null,
       message: safeMessage,
     }));

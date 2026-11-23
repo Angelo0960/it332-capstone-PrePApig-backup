@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { getGeminiModel } from './geminiModel.js';
+import { getOpenAiEndpoint, isOpenAiBaseUrlConfigured } from './openAiEndpoint.js';
 
 const getApiKey = () => process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY || '';
 const extractText = (payload) => payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('').trim() || '';
@@ -12,8 +13,11 @@ const parseJson = (text) => {
 };
 
 export const generateProfitAnalysis = async ({ context, fetchImpl = fetch, apiKey = getApiKey(), model = getGeminiModel() }) => {
-  const configuredKey = String(apiKey || '').trim();
-  if (!configuredKey) throw new Error('AI provider is not configured');
+  const useOpenAi = isOpenAiBaseUrlConfigured();
+  const provider = useOpenAi ? 'OpenAI' : 'Gemini';
+  const configuredKey = String(useOpenAi ? process.env.OPENAI_API_KEY || '' : apiKey || '').trim();
+  const configuredModel = useOpenAi ? process.env.OPENAI_MODEL || 'gpt-4.1-mini' : model;
+  if (!configuredKey) throw new Error(`${provider} is selected but its API key is not configured.`);
   const prompt = [
     'You are a cautious farm performance advisor. Write in plain language for a pig farmer.',
     'Interpret only the supplied deterministic figures, recorded growth snapshots, recorded expenses, and clearly labeled estimates.',
@@ -27,36 +31,49 @@ export const generateProfitAnalysis = async ({ context, fetchImpl = fetch, apiKe
   ].join('\n');
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
-  const response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': configuredKey },
-    body: JSON.stringify({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-        thinkingConfig: { thinkingLevel: 'MINIMAL' },
-        maxOutputTokens: 4096,
-      },
-    }),
-    signal: controller.signal,
-  }).finally(() => clearTimeout(timeout));
+  const response = await fetchImpl(
+    useOpenAi ? getOpenAiEndpoint('chatCompletions') : `https://generativelanguage.googleapis.com/v1beta/models/${configuredModel}:generateContent`,
+    {
+      method: 'POST',
+      headers: useOpenAi
+        ? { 'Content-Type': 'application/json', Authorization: `Bearer ${configuredKey}` }
+        : { 'Content-Type': 'application/json', 'x-goog-api-key': configuredKey },
+      body: JSON.stringify(useOpenAi
+        ? { model: configuredModel, messages: [{ role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0.2 }
+        : {
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            thinkingConfig: { thinkingLevel: 'MINIMAL' },
+            maxOutputTokens: 4096,
+          },
+        }),
+      signal: controller.signal,
+    },
+  ).finally(() => clearTimeout(timeout));
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const error = new Error(payload?.error?.message || `Gemini returned HTTP ${response.status}`);
+    const error = new Error(payload?.error?.message || `${provider} returned HTTP ${response.status}`);
     error.providerStatus = response.status;
     error.providerCode = payload?.error?.status || payload?.error?.code || null;
-    error.model = model;
+    error.model = configuredModel;
     error.responseId = payload?.responseId || null;
     error.modelVersion = payload?.modelVersion || null;
     throw error;
   }
-  const finishReason = payload?.candidates?.[0]?.finishReason || 'unknown';
-  const structured = parseJson(extractText(payload));
+  const finishReason = useOpenAi
+    ? payload?.choices?.[0]?.finish_reason || 'unknown'
+    : payload?.candidates?.[0]?.finishReason || 'unknown';
+  const openAiText = payload?.choices?.[0]?.message?.content;
+  const responseText = useOpenAi
+    ? typeof openAiText === 'string' ? openAiText.trim() : Array.isArray(openAiText) ? openAiText.map((part) => part?.text || '').join('').trim() : ''
+    : extractText(payload);
+  const structured = parseJson(responseText);
   if (!structured || typeof structured.analysis !== 'string' || typeof structured.suggestion !== 'string') {
-    const error = new Error(`Gemini returned incomplete structured profit analysis (finish reason: ${finishReason})`);
+    const error = new Error(`${provider} returned incomplete structured profit analysis (finish reason: ${finishReason})`);
     error.providerStatus = response.status;
     error.providerCode = finishReason;
-    error.model = payload?.modelVersion || model;
+    error.model = payload?.modelVersion || configuredModel;
     error.responseId = payload?.responseId || null;
     error.modelVersion = payload?.modelVersion || null;
     error.usageMetadata = payload?.usageMetadata || null;
@@ -64,8 +81,8 @@ export const generateProfitAnalysis = async ({ context, fetchImpl = fetch, apiKe
   }
   return {
     success: true,
-    provider: 'gemini',
-    model,
+    provider: useOpenAi ? 'openai' : 'gemini',
+    model: configuredModel,
     analysis: structured.analysis,
     suggestion: structured.suggestion,
     riskLevel: ['low', 'medium', 'high', 'unknown'].includes(String(structured.riskLevel).toLowerCase()) ? String(structured.riskLevel).toLowerCase() : 'unknown',

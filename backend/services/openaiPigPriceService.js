@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { generatePigPriceAnalysis as generateGeminiPigPriceAnalysis, LIVE_WEIGHT_SEARCH_QUERIES } from './geminiPigPriceService.js';
-import { getOpenAiEndpoint } from './openAiEndpoint.js';
+import { getOpenAiEndpoint, isOpenAiBaseUrlConfigured } from './openAiEndpoint.js';
 
 const DEFAULT_MODEL = 'gpt-4.1-mini';
 const DEFAULT_OPENROUTER_MODEL = 'openrouter/free';
@@ -53,7 +53,7 @@ export const generatePigPriceAnalysis = async ({
   model = process.env.OPENAI_MODEL || DEFAULT_MODEL,
   localPricePoints = [],
 }) => {
-  if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY) {
+  if (!isOpenAiBaseUrlConfigured() && (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY)) {
     try {
       return await generateGeminiPigPriceAnalysis({
         locations,
@@ -71,7 +71,7 @@ export const generatePigPriceAnalysis = async ({
     }
   }
 
-  if (getConfiguredOpenRouterKey()) {
+  if (!isOpenAiBaseUrlConfigured() && getConfiguredOpenRouterKey()) {
     try {
       return await generateOpenRouterPigPriceAnalysis({
         locations,
@@ -91,7 +91,9 @@ export const generatePigPriceAnalysis = async ({
 
   const configuredApiKey = String(apiKey || getConfiguredApiKey()).trim();
   if (!configuredApiKey) {
-    throw new Error('No AI provider is configured. Set OPENROUTER_API_KEY or OPENAI_API_KEY in the backend environment.');
+    throw new Error(isOpenAiBaseUrlConfigured()
+      ? 'OPENAI_BASE_URL is set; OPENAI_API_KEY is required to use the selected OpenAI endpoint.'
+      : 'No AI provider is configured. Set OPENROUTER_API_KEY or OPENAI_API_KEY in the backend environment.');
   }
 
   const uniqueLocations = [...new Set(locations)].slice(0, 10);
