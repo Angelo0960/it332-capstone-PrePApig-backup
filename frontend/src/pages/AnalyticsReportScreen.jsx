@@ -58,6 +58,30 @@ const getEstimatedBatchTotalWeightKg = (batch, weightTotals) => {
 };
 
 const getAnalysisText = (value) => (typeof value === 'string' ? value.trim() : '');
+const AI_ANALYSIS_CACHE_TTL_MS = 5 * 60 * 1000;
+const hashAnalysisInputs = (inputs) => {
+  const serialized = JSON.stringify(inputs);
+  let hash = 0xcbf29ce484222325n;
+  for (let index = 0; index < serialized.length; index += 1) {
+    hash ^= BigInt(serialized.charCodeAt(index));
+    hash = BigInt.asUintN(64, hash * 0x100000001b3n);
+  }
+  return hash.toString(36);
+};
+const inFlightAiAnalysisRequests = new Map();
+const requestAiAnalysisOnce = (cacheKey, request) => {
+  const existingRequest = inFlightAiAnalysisRequests.get(cacheKey);
+  if (existingRequest) return existingRequest;
+  const pendingRequest = Promise.resolve()
+    .then(request)
+    .finally(() => {
+      if (inFlightAiAnalysisRequests.get(cacheKey) === pendingRequest) {
+        inFlightAiAnalysisRequests.delete(cacheKey);
+      }
+    });
+  inFlightAiAnalysisRequests.set(cacheKey, pendingRequest);
+  return pendingRequest;
+};
 
 export default function AnalyticsReportsScreen() {
   const navigate = useNavigate();
@@ -711,36 +735,40 @@ export default function AnalyticsReportsScreen() {
       breakdown,
       recordCount,
     };
-    const cacheKey = `expense-ai-analysis-v4:${getUserCacheKey()}:${dateRange}:${selectedBatch}:${summary.totalRecordedExpenses}:${summary.recordCount}:${JSON.stringify(breakdown)}`;
-    const cached = readCache(cacheKey, Number.POSITIVE_INFINITY);
-    if (cached) {
+    const cacheKey = `expense-ai-analysis-v5:${getUserCacheKey()}:${dateRange}:${selectedBatch}:${summary.totalRecordedExpenses}:${summary.recordCount}:${JSON.stringify(breakdown)}`;
+    const cached = readCache(cacheKey, AI_ANALYSIS_CACHE_TTL_MS);
+    if (cached?.success === true) {
       setExpenseAiAnalysis(cached);
       setExpenseAiError(null);
+      setExpenseAiLoading(false);
+      return undefined;
     }
-    const hasCachedExpenseAnalysis = Boolean(cached);
-    const controller = new AbortController();
+    let active = true;
     setExpenseAiLoading(true);
     setExpenseAiError(null);
-    fetch(`${API_BASE}/expenses/ai-analysis`, {
-      method: 'POST',
-      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-      cache: 'no-store',
-      body: JSON.stringify({ summary }),
-      signal: controller.signal,
-    }).then(async (response) => {
+    requestAiAnalysisOnce(cacheKey, async () => {
+      const response = await fetch(`${API_BASE}/expenses/ai-analysis`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ summary }),
+      });
       const json = await response.json();
       if (!response.ok || !json.success) throw new Error(json.message || 'Expense AI analysis unavailable');
-      setExpenseAiAnalysis(json);
       writeCache(cacheKey, json);
+      return json;
+    }).then((json) => {
+      if (!active) return;
+      setExpenseAiAnalysis(json);
     }).catch((err) => {
-      if (err.name !== 'AbortError') {
-        if (!hasCachedExpenseAnalysis) {
-          setExpenseAiAnalysis(null);
-          setExpenseAiError(err.message || 'Expense AI analysis unavailable');
-        }
+      if (active) {
+        setExpenseAiAnalysis(null);
+        setExpenseAiError(err.message || 'Expense AI analysis unavailable');
       }
-    }).finally(() => setExpenseAiLoading(false));
-    return () => controller.abort();
+    }).finally(() => {
+      if (active) setExpenseAiLoading(false);
+    });
+    return () => { active = false; };
   }, [financial, filteredExpenses, expenseBreakdown, dateRange, selectedBatch]);
 
   useEffect(() => {
@@ -757,40 +785,71 @@ export default function AnalyticsReportsScreen() {
       setProfitAiLoading(false);
       return undefined;
     }
-    const controller = new AbortController();
-    setProfitAiResult(null);
-    setProfitAiError(null);
-    setProfitAiLoading(true);
     const query = new URLSearchParams(getDateQuery());
     if (selectedBatchRow?.id) query.set('batch_id', selectedBatchRow.id);
+    const from = query.get('from');
+    const to = query.get('to');
     const selectedPriceForAnalysis = Number(selectedPrice) > 0 ? Number(selectedPrice) : null;
     const referencePriceForAnalysis = Number(referencePrice) > 0 ? Number(referencePrice) : null;
-    fetch(`${API_BASE}/reports/ai-profit-analysis`, {
-      method: 'POST',
-      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-      cache: 'no-store',
-      signal: controller.signal,
-      body: JSON.stringify({
-        from: query.get('from'),
-        to: query.get('to'),
+    const priceSourceForAnalysis = selectedPriceForAnalysis
+      ? selectedPriceLocation
+      : referencePriceForAnalysis
+        ? 'Batangas provincial farmgate reference'
+        : null;
+    const cacheKey = `profit-ai-analysis-v2:${getUserCacheKey()}:${hashAnalysisInputs({
+      request: {
+        from,
+        to,
         batch_id: selectedBatchRow?.id || null,
         selected_price_per_kg: selectedPriceForAnalysis,
         reference_price_per_kg: referencePriceForAnalysis,
-        price_source: selectedPriceForAnalysis ? selectedPriceLocation : referencePriceForAnalysis ? 'Batangas provincial farmgate reference' : null,
-      }),
-    }).then(async (response) => {
+        price_source: priceSourceForAnalysis,
+      },
+      batches,
+      batchTotalWeights,
+      expenses: filteredExpenses,
+      feedRecords: filteredFeedRecords,
+      vaccinationRecords: filteredVaccinationRecords,
+    })}`;
+    const cachedProfitResult = readCache(cacheKey, AI_ANALYSIS_CACHE_TTL_MS);
+    if (cachedProfitResult?.success === true && cachedProfitResult.aiAnalysis && !cachedProfitResult.aiAnalysisError) {
+      setProfitAiResult(cachedProfitResult);
+      setProfitAiError(null);
+      setProfitAiLoading(false);
+      return undefined;
+    }
+    setProfitAiResult(null);
+    setProfitAiError(null);
+    setProfitAiLoading(true);
+    let active = true;
+    requestAiAnalysisOnce(cacheKey, async () => {
+      const response = await fetch(`${API_BASE}/reports/ai-profit-analysis`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({
+          from,
+          to,
+          batch_id: selectedBatchRow?.id || null,
+          selected_price_per_kg: selectedPriceForAnalysis,
+          reference_price_per_kg: referencePriceForAnalysis,
+          price_source: priceSourceForAnalysis,
+        }),
+      });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.message || 'AI estimated-profit analysis unavailable');
-      if (!controller.signal.aborted) {
-        setProfitAiResult(result);
-        setProfitAiError(result.aiAnalysisError || null);
-      }
+      if (result.aiAnalysis && !result.aiAnalysisError) writeCache(cacheKey, result);
+      return result;
+    }).then((result) => {
+      if (!active) return;
+      setProfitAiResult(result);
+      setProfitAiError(result.aiAnalysisError || null);
     }).catch((requestError) => {
-      if (!controller.signal.aborted) setProfitAiError(requestError.message || 'AI estimated-profit analysis unavailable');
+      if (active) setProfitAiError(requestError.message || 'AI estimated-profit analysis unavailable');
     }).finally(() => {
-      if (!controller.signal.aborted) setProfitAiLoading(false);
+      if (active) setProfitAiLoading(false);
     });
-    return () => controller.abort();
+    return () => { active = false; };
   }, [loading, error, batchWeightLoading, batches, selectedBatch, dateRange, selectedPrice, selectedPriceLocation, referencePrice]);
 
   const pricingActionSuggestion = getAnalysisText(aiAnalysis?.suggestion)
