@@ -8,3 +8,9 @@ export const shouldDisplayRecordNote = (notes) => {
   return Boolean(normalized)
     && !HIDDEN_DEMO_NOTE_MARKERS.some((marker) => normalized.includes(marker));
 };
+
+export const shouldDisplayFeedRecordNote = (notes) => {
+  const normalized = String(notes || '').trim().toLowerCase();
+  return shouldDisplayRecordNote(notes)
+    && !normalized.includes('historical feed import: feedusage.xlsx; pig weights unchanged');
+};

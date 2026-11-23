@@ -24,7 +24,7 @@ import { buildFeedDonePayload } from '../utils/markDonePayloads.js';
 import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 import { formatLocalDate, formatLocalTime } from '../utils/dates.js';
 import { buildBatchDisplayNames } from '../utils/batchNames.js';
-import { shouldDisplayRecordNote } from '../utils/recordNotes.js';
+import { shouldDisplayFeedRecordNote } from '../utils/recordNotes.js';
 import useOfflineStatus from '../hooks/useOfflineStatus.js';
 // ────────────────────────────────────────────────────────────────
 
@@ -1019,7 +1019,7 @@ export default function FeedsInventoryScreen() {
                                 <div className="text-xs text-gray-500 mt-1">
                                   {new Date(record.feeding_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                 </div>
-                                {shouldDisplayRecordNote(record.notes) && <div className="text-xs text-gray-600 mt-1 italic">"{record.notes}"</div>}
+                                {shouldDisplayFeedRecordNote(record.notes) && <div className="text-xs text-gray-600 mt-1 italic">"{record.notes}"</div>}
                               </div>
                               {getBatchName(record.batch_id, record.batch_name) && (
                                 <span className="max-w-[45%] truncate whitespace-nowrap px-2 py-1 bg-green-100/80 border border-green-300/50 rounded-full text-xs text-green-700 font-semibold" title={getBatchName(record.batch_id, record.batch_name)}>
