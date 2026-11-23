@@ -92,6 +92,8 @@ marketPriceRouter.get('/forecast', authMiddleware, rateLimit({ limit: 20, window
 });
 
 marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5, windowMs: 600000, key: (req) => req.user.id }), async (req, res) => {
+  // Web-grounded Responses requests can take longer than the default request timeout.
+  req.setTimeout(90_000);
   try {
     if (req.body?.locations !== undefined && (!Array.isArray(req.body.locations) || req.body.locations.length > 20 || req.body.locations.some((location) => typeof location !== 'string' || !location.trim() || location.length > 100))) {
       return res.status(400).json({ success: false, message: 'locations must contain at most 20 non-empty strings of up to 100 characters' });

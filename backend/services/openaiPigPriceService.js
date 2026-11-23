@@ -118,7 +118,7 @@ export const generatePigPriceAnalysis = async ({
   ].join('\n');
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
+  const timeout = setTimeout(() => controller.abort(), 75_000);
   let response;
   try {
     response = await fetchImpl(getOpenAiEndpoint('responses'), {
