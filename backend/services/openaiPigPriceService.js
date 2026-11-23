@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { generatePigPriceAnalysis as generateGeminiPigPriceAnalysis, LIVE_WEIGHT_SEARCH_QUERIES } from './geminiPigPriceService.js';
-import { getOpenAiEndpoint, isOpenAiBaseUrlConfigured } from './openAiEndpoint.js';
+import { getOpenAiEndpoint, isOpenAiBaseUrlConfigured, requestOpenAiJson } from './openAiEndpoint.js';
 
 const DEFAULT_MODEL = 'gpt-4.1-mini';
 const DEFAULT_OPENROUTER_MODEL = 'openrouter/free';
@@ -44,6 +44,21 @@ const extractGrounding = (payload) => (payload?.output || [])
     title: annotation.title || annotation.url,
     url: annotation.url,
   }));
+
+const extractChatText = (payload) => {
+  const content = payload?.choices?.[0]?.message?.content;
+  if (typeof content === 'string') return content.trim();
+  if (Array.isArray(content)) return content.map((part) => part?.text || '').join('').trim();
+  return '';
+};
+
+const extractChatSources = (payload) => {
+  const annotations = payload?.choices?.[0]?.message?.annotations || payload?.choices?.[0]?.message?.citations || [];
+  return annotations.map((annotation) => ({
+    title: annotation.title || annotation.url || annotation.source || 'OpenAI-compatible source',
+    url: annotation.url || annotation.sourceUrl || annotation.source,
+  })).filter((source) => source.url);
+};
 
 export const generatePigPriceAnalysis = async ({
   locations,
@@ -123,34 +138,65 @@ export const generatePigPriceAnalysis = async ({
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 75_000);
-  let response;
+  let payload;
+  let analysis;
+  let sources;
   try {
-    response = await fetchImpl(getOpenAiEndpoint('responses'), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${configuredApiKey}`,
+    const request = async (endpoint, body) => requestOpenAiJson({
+      endpoint,
+      fetchImpl,
+      options: {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${configuredApiKey}`,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
       },
-      body: JSON.stringify({
+    });
+
+    try {
+      ({ payload } = await request('responses', {
         model,
         ...(useProviderWebSearch ? { tools: [{ type: 'web_search' }] } : {}),
         input: prompt,
         stream: false,
-      }),
-      signal: controller.signal,
-    });
+      }));
+      analysis = extractText(payload);
+      sources = extractGrounding(payload);
+    } catch (error) {
+      let sameProviderOrigin = false;
+      try {
+        sameProviderOrigin = new URL(getOpenAiEndpoint('responses')).origin === new URL(getOpenAiEndpoint('chatCompletions')).origin;
+      } catch {
+        sameProviderOrigin = false;
+      }
+      const canUseChatCompletions = sameProviderOrigin
+        && (error.nonJsonResponse || error.providerStatus === 404 || error.providerStatus === 405);
+      if (!canUseChatCompletions) throw error;
+      console.warn(JSON.stringify({
+        event: 'openai_responses_fallback',
+        providerStatus: error.providerStatus || null,
+        contentType: error.providerContentType || null,
+        endpointHost: error.providerEndpointHost || null,
+        endpointPath: error.providerEndpointPath || null,
+        fallbackEndpoint: 'chat/completions',
+      }));
+      ({ payload } = await request('chatCompletions', {
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' },
+        temperature: 0.2,
+        stream: false,
+      }));
+      analysis = extractChatText(payload);
+      sources = extractChatSources(payload);
+    }
   } finally {
     clearTimeout(timeout);
   }
 
-  const payload = await response.json();
-  if (!response.ok) {
-    const error = new Error(payload?.error?.message || `OpenAI returned HTTP ${response.status}`);
-    error.providerStatus = response.status;
-    throw error;
-  }
-
-  const analysis = extractText(payload);
   if (!analysis) throw new Error('OpenAI returned an empty price analysis');
 
   const structured = parseStructuredAnalysis(analysis) || {
@@ -171,7 +217,7 @@ export const generatePigPriceAnalysis = async ({
     analysis: structured.analysis || analysis,
     suggestion: structured.suggestion || structured.analytics?.prescriptive || '',
     limitations: Array.isArray(structured.limitations) ? structured.limitations : [],
-    sources: extractGrounding(payload),
+    sources: sources || [],
     generatedAt: new Date().toISOString(),
   };
 };

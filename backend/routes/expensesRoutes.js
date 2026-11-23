@@ -22,7 +22,19 @@ expensesRouter.post('/ai-analysis', async (req, res) => {
         const analysis = await generateExpenseAnalysis({ summary });
         res.json(analysis);
     } catch (error) {
+        const safeMessage = String(error.message || 'AI provider request failed')
+            .replace(/sk-(?:or-v1|proj|live)-[A-Za-z0-9_-]+/g, '[REDACTED]')
+            .slice(0, 300);
         const missingKey = String(error.message || '').includes('API key is not configured');
+        console.error(JSON.stringify({
+            event: 'expense_ai_analysis_failed',
+            requestId: req.requestId || null,
+            providerStatus: error.providerStatus || null,
+            providerContentType: error.providerContentType || null,
+            providerEndpointHost: error.providerEndpointHost || null,
+            providerEndpointPath: error.providerEndpointPath || null,
+            message: safeMessage,
+        }));
         res.status(missingKey ? 503 : 502).json({
             success: false,
             message: missingKey ? 'Expense AI analysis is not configured' : 'Expense AI analysis is temporarily unavailable',

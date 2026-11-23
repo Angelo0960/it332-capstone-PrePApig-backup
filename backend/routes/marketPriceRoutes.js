@@ -185,6 +185,9 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
       provider: error.provider || (isOpenAiBaseUrlConfigured() ? 'openai' : process.env.GEMINI_API_KEY ? 'gemini' : process.env.OPENROUTER_API_KEY ? 'openrouter' : process.env.OPENAI_API_KEY ? 'openai' : 'none'),
       model: error.model || (isOpenAiBaseUrlConfigured() ? process.env.OPENAI_MODEL || 'gpt-4.1-mini' : process.env.GEMINI_API_KEY ? getGeminiModel() : process.env.OPENROUTER_MODEL || process.env.OPENAI_MODEL || 'openrouter/free'),
       providerStatus: error.providerStatus || null,
+      providerContentType: error.providerContentType || null,
+      providerEndpointHost: error.providerEndpointHost || null,
+      providerEndpointPath: error.providerEndpointPath || null,
       message: safeMessage,
     }));
     const isQuotaError = /quota|rate.?limit|resource.?exhausted|billing|insufficient\s+credits?|credit balance|payment required/i.test(rawMessage);

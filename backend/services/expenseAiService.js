@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { getGeminiModel } from './geminiModel.js';
-import { getOpenAiEndpoint, isOpenAiBaseUrlConfigured } from './openAiEndpoint.js';
+import { requestOpenAiJson, isOpenAiBaseUrlConfigured } from './openAiEndpoint.js';
 
 const getApiKey = () => process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY || '';
 const extractText = (payload) => payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('').trim() || '';
@@ -31,21 +31,32 @@ export const generateExpenseAnalysis = async ({ summary, fetchImpl = fetch, apiK
   ].join('\n');
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
-  const response = await fetchImpl(
-    useOpenAi ? getOpenAiEndpoint('chatCompletions') : `https://generativelanguage.googleapis.com/v1beta/models/${configuredModel}:generateContent`,
-    {
-      method: 'POST',
-      headers: useOpenAi
-        ? { 'Content-Type': 'application/json', Authorization: `Bearer ${configuredKey}` }
-        : { 'Content-Type': 'application/json', 'x-goog-api-key': configuredKey },
-      body: JSON.stringify(useOpenAi
-        ? { model: configuredModel, messages: [{ role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0.2, stream: false }
-        : { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json' } }),
-      signal: controller.signal,
-    },
-  ).finally(() => clearTimeout(timeout));
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload?.error?.message || `${provider} returned HTTP ${response.status}`);
+  let payload;
+  try {
+    if (useOpenAi) {
+      ({ payload } = await requestOpenAiJson({
+        endpoint: 'chatCompletions',
+        fetchImpl,
+        options: {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${configuredKey}` },
+          body: JSON.stringify({ model: configuredModel, messages: [{ role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0.2, stream: false }),
+          signal: controller.signal,
+        },
+      }));
+    } else {
+      const response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${configuredModel}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': configuredKey },
+        body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json' } }),
+        signal: controller.signal,
+      });
+      payload = await response.json();
+      if (!response.ok) throw new Error(payload?.error?.message || `${provider} returned HTTP ${response.status}`);
+    }
+  } finally {
+    clearTimeout(timeout);
+  }
   const openAiText = payload?.choices?.[0]?.message?.content;
   const responseText = useOpenAi
     ? typeof openAiText === 'string' ? openAiText.trim() : Array.isArray(openAiText) ? openAiText.map((part) => part?.text || '').join('').trim() : ''

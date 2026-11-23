@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { FEED_RATION_STAGE_MAP } from './feedForecastService.js';
 import { getGeminiModel } from './geminiModel.js';
-import { getOpenAiEndpoint, isOpenAiBaseUrlConfigured } from './openAiEndpoint.js';
+import { requestOpenAiJson, isOpenAiBaseUrlConfigured } from './openAiEndpoint.js';
 
 const extractText = (payload) => payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('').trim() || '';
 
@@ -72,18 +72,20 @@ const extractChatText = (payload) => {
 const requestProvider = async ({ provider, model, apiKey, prompt, fetchImpl }) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 25000);
-  let response;
+  let payload;
   try {
     if (provider === 'gemini') {
-      response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      const response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json' } }),
         signal: controller.signal,
       });
+      payload = await response.json();
+      if (!response.ok) throw new Error(`${provider} returned HTTP ${response.status}: ${payload?.error?.message || 'provider request failed'}`);
     } else {
       const isOpenRouter = provider === 'openrouter';
-      response = await fetchImpl(isOpenRouter ? 'https://openrouter.ai/api/v1/chat/completions' : getOpenAiEndpoint('chatCompletions'), {
+      const options = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -92,13 +94,18 @@ const requestProvider = async ({ provider, model, apiKey, prompt, fetchImpl }) =
         },
         body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0.2, stream: false }),
         signal: controller.signal,
-      });
+      };
+      if (isOpenRouter) {
+        const response = await fetchImpl('https://openrouter.ai/api/v1/chat/completions', options);
+        payload = await response.json();
+        if (!response.ok) throw new Error(`${provider} returned HTTP ${response.status}: ${payload?.error?.message || 'provider request failed'}`);
+      } else {
+        ({ payload } = await requestOpenAiJson({ endpoint: 'chatCompletions', fetchImpl, options }));
+      }
     }
   } finally {
     clearTimeout(timeout);
   }
-  const payload = await response.json();
-  if (!response.ok) throw new Error(`${provider} returned HTTP ${response.status}: ${payload?.error?.message || 'provider request failed'}`);
   const text = provider === 'gemini' ? extractText(payload) : extractChatText(payload);
   if (!text) throw new Error(`${provider} returned an empty feed forecast analysis`);
   const structured = parseJson(text);
