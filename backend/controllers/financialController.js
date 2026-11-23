@@ -14,7 +14,7 @@ export const getFinancialReport = async (req, res) => {
         };
         const [salesResult, expensesResult] = await Promise.allSettled([
             readAll(() => query('harvest_sales', 'id,sale_date,revenue,batch_id', 'sale_date')),
-            readAll(() => query('expenses', 'id,expense_date,amount,batch_id', 'expense_date')),
+            readAll(() => query('expenses', 'id,expense_date,amount,batch_id,expense_type', 'expense_date')),
         ]);
         if (expensesResult.status === 'rejected') throw expensesResult.reason;
 
@@ -23,13 +23,19 @@ export const getFinancialReport = async (req, res) => {
         const sales = salesAvailable ? salesResult.value : [];
         const expenses = expensesResult.value;
         const months = new Map();
+        const expenseBreakdown = new Map();
         const month = (date) => {
             const key = date.slice(0, 7);
             if (!months.has(key)) months.set(key, { month: key, revenue: 0, expenses: 0, profit: 0 });
             return months.get(key);
         };
         for (const row of sales) month(row.sale_date).revenue += Number(row.revenue);
-        for (const row of expenses) month(row.expense_date).expenses += Number(row.amount);
+        for (const row of expenses) {
+            const amount = Number(row.amount);
+            month(row.expense_date).expenses += amount;
+            const expenseType = String(row.expense_type || '').trim() || 'Other';
+            expenseBreakdown.set(expenseType, (expenseBreakdown.get(expenseType) || 0) + amount);
+        }
         const round = (value) => Math.round(value * 100) / 100;
         const recordedExpenses = round(expenses.reduce((sum, row) => sum + Number(row.amount), 0));
         const actualRevenue = salesAvailable
@@ -40,6 +46,9 @@ export const getFinancialReport = async (req, res) => {
             : null;
         res.json({ success: true, data: {
             from, to, actualRevenue, recordedExpenses, recordedProfit,
+            expenseBreakdown: [...expenseBreakdown.entries()]
+                .map(([expense_type, amount]) => ({ expense_type, amount: round(amount) }))
+                .sort((left, right) => left.expense_type.localeCompare(right.expense_type)),
             saleCount: salesAvailable ? sales.length : null,
             salesAvailable,
             salesError,

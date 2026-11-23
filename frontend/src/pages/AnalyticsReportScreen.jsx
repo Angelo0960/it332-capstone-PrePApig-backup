@@ -615,9 +615,9 @@ export default function AnalyticsReportsScreen() {
   };
 
   // 4. Expense breakdown (still uses the expenses table)
-  const getExpenseBreakdown = () => {
+  const getExpenseBreakdown = (expenseRows = filteredExpenses) => {
     const breakdown = {};
-    filteredExpenses.forEach((e) => {
+    expenseRows.forEach((e) => {
       const type = e.expense_type || 'Other';
       if (!breakdown[type]) breakdown[type] = 0;
       breakdown[type] += Number(e.amount);
@@ -676,7 +676,12 @@ export default function AnalyticsReportsScreen() {
   const feedForecastMetrics = feedForecast?.calculatedMetrics?.[0] || null;
   const feedStockSnapshot = feedForecast?.feedStockSnapshot || feedForecastAi?.stockContext || null;
   const profitTrend = financial?.monthly || [];
-  const expenseBreakdown = useMemo(() => getExpenseBreakdown(), [filteredExpenses]);
+  const expenseBreakdown = useMemo(() => {
+    const expenseRows = Array.isArray(financial?.expenseBreakdown)
+      ? financial.expenseBreakdown.map((row) => ({ expense_type: row.expense_type, amount: row.amount }))
+      : filteredExpenses;
+    return getExpenseBreakdown(expenseRows);
+  }, [financial, filteredExpenses]);
   const vaccinationSummary = useMemo(() => getVaccinationSummary(), [filteredVaccinationRecords]);
   useEffect(() => {
     if (filteredExpenses.length === 0) {
@@ -1527,41 +1532,46 @@ export default function AnalyticsReportsScreen() {
               <div className="text-sm font-semibold text-gray-900 mb-2">
                 Manual Expense Breakdown
               </div>
-              <div className="flex items-center justify-between">
-                <ResponsiveContainer width="40%" height={120}>
-                  <PieChart>
-                    <Pie
-                      data={expenseBreakdown}
-                      dataKey="value"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={25}
-                      outerRadius={45}
-                    >
-                      {expenseBreakdown.map((entry, index) => (
-                        <Cell key={`pie-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex-1 space-y-2">
-                  {expenseBreakdown.map((item) => (
-                    <div key={item.name} className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
-                      <div className="text-xs text-gray-700 flex-1">{item.name}</div>
-                      <div className="text-xs font-semibold text-gray-900">
-                        {Math.round(
-                          (item.value /
-                            (filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0) ||
-                              1)) *
-                            100
-                        )}
-                        %
+              {expenseBreakdown.length > 0 ? (
+                <div className="flex items-center justify-between">
+                  <ResponsiveContainer width="40%" height={120}>
+                    <PieChart>
+                      <Pie
+                        data={expenseBreakdown}
+                        dataKey="value"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={25}
+                        outerRadius={45}
+                      >
+                        {expenseBreakdown.map((entry, index) => (
+                          <Cell key={`pie-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex-1 space-y-2">
+                    {expenseBreakdown.map((item) => (
+                      <div key={item.name} className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
+                        <div className="text-xs text-gray-700 flex-1">{item.name}</div>
+                        <div className="text-xs font-semibold text-gray-900">
+                          {Math.round(
+                            (item.value /
+                              (expenseBreakdown.reduce((sum, entry) => sum + entry.value, 0) || 1)) *
+                              100
+                          )}
+                          %
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <p className="py-8 text-center text-sm text-gray-600">
+                  {financial ? 'No manual expenses recorded in this period.' : 'Expense breakdown is unavailable until financial records load.'}
+                </p>
+              )}
             </div>
 
             <div className="rounded-xl border border-[#ffd1df] bg-white/90 p-4 mb-3 shadow-sm">
