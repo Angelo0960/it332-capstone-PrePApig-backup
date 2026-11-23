@@ -1274,15 +1274,12 @@ export default function AnalyticsReportsScreen() {
                 </div>
                 <div className="space-y-4">
                   <section>
-                    <h4 className="text-sm font-bold text-gray-900">Descriptive — What the prices show</h4>
                     <p className="mt-1 max-w-3xl text-left text-sm leading-6 text-gray-700">{priceAnalytics.descriptive}</p>
                   </section>
                   <section>
-                    <h4 className="text-sm font-bold text-gray-900">Diagnostic — What may affect the comparison</h4>
                     <p className="mt-1 max-w-3xl text-left text-sm leading-6 text-gray-700">{priceAnalytics.diagnostic}</p>
                   </section>
                   <section>
-                    <h4 className="text-sm font-bold text-gray-900">Prescriptive — What to do next</h4>
                     <p className="mt-1 max-w-3xl text-left text-sm leading-6 text-gray-700">{priceAnalytics.prescriptive}</p>
                   </section>
                 </div>
