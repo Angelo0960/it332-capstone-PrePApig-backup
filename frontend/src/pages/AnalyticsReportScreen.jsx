@@ -2,8 +2,6 @@ import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
-  Cloud,
-  CloudOff,
   Download,
   Share,
   Home,
@@ -39,7 +37,6 @@ import { API_BASE, getAuthHeaders } from '../api.js';
 import { formatCurrency, formatPricePerKg } from '../utils/formatters.js';
 import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 import { buildBatchDisplayNames } from '../utils/batchNames.js';
-import useOfflineStatus from '../hooks/useOfflineStatus.js';
 // ────────────────────────────────────────────────────────────────
 
 const DEFAULT_PRICE_LOCATIONS = ['Lemery', 'Calaca', 'Tuy', 'Balayan', 'Lian', 'Nasugbu', 'Taal'];
@@ -64,7 +61,6 @@ const getAnalysisText = (value) => (typeof value === 'string' ? value.trim() : '
 
 export default function AnalyticsReportsScreen() {
   const navigate = useNavigate();
-  const { isOnline } = useOfflineStatus();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -366,7 +362,7 @@ export default function AnalyticsReportsScreen() {
         locations,
         pricePoints: fallbackPoints,
         analysis: 'AI analysis is temporarily unavailable. No hardcoded local price is being used; available values will appear only after the configured search provider returns a verified result.',
-        suggestion: 'Retry the search or confirm the buyer\'s liveweight offer directly before selling.',
+        suggestion: '',
         limitations: ['Gemini could not be reached from the deployed application.', 'No local price is displayed without a search result or verified source.'],
         generatedAt: new Date().toISOString(),
       });
@@ -1035,10 +1031,6 @@ export default function AnalyticsReportsScreen() {
     }
   };
 
-  const handleHeaderDownload = () => {
-    window.print();
-  };
-
   const recordedSaleBatchIds = new Set(sales
     .filter((sale) => sale.sale_date && sale.revenue !== null && sale.revenue !== undefined)
     .map((sale) => String(sale.batch_id)));
@@ -1070,21 +1062,6 @@ export default function AnalyticsReportsScreen() {
                 <ArrowLeft className="w-4 h-4 text-gray-700" />
               </button>
               <h1 className="text-lg font-bold text-gray-900">Analytics & Reports</h1>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleHeaderDownload}
-                className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-lg flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-2px_-2px_4px_rgba(255,255,255,0.7)] transition-all"
-              >
-                <Download className="w-4 h-4 text-gray-700" />
-              </button>
-              <div className="relative">
-                {isOnline ? (
-                  <Cloud className="w-5 h-5 text-green-600" />
-                ) : (
-                  <CloudOff className="w-5 h-5 text-gray-400" />
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -1242,14 +1219,6 @@ export default function AnalyticsReportsScreen() {
                         <span className="block text-[10px] text-emerald-600">{hasPrice ? 'per kg' : 'reported range per kg'}</span>
                       </span>
                     </button>
-                    {(point.source || point.sourceUrl) && (
-                      <div className="px-3 pt-1 text-[10px] text-gray-500">
-                        {point.sourceUrl && point.sourceUrl !== 'unavailable' && (
-                          <a href={point.sourceUrl} target="_blank" rel="noreferrer" className="font-semibold text-blue-700 underline">View source</a>
-                        )}
-                        {(!point.sourceUrl || point.sourceUrl === 'unavailable') && 'Source recorded'}
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -1279,19 +1248,17 @@ export default function AnalyticsReportsScreen() {
                   <section>
                     <p className="mt-1 max-w-3xl whitespace-pre-line text-left text-sm leading-6 text-gray-700">{priceAnalytics.diagnostic}</p>
                   </section>
-                  <section>
-                    <p className="mt-1 max-w-3xl whitespace-pre-line text-left text-sm leading-6 text-gray-700">{priceAnalytics.prescriptive}</p>
-                  </section>
+                  {priceAnalytics.prescriptive && (
+                    <section>
+                      <p className="mt-1 max-w-3xl whitespace-pre-line text-left text-sm leading-6 text-gray-700">{priceAnalytics.prescriptive}</p>
+                    </section>
+                  )}
                 </div>
-                {selectedPriceLocation && (
-                  <p className="mt-3 text-xs text-gray-500">Selected for the standing-value estimate: {selectedPriceLocation}. Choose a source above to change it.</p>
-                )}
                 {aiAnalysis.sources?.length > 0 && (
                   <p className="mt-3 text-[10px] text-gray-500">Additional web sources checked: {aiAnalysis.sources.length}</p>
                 )}
               </div>
             )}
-            <div className="mt-3 text-[10px] text-gray-500">Prices come from public web search or the provincial source. Confirm the posting date, location, liveweight basis, and buyer offer before selling.</div>
             {marketHistory.length > 1 && (
               <div className="mt-4 rounded-2xl border border-white/60 bg-white/55 p-3">
                 <div className="mb-2 text-xs font-semibold text-gray-800">Historical observed prices</div>
