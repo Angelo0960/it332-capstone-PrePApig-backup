@@ -52,6 +52,7 @@ export const generatePigPriceAnalysis = async ({
   apiKey = getConfiguredApiKey(),
   model = process.env.OPENAI_MODEL || DEFAULT_MODEL,
   localPricePoints = [],
+  webSearchAvailable = false,
 }) => {
   if (!isOpenAiBaseUrlConfigured() && (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY)) {
     try {
@@ -97,15 +98,18 @@ export const generatePigPriceAnalysis = async ({
   }
 
   const uniqueLocations = [...new Set(locations)].slice(0, 10);
-  const webSearchInstruction = /(?:\/free|:free)$/.test(model)
-    ? 'Use only the supplied local and provincial reference points. Do not call web search because this free model must operate without paid search tools.'
-    : 'Use web search and prioritize public Facebook posts, pages, and groups for local price evidence when available.';
+  const useProviderWebSearch = !webSearchAvailable && !model.endsWith('/free') && !model.endsWith(':free');
+  const webSearchInstruction = useProviderWebSearch
+    ? 'Use web search and prioritize public Facebook posts, pages, and groups for local price evidence when available.'
+    : 'Use only the supplied local and provincial reference points. Do not claim that you performed additional web searches.';
+  const webSearchPrompt = useProviderWebSearch
+    ? `Search each of these exact Filipino queries separately: ${JSON.stringify(LIVE_WEIGHT_SEARCH_QUERIES)}. Find current public pig liveweight or farmgate price points for these locations: ${uniqueLocations.join(', ')}.`
+    : 'Do not perform additional web searches. Analyze only the supplied reference points and report when they contain no verified local offer.';
   const prompt = [
     'Write for a pig farmer, not a technical analyst. Use simple everyday language, short sentences, and explain any unavoidable market or money term immediately.',
     'Do not use technical model terms, statistical jargon, abbreviations, or unexplained phrases. Clearly separate what the data shows from what the farmer should do next.',
     'You are analyzing pig selling-price options for a farmer near Calaca, Batangas, Philippines.',
-    `Search each of these exact Filipino queries separately: ${JSON.stringify(LIVE_WEIGHT_SEARCH_QUERIES)}.`,
-    `Find current public pig liveweight or farmgate price points for these locations: ${uniqueLocations.join(', ')}.`,
+    webSearchPrompt,
     `${webSearchInstruction} Do not use private or login-only content. Do not invent prices. Include only locations with a qualifying sourced price in pricePoints; omit locations with no verified numeric price.`,
     'Separate liveweight/farmgate prices from retail, dressed-meat, or unrelated prices.',
     'Analyze pig prices only. Do not calculate farm profit, revenue, expenses, ROI, break-even, or any other financial analysis.',
@@ -129,7 +133,7 @@ export const generatePigPriceAnalysis = async ({
       },
       body: JSON.stringify({
         model,
-        tools: [{ type: 'web_search' }],
+        ...(useProviderWebSearch ? { tools: [{ type: 'web_search' }] } : {}),
         input: prompt,
         stream: false,
       }),

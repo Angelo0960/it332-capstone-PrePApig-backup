@@ -119,13 +119,15 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
       locations,
       provider: isOpenAiBaseUrlConfigured() ? 'openai' : process.env.GEMINI_API_KEY ? 'gemini' : process.env.OPENROUTER_API_KEY ? 'openrouter' : process.env.OPENAI_API_KEY ? 'openai' : 'none',
       model: configuredModel,
-      webSearchRequested: !/(?:\/free|:free)$/.test(configuredModel),
+      externalSearchAvailable: Boolean(webSearchResult),
+      webSearchRequested: !webSearchResult && !configuredModel.endsWith('/free') && !configuredModel.endsWith(':free'),
     }));
 
     let result;
     try {
       result = await generatePigPriceAnalysis({
         locations,
+        webSearchAvailable: Boolean(webSearchResult),
         provincialReference: {
           location: priceData.data.location,
           period: priceData.data.period,
