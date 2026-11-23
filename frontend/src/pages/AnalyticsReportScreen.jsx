@@ -1274,13 +1274,13 @@ export default function AnalyticsReportsScreen() {
                 </div>
                 <div className="space-y-4">
                   <section>
-                    <p className="mt-1 max-w-3xl text-left text-sm leading-6 text-gray-700">{priceAnalytics.descriptive}</p>
+                    <p className="mt-1 max-w-3xl whitespace-pre-line text-left text-sm leading-6 text-gray-700">{priceAnalytics.descriptive}</p>
                   </section>
                   <section>
-                    <p className="mt-1 max-w-3xl text-left text-sm leading-6 text-gray-700">{priceAnalytics.diagnostic}</p>
+                    <p className="mt-1 max-w-3xl whitespace-pre-line text-left text-sm leading-6 text-gray-700">{priceAnalytics.diagnostic}</p>
                   </section>
                   <section>
-                    <p className="mt-1 max-w-3xl text-left text-sm leading-6 text-gray-700">{priceAnalytics.prescriptive}</p>
+                    <p className="mt-1 max-w-3xl whitespace-pre-line text-left text-sm leading-6 text-gray-700">{priceAnalytics.prescriptive}</p>
                   </section>
                 </div>
                 {selectedPriceLocation && (
