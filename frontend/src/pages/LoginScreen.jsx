@@ -107,14 +107,14 @@ export function LoginScreen({ onLogin }) {
               <div className="text-center"><div className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-white/90"><CheckCircle2 className="size-5 text-[#4DE2B6]" />Farm Management Portal</div><h2 className="font-['Erica_One'] text-[28px] text-white drop-shadow-md">Welcome Back</h2><p className="mt-2 text-sm text-white/65">Sign in to your farm dashboard</p></div>
               <LoginForm farmerId={farmerId} password={password} error={error} loading={loading} onFarmerIdChange={updateFarmerId} onPasswordChange={updatePassword} onSubmit={handleLogin} />
               <InstallAppButton isInstalled={isInstalled} installPromptAvailable={Boolean(installPrompt)} onInstall={handleInstallApp} />
-              <p className="mt-5 text-center text-xs text-white/60">Demo: enter any Farmer ID &amp; Access Key to continue</p><p className="mt-6 text-center text-xs text-white/45">PrepAPig © 2025 · Pig Farm Intelligence Platform</p>
+              <p className="mt-6 text-center text-xs text-white/45">PrepAPig © 2025 · Pig Farm Intelligence Platform</p>
             </div>
           </div>
         </section>
       </div>
 
       <div className="relative z-10 flex min-h-[100dvh] items-center justify-center px-5 py-10 lg:hidden"><div className="w-full max-w-sm"><h1 className="login-erica-one mb-14 text-center text-5xl leading-none drop-shadow-sm"><span className="text-[#67C6E3]">PrepA</span><span className="text-[#FF78A4]">Pig</span></h1><div className="relative"><img src={pigImage} alt="Smiling PrepAPig mascot" className="pointer-events-none absolute left-1/2 top-0 z-0 h-52 w-52 -translate-x-1/2 -translate-y-[56%] object-contain drop-shadow-xl" /><div className="relative z-10 rounded-[38px] border border-white/45 bg-white/20 px-6 pb-7 pt-16 shadow-[0_24px_60px_rgba(13,48,43,0.2)] backdrop-blur-2xl"><div className="text-center"><div className="mb-3 inline-flex items-center gap-2 text-xs font-semibold text-white/80"><CheckCircle2 className="size-4 text-[#4DE2B6]" />Farm Management Portal</div><h2 className="font-['Erica_One'] text-3xl">Welcome Back</h2><p className="mt-1 text-sm text-white/65">Sign in to your farm dashboard</p></div><LoginForm farmerId={farmerId} password={password} error={error} loading={loading} onFarmerIdChange={updateFarmerId} onPasswordChange={updatePassword} onSubmit={handleLogin} />
-              <InstallAppButton isInstalled={isInstalled} installPromptAvailable={Boolean(installPrompt)} onInstall={handleInstallApp} /><p className="mt-5 text-center text-[11px] text-white/55">Demo: enter any Farmer ID &amp; Access Key</p></div></div></div></div>
+              <InstallAppButton isInstalled={isInstalled} installPromptAvailable={Boolean(installPrompt)} onInstall={handleInstallApp} /></div></div></div></div>
     </div>
   );
 }
