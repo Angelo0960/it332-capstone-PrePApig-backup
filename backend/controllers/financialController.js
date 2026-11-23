@@ -46,6 +46,7 @@ export const getFinancialReport = async (req, res) => {
             : null;
         res.json({ success: true, data: {
             from, to, actualRevenue, recordedExpenses, recordedProfit,
+            expenseCount: expenses.length,
             expenseBreakdown: [...expenseBreakdown.entries()]
                 .map(([expense_type, amount]) => ({ expense_type, amount: round(amount) }))
                 .sort((left, right) => left.expense_type.localeCompare(right.expense_type)),

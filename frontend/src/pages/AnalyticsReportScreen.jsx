@@ -614,7 +614,7 @@ export default function AnalyticsReportsScreen() {
     }));
   };
 
-  // 4. Expense breakdown (still uses the expenses table)
+  // 4. Expense ledger breakdown; feed and vaccine usage costs stay separate.
   const getExpenseBreakdown = (expenseRows = filteredExpenses) => {
     const breakdown = {};
     expenseRows.forEach((e) => {
@@ -684,20 +684,31 @@ export default function AnalyticsReportsScreen() {
   }, [financial, filteredExpenses]);
   const vaccinationSummary = useMemo(() => getVaccinationSummary(), [filteredVaccinationRecords]);
   useEffect(() => {
-    if (filteredExpenses.length === 0) {
+    const totalRecordedExpenses = Number.isFinite(Number(financial?.recordedExpenses))
+      ? Number(financial.recordedExpenses)
+      : filteredExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
+    const recordCount = Number.isSafeInteger(financial?.expenseCount)
+      ? financial.expenseCount
+      : filteredExpenses.length;
+    if (recordCount === 0 || expenseBreakdown.length === 0) {
       setExpenseAiAnalysis(null);
       setExpenseAiError(null);
+      setExpenseAiLoading(false);
       return undefined;
     }
-    const breakdown = expenseBreakdown.map(({ name, value }) => ({ name, amount: value, percentage: Math.round((value / filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0)) * 100) }));
+    const breakdown = expenseBreakdown.map(({ name, value }) => ({
+      name,
+      amount: value,
+      percentage: totalRecordedExpenses > 0 ? Math.round((value / totalRecordedExpenses) * 100) : 0,
+    }));
     const summary = {
       dateRange,
       selectedBatch,
-      totalRecordedExpenses: Math.round(filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0) * 100) / 100,
+      totalRecordedExpenses: Math.round(totalRecordedExpenses * 100) / 100,
       breakdown,
-      recordCount: filteredExpenses.length,
+      recordCount,
     };
-    const cacheKey = `expense-ai-analysis-v3:${getUserCacheKey()}:${dateRange}:${selectedBatch}:${summary.totalRecordedExpenses}:${summary.recordCount}:${JSON.stringify(breakdown)}`;
+    const cacheKey = `expense-ai-analysis-v4:${getUserCacheKey()}:${dateRange}:${selectedBatch}:${summary.totalRecordedExpenses}:${summary.recordCount}:${JSON.stringify(breakdown)}`;
     const cached = readCache(cacheKey, Number.POSITIVE_INFINITY);
     if (cached) {
       setExpenseAiAnalysis(cached);
@@ -727,7 +738,7 @@ export default function AnalyticsReportsScreen() {
       }
     }).finally(() => setExpenseAiLoading(false));
     return () => controller.abort();
-  }, [filteredExpenses, expenseBreakdown, dateRange, selectedBatch]);
+  }, [financial, filteredExpenses, expenseBreakdown, dateRange, selectedBatch]);
 
   useEffect(() => {
     if (loading || error || batchWeightLoading) {
@@ -1527,10 +1538,10 @@ export default function AnalyticsReportsScreen() {
               })()}
             </div>
 
-            {/* Expense Breakdown Chart (manual expenses) */}
+            {/* Expense Breakdown Chart */}
             <div className="bg-white/40 rounded-xl p-3 mb-3">
               <div className="text-sm font-semibold text-gray-900 mb-2">
-                Manual Expense Breakdown
+                Expenses
               </div>
               {expenseBreakdown.length > 0 ? (
                 <div className="flex items-center justify-between">
@@ -1569,7 +1580,7 @@ export default function AnalyticsReportsScreen() {
                 </div>
               ) : (
                 <p className="py-8 text-center text-sm text-gray-600">
-                  {financial ? 'No manual expenses recorded in this period.' : 'Expense breakdown is unavailable until financial records load.'}
+                  {financial ? 'No expenses recorded in this period.' : 'Expense breakdown is unavailable until financial records load.'}
                 </p>
               )}
             </div>
@@ -1587,7 +1598,7 @@ export default function AnalyticsReportsScreen() {
                 </>
               )}
               {!expenseAiLoading && !expenseAiError && !expenseAiAnalysis && <p className="text-sm text-[#555B6E]">No recorded expenses are available for this filter.</p>}
-              <p className="text-[10px] text-[#6B7280] mt-3">AI interpretation is advisory and uses recorded expense categories only; it does not create or modify expense records.</p>
+              <p className="text-[10px] text-[#6B7280] mt-3">AI interpretation is advisory and uses expense-ledger categories. Feed and vaccine usage costs are calculated separately; the AI does not create or modify records.</p>
             </div>
 
             {/* Profit Trend */}
