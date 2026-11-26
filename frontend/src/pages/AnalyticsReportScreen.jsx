@@ -37,6 +37,7 @@ import { API_BASE, getAuthHeaders } from '../api.js';
 import { formatCurrency, formatPricePerKg } from '../utils/formatters.js';
 import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 import { buildBatchDisplayNames } from '../utils/batchNames.js';
+import { shouldFetchFeedForecast } from '../utils/feedForecastCache.js';
 // ────────────────────────────────────────────────────────────────
 
 const DEFAULT_PRICE_LOCATIONS = ['Lemery', 'Calaca', 'Tuy', 'Balayan', 'Lian', 'Nasugbu', 'Taal'];
@@ -59,6 +60,7 @@ const getEstimatedBatchTotalWeightKg = (batch, weightTotals) => {
 
 const getAnalysisText = (value) => (typeof value === 'string' ? value.trim() : '');
 const AI_ANALYSIS_CACHE_TTL_MS = 5 * 60 * 1000;
+const AI_ANALYSIS_RETRY_COOLDOWN_MS = 30 * 1000;
 const hashAnalysisInputs = (inputs) => {
   const serialized = JSON.stringify(inputs);
   let hash = 0xcbf29ce484222325n;
@@ -255,6 +257,8 @@ export default function AnalyticsReportsScreen() {
       const batchId = batch?.batch_code || 'all';
       const cacheKey = `feed-ai-analysis-v4:${getUserCacheKey()}:${batchId}:1`;
       const cached = readCache(cacheKey, Number.POSITIVE_INFINITY);
+      const freshCached = readCache(cacheKey, AI_ANALYSIS_CACHE_TTL_MS);
+      const recentCached = readCache(cacheKey, AI_ANALYSIS_RETRY_COOLDOWN_MS);
       hasCachedForecast = Boolean(cached && typeof cached === 'object');
       if (cached && typeof cached === 'object') {
         setFeedForecast(cached);
@@ -262,19 +266,29 @@ export default function AnalyticsReportsScreen() {
         setFeedForecastAiError(cached.aiAnalysisError || null);
         setFeedForecastError(null);
       }
-      const response = await fetch(`${API_BASE}/feeds/forecast?source=uploaded_historical&batch_id=${encodeURIComponent(batchId)}&horizon_weeks=1&include_ai=true`, {
-        cache: 'no-store',
-        headers: getAuthHeaders(), signal,
+      if (!shouldFetchFeedForecast({
+        cached,
+        isFresh: Boolean(freshCached),
+        isRetrySuppressed: Boolean(recentCached),
+      })) return;
+
+      const json = await requestAiAnalysisOnce(cacheKey, async () => {
+        const response = await fetch(`${API_BASE}/feeds/forecast?source=uploaded_historical&batch_id=${encodeURIComponent(batchId)}&horizon_weeks=1&include_ai=true`, {
+          cache: 'no-store',
+          headers: getAuthHeaders(),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || 'Feed forecast unavailable');
+        writeCache(cacheKey, result);
+        return result;
       });
-      const json = await response.json();
-      if (!response.ok || !json.success) throw new Error(json.message || 'Feed forecast unavailable');
+      if (signal?.aborted) return;
       setFeedForecast(json);
       setFeedForecastAi(json.aiAnalysis || null);
       setFeedForecastAiError(json.aiAnalysisError || null);
       setFeedForecastError(null);
-      writeCache(cacheKey, json);
     } catch (err) {
-      if (err.name === 'AbortError') return;
+      if (err.name === 'AbortError' || signal?.aborted) return;
       if (!hasCachedForecast) {
         setFeedForecast(null);
         setFeedForecastError(err.message || 'Uploaded feed forecast unavailable');

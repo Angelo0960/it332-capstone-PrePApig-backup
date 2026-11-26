@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "node --test tests/markDonePayloads.test.js",
+    "test": "node --test tests/*.test.js",
     "lint": "eslint .",
     "preview": "vite preview"
   },
