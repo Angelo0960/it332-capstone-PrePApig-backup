@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Pencil, X, Check, CircleDollarSign } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Pencil, X, CircleDollarSign } from 'lucide-react';
 import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.webp';
 import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
@@ -8,6 +8,7 @@ import { API_BASE, getAuthHeaders } from '../api.js';
 import { getUserCacheKey } from '../utils/cache.js';
 import { buildBatchDisplayNames } from '../utils/batchNames.js';
 import { shouldDisplayRecordNote } from '../utils/recordNotes.js';
+import { toIndividualPigTableRows } from '../utils/individualPigTable.js';
 import { useConfirmation } from '../components/ConfirmationDialog.jsx';
 // ────────────────────────────────────────────────────────────────
 
@@ -218,6 +219,7 @@ export default function BatchPigsScreen() {
 
   const totalWeight = pigs.reduce((sum, p) => sum + p.weight, 0);
   const avgWeight = pigs.length > 0 ? totalWeight / pigs.length : 0;
+  const pigTableRows = toIndividualPigTableRows(pigs);
 
   const handleSellBatch = async () => {
     const revenue = Number(saleForm.revenue);
@@ -333,46 +335,59 @@ export default function BatchPigsScreen() {
           ) : pigs.length === 0 ? (
             <div className="text-center py-20 text-gray-500">No pigs in this batch yet.</div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {pigs.map((pig) => (
-                <div
-                  key={pig.id}
-                  className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg flex flex-col"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="font-semibold text-gray-900">{pig.weight} kg</div>
-                      <div className="text-xs text-gray-600">
-                        Health:{' '}
-                        <span
-                          className={`font-medium ${
-                            pig.health_status === 'Healthy' ? 'text-green-600' : 'text-yellow-600'
-                          }`}
-                        >
-                          {pig.health_status}
+            <div className="overflow-x-auto rounded-2xl border border-white/40 bg-white/20 shadow-lg backdrop-blur-lg">
+              <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+                <caption className="sr-only">Individual pigs in {batchName}</caption>
+                <thead className="bg-white/35 text-xs uppercase tracking-wide text-gray-700">
+                  <tr>
+                    <th scope="col" className="px-4 py-3 font-semibold">Pig ID</th>
+                    <th scope="col" className="px-4 py-3 font-semibold">Weight</th>
+                    <th scope="col" className="px-4 py-3 font-semibold">Health status</th>
+                    <th scope="col" className="px-4 py-3 font-semibold">Notes</th>
+                    <th scope="col" className="px-4 py-3 text-right font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/40">
+                  {pigTableRows.map((row) => (
+                    <tr key={row.id} className="text-gray-800 hover:bg-white/25">
+                      <th scope="row" className="px-4 py-3 font-semibold text-gray-900">{row.id}</th>
+                      <td className="px-4 py-3 font-medium">{row.weight ?? '—'}{row.weight != null ? ' kg' : ''}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          row.healthStatus === 'Healthy' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {row.healthStatus}
                         </span>
-                      </div>
-                      {shouldDisplayRecordNote(pig.notes) && <div className="text-xs text-gray-500 mt-1">📝 {pig.notes}</div>}
-                    </div>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => handleEditPig(pig)}
-                        className="w-7 h-7 rounded-full bg-blue-100/80 flex items-center justify-center hover:bg-blue-200 transition-all"
-                        title="Edit"
-                      >
-                        <Pencil className="w-3 h-3 text-blue-600" />
-                      </button>
-                      <button
-                        onClick={() => handleDeletePig(pig.id)}
-                        className="w-7 h-7 rounded-full bg-red-100/80 flex items-center justify-center hover:bg-red-200 transition-all"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-3 h-3 text-red-600" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                      </td>
+                      <td className="max-w-xs px-4 py-3 text-gray-700">
+                        {shouldDisplayRecordNote(row.notes) ? row.notes : <span className="text-gray-500">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleEditPig(row.pig)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100/80 hover:bg-blue-200"
+                            aria-label={`Edit pig ${row.id}`}
+                            title="Edit pig"
+                          >
+                            <Pencil className="h-4 w-4 text-blue-600" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePig(row.id)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-red-100/80 hover:bg-red-200"
+                            aria-label={`Delete pig ${row.id}`}
+                            title="Delete pig"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-600" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
