@@ -420,10 +420,40 @@ export const getPigsByBatch = async (req, res) => {
             throw pigsError;
         }
 
+        const pigRows = pigs || [];
+        let weightHistory = [];
+        if (pigRows.length > 0) {
+            try {
+                const pigIds = pigRows.map((pig) => pig.id);
+                weightHistory = await collectPages(() => supabase
+                    .from('pig_weight_history')
+                    .select('id,pig_id,weigh_in_date,age_days,recorded_weight,is_baseline,created_at')
+                    .eq('owner_id', req.user.id)
+                    .in('pig_id', pigIds)
+                    .order('weigh_in_date', { ascending: false })
+                    .order('created_at', { ascending: false }));
+            } catch (historyError) {
+                if (historyError.code === 'PGRST205' || historyError.code === '42P01') {
+                    return res.status(503).json({
+                        success: false,
+                        message: 'Database migration required: run backend/config/migrations/20261127_individual_pig_weight_history.sql in Supabase.',
+                    });
+                }
+                throw historyError;
+            }
+        }
+
+        const historyByPig = new Map();
+        for (const record of weightHistory) {
+            const rows = historyByPig.get(record.pig_id) || [];
+            rows.push(record);
+            historyByPig.set(record.pig_id, rows);
+        }
+
         res.status(200).json({
             success: true,
             batch,
-            data: pigs || [],
+            data: pigRows.map((pig) => ({ ...pig, weight_history: historyByPig.get(pig.id) || [] })),
         });
     } catch (error) {
         console.error('Error fetching pigs:', error);

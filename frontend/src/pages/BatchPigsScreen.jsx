@@ -7,8 +7,7 @@ import BottomNav from '../components/BottomNav';
 import { API_BASE, getAuthHeaders } from '../api.js';
 import { getUserCacheKey } from '../utils/cache.js';
 import { buildBatchDisplayNames } from '../utils/batchNames.js';
-import { shouldDisplayRecordNote } from '../utils/recordNotes.js';
-import { toIndividualPigTableRows } from '../utils/individualPigTable.js';
+import { toPigWeightHistoryRows } from '../utils/pigWeightHistory.js';
 import { useConfirmation } from '../components/ConfirmationDialog.jsx';
 // ────────────────────────────────────────────────────────────────
 
@@ -65,9 +64,9 @@ export default function BatchPigsScreen() {
         fetch(`${API_BASE}/pigs/batch/${batchId}/pigs`, { headers: getAuthHeaders() }),
         fetch(`${API_BASE}/pigs/all?all=true`, { headers: getAuthHeaders() }),
       ]);
-      if (!res.ok) throw new Error('Failed to fetch pigs');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.message);
+      const json = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(json?.message || 'Failed to fetch pigs');
+      if (!json?.success) throw new Error(json?.message || 'Failed to fetch pigs');
       const nextPigs = json.data || [];
       const batchesJson = batchesRes.ok ? await batchesRes.json() : null;
       const displayNames = buildBatchDisplayNames(batchesJson?.success ? batchesJson.data || [] : []);
@@ -161,14 +160,19 @@ export default function BatchPigsScreen() {
       if (!res.ok) throw new Error('Failed to update pig');
       const json = await res.json();
       if (json.success) {
-        const updatedPig = json.data;
-        setPigs((current) => {
-          const nextPigs = current.map((pig) => (
-            String(pig.id) === String(updatedPig.id) ? updatedPig : pig
-          ));
-          localStorage.setItem(`prepapig:pigs:${getUserCacheKey()}:${batchId}`, JSON.stringify(nextPigs));
-          return nextPigs;
-        });
+        if (json.queued) {
+          setPigs((current) => {
+            const nextPigs = current.map((pig) => (
+              String(pig.id) === String(json.data.id)
+                ? { ...pig, ...json.data, weight_history: pig.weight_history || [] }
+                : pig
+            ));
+            localStorage.setItem(`prepapig:pigs:${getUserCacheKey()}:${batchId}`, JSON.stringify(nextPigs));
+            return nextPigs;
+          });
+        } else {
+          await fetchPigs();
+        }
         if (json.batch) {
           const batchCacheKey = `prepapig:pig-batch:${getUserCacheKey()}:${batchId}`;
           const cachedBatch = JSON.parse(localStorage.getItem(batchCacheKey) || '{}');
@@ -219,7 +223,7 @@ export default function BatchPigsScreen() {
 
   const totalWeight = pigs.reduce((sum, p) => sum + p.weight, 0);
   const avgWeight = pigs.length > 0 ? totalWeight / pigs.length : 0;
-  const pigTableRows = toIndividualPigTableRows(pigs);
+  const pigTableRows = toPigWeightHistoryRows(pigs);
 
   const handleSellBatch = async () => {
     const revenue = Number(saleForm.revenue);
@@ -335,54 +339,53 @@ export default function BatchPigsScreen() {
           ) : pigs.length === 0 ? (
             <div className="text-center py-20 text-gray-500">No pigs in this batch yet.</div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-white/40 bg-white/20 shadow-lg backdrop-blur-lg">
-              <table className="w-full min-w-[720px] border-collapse text-left text-sm">
-                <caption className="sr-only">Individual pigs in {batchName}</caption>
-                <thead className="bg-white/35 text-xs uppercase tracking-wide text-gray-700">
+            <div className="overflow-x-auto rounded-2xl border border-white/50 bg-white/20 shadow-lg backdrop-blur-lg">
+              <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+                <caption className="sr-only">Weight history for individual pigs in {batchName}</caption>
+                <thead className="bg-[#edf1f0] text-xs uppercase tracking-[0.12em] text-[#77818a]">
                   <tr>
-                    <th scope="col" className="px-4 py-3 font-semibold">Pig ID</th>
-                    <th scope="col" className="px-4 py-3 font-semibold">Weight</th>
-                    <th scope="col" className="px-4 py-3 font-semibold">Health status</th>
-                    <th scope="col" className="px-4 py-3 font-semibold">Notes</th>
-                    <th scope="col" className="px-4 py-3 text-right font-semibold">Actions</th>
+                    <th scope="col" className="px-4 py-4 font-semibold">Pig</th>
+                    <th scope="col" className="px-4 py-4 font-semibold">Weigh-in date</th>
+                    <th scope="col" className="px-4 py-4 font-semibold">Age</th>
+                    <th scope="col" className="px-4 py-4 font-semibold">Recorded weight</th>
+                    <th scope="col" className="px-4 py-4 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/40">
+                <tbody className="divide-y divide-white/50">
                   {pigTableRows.map((row) => (
-                    <tr key={row.id} className="text-gray-800 hover:bg-white/25">
-                      <th scope="row" className="px-4 py-3 font-semibold text-gray-900">{row.id}</th>
-                      <td className="px-4 py-3 font-medium">{row.weight ?? '—'}{row.weight != null ? ' kg' : ''}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                          row.healthStatus === 'Healthy' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
-                        }`}>
-                          {row.healthStatus}
-                        </span>
-                      </td>
-                      <td className="max-w-xs px-4 py-3 text-gray-700">
-                        {shouldDisplayRecordNote(row.notes) ? row.notes : <span className="text-gray-500">—</span>}
+                    <tr key={`${row.pigId}-${row.recordId}`} className="text-gray-800 hover:bg-white/30">
+                      <th scope="row" className="px-4 py-3 font-medium text-gray-700" title={row.pigId}>
+                        {String(row.pigId).slice(0, 8)}
+                      </th>
+                      <td className="px-4 py-3">{row.weighInDate || '—'}</td>
+                      <td className="px-4 py-3">{row.ageDays == null ? '—' : `${row.ageDays} days`}</td>
+                      <td className="px-4 py-3 font-semibold text-gray-900">
+                        {Number.isFinite(row.recordedWeight) ? `${row.recordedWeight.toFixed(2)} kg` : '—'}
+                        {row.isSnapshot && <span className="ml-2 text-xs font-normal text-gray-600">Current snapshot</span>}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleEditPig(row.pig)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100/80 hover:bg-blue-200"
-                            aria-label={`Edit pig ${row.id}`}
-                            title="Edit pig"
-                          >
-                            <Pencil className="h-4 w-4 text-blue-600" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeletePig(row.id)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-red-100/80 hover:bg-red-200"
-                            aria-label={`Delete pig ${row.id}`}
-                            title="Delete pig"
-                          >
-                            <Trash2 className="h-4 w-4 text-red-600" />
-                          </button>
-                        </div>
+                        {row.isLatest ? (
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleEditPig(row.pig)}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100/80 hover:bg-blue-200"
+                              aria-label={`Record weight for pig ${row.pigId}`}
+                              title="Record weight"
+                            >
+                              <Pencil className="h-4 w-4 text-blue-600" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePig(row.pigId)}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-red-100/80 hover:bg-red-200"
+                              aria-label={`Delete pig ${row.pigId}`}
+                              title="Delete pig"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </button>
+                          </div>
+                        ) : <span className="block text-right text-gray-500">—</span>}
                       </td>
                     </tr>
                   ))}
@@ -460,7 +463,7 @@ export default function BatchPigsScreen() {
         <div className="fixed inset-0 z-50 flex items-center justify-center responsive-modal-overlay bg-black/50 backdrop-blur-sm p-4">
           <div className="responsive-modal bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-sm max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between p-5 border-b border-white/30">
-              <h2 className="text-lg font-bold text-gray-900">Edit Pig</h2>
+              <h2 className="text-lg font-bold text-gray-900">Record Weight</h2>
               <button
                 onClick={() => {
                   setShowEditModal(false);
@@ -496,7 +499,7 @@ export default function BatchPigsScreen() {
                 disabled={isUpdatingPig}
                 className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform"
               >
-                {isUpdatingPig ? 'Saving...' : 'Update'}
+                {isUpdatingPig ? 'Saving...' : 'Save Weight'}
               </button>
             </div>
           </div>
