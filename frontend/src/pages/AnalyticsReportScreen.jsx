@@ -883,6 +883,7 @@ export default function AnalyticsReportsScreen() {
     profitAiAbortController.current?.abort();
     const controller = new AbortController();
     profitAiAbortController.current = controller;
+    let responseMetadata = { httpStatus: null, requestId: null };
     try {
       const response = await fetch(`${API_BASE}/reports/ai-profit-analysis`, {
         method: 'POST',
@@ -891,7 +892,16 @@ export default function AnalyticsReportsScreen() {
         body: JSON.stringify(requestBody),
         signal: controller.signal,
       });
-      const result = await response.json();
+      responseMetadata = {
+        httpStatus: response.status,
+        requestId: response.headers.get('x-request-id') || response.headers.get('x-correlation-id') || null,
+      };
+      let result;
+      try {
+        result = await response.json();
+      } catch {
+        throw new Error(`Backend returned a non-JSON response (HTTP ${response.status})`);
+      }
       if (controller.signal.aborted) return;
       if (!response.ok || !result.success) {
         const error = new Error(getAiErrorMessage(result.errorCategory, result.message));
@@ -905,6 +915,12 @@ export default function AnalyticsReportsScreen() {
       if (result.aiAnalysis) writeCache(cacheKey, result);
     } catch (requestError) {
       if (requestError.name === 'AbortError' || controller.signal.aborted) return;
+      console.error('[profit-ai] request failed', {
+        httpStatus: responseMetadata.httpStatus,
+        requestId: responseMetadata.requestId,
+        category: requestError.category || null,
+        errorName: requestError.name || 'Error',
+      });
       setProfitAiError(getAiErrorMessage(requestError.category, requestError.message));
     } finally {
       if (profitAiAbortController.current === controller) setProfitAiLoading(false);

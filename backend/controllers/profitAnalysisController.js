@@ -2,6 +2,7 @@ import supabase from '../config/supabase.js';
 import { collectPages } from '../services/pagination.js';
 import { validDate } from './salesController.js';
 import { generateProfitAnalysis } from '../services/profitAiService.js';
+import { logProfitAiDiagnostic, runProfitAiStage } from '../services/profitAnalysisDiagnostics.js';
 
 const round = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
 const numeric = (value) => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
@@ -68,6 +69,15 @@ const summarizeGrowth = (batch, pigs, now = new Date()) => {
 };
 
 export const generateAiProfitAnalysis = async (req, res) => {
+  const requestStartedAt = Date.now();
+  let currentStage = 'validate_request';
+  logProfitAiDiagnostic({
+    event: 'profit_ai_request_started',
+    level: 'info',
+    requestId: req.requestId,
+    stage: currentStage,
+    durationMs: 0,
+  });
   try {
     const { from, to, batch_id: batchId, selected_price_per_kg: selectedPriceRaw, reference_price_per_kg: referencePriceRaw, price_source: priceSource } = req.body || {};
     if (!validDate(from) || !validDate(to) || from > to || batchId && !uuid.test(batchId)) {
@@ -106,19 +116,30 @@ export const generateAiProfitAnalysis = async (req, res) => {
     let weightHistoryAvailable = true;
     let batches;
     try {
-      batches = await collectPages(() => batchQuery(true));
+      currentStage = 'load_batches_with_weight_history';
+      batches = await runProfitAiStage({
+        requestId: req.requestId,
+        stage: currentStage,
+        run: () => collectPages(() => batchQuery(true)),
+      });
     } catch (error) {
       if (error.code !== '42703' && error.code !== 'PGRST204') throw error;
       weightHistoryAvailable = false;
-      batches = await collectPages(() => batchQuery(false));
+      currentStage = 'load_batches_without_weight_history';
+      batches = await runProfitAiStage({
+        requestId: req.requestId,
+        stage: currentStage,
+        run: () => collectPages(() => batchQuery(false)),
+      });
     }
     if (!batchId) batches = batches.filter((batch) => String(batch.status || '').trim().toLowerCase() === 'active');
     const [pigs, expenses, feeds, vaccinations] = await Promise.all([
-      collectPages(pigQuery),
-      collectPages(() => datedQuery('expenses', 'id,batch_id,expense_type,amount,expense_date', 'expense_date')),
-      collectPages(() => datedQuery('feed_records', 'id,batch_id,quantity_kg,feeding_date,unit_price_at_usage', 'feeding_date')),
-      collectPages(() => datedQuery('vaccination_records', 'id,batch_id,dosage,vaccination_date,price_per_dose_at_usage', 'vaccination_date')),
+      runProfitAiStage({ requestId: req.requestId, stage: 'load_pigs', run: () => collectPages(pigQuery) }),
+      runProfitAiStage({ requestId: req.requestId, stage: 'load_expenses', run: () => collectPages(() => datedQuery('expenses', 'id,batch_id,expense_type,amount,expense_date', 'expense_date')) }),
+      runProfitAiStage({ requestId: req.requestId, stage: 'load_feed_records', run: () => collectPages(() => datedQuery('feed_records', 'id,batch_id,quantity_kg,feeding_date,unit_price_at_usage', 'feeding_date')) }),
+      runProfitAiStage({ requestId: req.requestId, stage: 'load_vaccination_records', run: () => collectPages(() => datedQuery('vaccination_records', 'id,batch_id,dosage,vaccination_date,price_per_dose_at_usage', 'vaccination_date')) }),
     ]);
+    currentStage = 'build_deterministic_analysis';
     if (!batches.length) {
       return res.status(200).json({ success: true, available: false, message: 'No active batch records are available for this selection.', limitations: ['No active batch is available to estimate standing value or growth.'] });
     }
@@ -193,6 +214,7 @@ export const generateAiProfitAnalysis = async (req, res) => {
     let aiAnalysisError = null;
     let aiAnalysisErrorCategory = null;
     try {
+      currentStage = 'generate_gemini_interpretation';
       aiAnalysis = await generateProfitAnalysis({
         context,
         ownerId: req.user.id,
@@ -201,15 +223,14 @@ export const generateAiProfitAnalysis = async (req, res) => {
       aiAnalysisError = aiAnalysis?.cacheMetadata?.error?.message || null;
       aiAnalysisErrorCategory = aiAnalysis?.cacheMetadata?.error?.category || null;
     } catch (aiError) {
-      console.error(JSON.stringify({
+      logProfitAiDiagnostic({
         event: 'profit_ai_analysis_failed',
-        timestamp: new Date().toISOString(),
-        requestId: req.requestId || null,
+        requestId: req.requestId,
+        stage: currentStage,
+        durationMs: Date.now() - requestStartedAt,
+        error: aiError,
         category: aiError.category || 'provider_error',
-        model: aiError.model || null,
-        providerStatus: aiError.providerStatus || null,
-        providerCode: aiError.providerCode || null,
-      }));
+      });
       aiAnalysisErrorCategory = aiError.category || null;
       aiAnalysisError = String(aiError.message || '').includes('not configured')
         ? 'AI profit analysis is not configured.'
@@ -217,6 +238,13 @@ export const generateAiProfitAnalysis = async (req, res) => {
     }
     res.json({ success: true, available: true, deterministic: context, aiAnalysis, aiAnalysisError, aiAnalysisErrorCategory });
   } catch (error) {
+    logProfitAiDiagnostic({
+      event: 'profit_ai_request_failed',
+      requestId: req.requestId,
+      stage: currentStage,
+      durationMs: Date.now() - requestStartedAt,
+      error,
+    });
     const missingKey = String(error.message || '').includes('not configured');
     const missingMigration = error.code === '42703' || error.code === 'PGRST204';
     res.status(missingKey ? 503 : missingMigration ? 503 : 502).json({

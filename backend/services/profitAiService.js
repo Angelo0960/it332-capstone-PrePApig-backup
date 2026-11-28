@@ -33,7 +33,14 @@ const generateProfitAnalysisUncached = async ({ context, fetchImpl = fetch, apiK
   const provider = 'Gemini';
   const configuredKey = String(apiKey || '').trim();
   const configuredModel = model;
-  if (!configuredKey) throw new Error(`${provider} is selected but its API key is not configured.`);
+  if (!configuredKey) {
+    const error = new Error(`${provider} is selected but its API key is not configured.`);
+    error.category = 'not_configured';
+    error.model = configuredModel;
+    error.provider = 'gemini';
+    error.providerCode = 'missing_api_key';
+    throw error;
+  }
   const prompt = [
     'You are a cautious farm performance advisor. Write in plain language for a pig farmer.',
     'Interpret only the supplied deterministic figures, recorded growth snapshots, recorded expenses, and clearly labeled estimates.',
@@ -64,6 +71,12 @@ const generateProfitAnalysisUncached = async ({ context, fetchImpl = fetch, apiK
       },
     });
     payload = result.payload;
+  } catch (error) {
+    if (error && typeof error === 'object') {
+      error.provider ||= 'gemini';
+      error.model ||= configuredModel;
+    }
+    throw error;
   } finally {
     clearTimeout(timeout);
   }

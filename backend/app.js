@@ -58,6 +58,7 @@ app.use(
       "Content-Type",
       "Authorization",
     ],
+    exposedHeaders: ["X-Request-ID"],
   })
 );
 
