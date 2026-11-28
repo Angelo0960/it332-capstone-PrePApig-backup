@@ -98,6 +98,45 @@ test('profit analysis uses Gemini even when an OpenAI endpoint override is confi
   }
 });
 
+test('missing Gemini credentials are classified before any provider request', async () => {
+  let providerCalls = 0;
+  await assert.rejects(generateProfitAnalysis({
+    context: {},
+    apiKey: '',
+    model: 'gemini-3.8-flash',
+    requestGemini: async () => {
+      providerCalls += 1;
+      throw new Error('Provider must not be called without a key');
+    },
+  }), (error) => {
+    assert.equal(error.category, 'not_configured');
+    assert.equal(error.provider, 'gemini');
+    assert.equal(error.model, 'gemini-3.8-flash');
+    assert.equal(error.providerCode, 'missing_api_key');
+    return true;
+  });
+  assert.equal(providerCalls, 0);
+});
+
+test('profit analysis attaches Gemini model metadata to provider failures', async () => {
+  const providerError = Object.assign(new Error('Gemini request failed.'), {
+    category: 'network',
+    providerStatus: null,
+  });
+  await assert.rejects(generateProfitAnalysis({
+    context: {},
+    apiKey: 'synthetic-gemini-key',
+    model: 'gemini-3.8-flash',
+    requestGemini: async () => { throw providerError; },
+  }), (error) => {
+    assert.equal(error, providerError);
+    assert.equal(error.provider, 'gemini');
+    assert.equal(error.model, 'gemini-3.8-flash');
+    assert.equal(error.category, 'network');
+    return true;
+  });
+});
+
 test('incomplete model output is classified and includes its finish reason', async () => {
   await assert.rejects(generateProfitAnalysis({
     context: {},

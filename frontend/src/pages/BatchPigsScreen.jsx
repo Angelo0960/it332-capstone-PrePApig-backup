@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Pencil, X, CircleDollarSign } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Pencil, X, CircleDollarSign, Eye } from 'lucide-react';
 import backgroundImage from '../../src/assets/Gemini_Generated_Image_o4e5bbo4e5bbo4e5.webp';
 import BottomNav from '../components/BottomNav';
 // ─── IMPORT FROM CENTRAL api.js ───────────────────────────────
 import { API_BASE, getAuthHeaders } from '../api.js';
 import { getUserCacheKey } from '../utils/cache.js';
 import { buildBatchDisplayNames } from '../utils/batchNames.js';
-import { toPigWeightHistoryRows } from '../utils/pigWeightHistory.js';
+import { shouldDisplayRecordNote } from '../utils/recordNotes.js';
+import { getPigWeightHistoryRows } from '../utils/pigWeightHistory.js';
 import { useConfirmation } from '../components/ConfirmationDialog.jsx';
 // ────────────────────────────────────────────────────────────────
 
@@ -27,6 +28,7 @@ export default function BatchPigsScreen() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showSellModal, setShowSellModal] = useState(false);
+  const [historyPig, setHistoryPig] = useState(null);
   const [isSelling, setIsSelling] = useState(false);
   const [isUpdatingPig, setIsUpdatingPig] = useState(false);
   const [editingPig, setEditingPig] = useState(null);
@@ -167,7 +169,7 @@ export default function BatchPigsScreen() {
                 ? { ...pig, ...json.data, weight_history: pig.weight_history || [] }
                 : pig
             ));
-            localStorage.setItem(`prepapig:pigs:${getUserCacheKey()}:${batchId}`, JSON.stringify(nextPigs));
+            localStorage.setItem('prepapig:pigs:' + getUserCacheKey() + ':' + batchId, JSON.stringify(nextPigs));
             return nextPigs;
           });
         } else {
@@ -223,13 +225,7 @@ export default function BatchPigsScreen() {
 
   const totalWeight = pigs.reduce((sum, p) => sum + p.weight, 0);
   const avgWeight = pigs.length > 0 ? totalWeight / pigs.length : 0;
-  const pigTableRows = toPigWeightHistoryRows(pigs);
-  const pigHistoryGroups = pigs
-    .map((pig) => ({
-      pig,
-      rows: pigTableRows.filter((row) => String(row.pigId) === String(pig.id)),
-    }))
-    .filter((group) => group.rows.length > 0);
+  const historyRows = historyPig ? getPigWeightHistoryRows(historyPig) : [];
 
   const handleSellBatch = async () => {
     const revenue = Number(saleForm.revenue);
@@ -314,7 +310,7 @@ export default function BatchPigsScreen() {
         </div>
 
         {/* Summary */}
-        <div className="px-4 md:px-8 lg:px-12 mb-4">
+        <div className="order-2 px-4 md:px-8 lg:px-12 mb-4">
           <div className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg flex justify-around">
             <div className="text-center">
               <div className="text-xs text-gray-600">Total Weight</div>
@@ -332,7 +328,8 @@ export default function BatchPigsScreen() {
         </div>
 
         {/* Pig List */}
-        <div className="flex-1 min-h-0 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24">
+        <div className="order-1 flex-1 min-h-0 overflow-y-auto mobile-page-content px-4 md:px-8 lg:px-12 pb-24">
+          <h2 className="text-lg font-bold text-gray-900 mb-3">Pigs</h2>
           {loading ? (
             <div className="flex items-center justify-center h-40 text-gray-600">Loading...</div>
           ) : error ? (
@@ -345,82 +342,53 @@ export default function BatchPigsScreen() {
           ) : pigs.length === 0 ? (
             <div className="text-center py-20 text-gray-500">No pigs in this batch yet.</div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-white/50 bg-white/20 shadow-lg backdrop-blur-lg">
-              <table className="w-full min-w-[900px] border-collapse text-left text-sm">
-                <caption className="sr-only">Individual weight timelines for pigs in {batchName}</caption>
-                <thead className="bg-[#edf1f0] text-xs uppercase tracking-[0.12em] text-[#77818a]">
-                  <tr>
-                    <th scope="col" className="px-4 py-4 font-semibold">Pig</th>
-                    <th scope="col" className="px-4 py-4 font-semibold">Weigh-in date</th>
-                    <th scope="col" className="px-4 py-4 font-semibold">Age</th>
-                    <th scope="col" className="px-4 py-4 font-semibold">Recorded weight</th>
-                    <th scope="col" className="px-4 py-4 font-semibold">Change</th>
-                    <th scope="col" className="px-4 py-4 text-right font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                {pigHistoryGroups.map(({ pig, rows }) => (
-                  <tbody key={pig.id} className="divide-y divide-white/50">
-                    <tr className="bg-white/35 text-gray-900">
-                      <th scope="row" className="px-4 py-3 font-semibold" title={pig.id}>
-                        Pig {String(pig.id).slice(0, 8)}
-                      </th>
-                      <td colSpan="5" className="px-4 py-3 text-sm text-gray-700">
-                        <span>
-                          {rows.length} weigh-in{rows.length === 1 ? '' : 's'} · {rows[0].isBaseline
-                            ? 'Timeline from acquisition · batch start weight'
-                            : rows[0].isSnapshot
-                              ? 'Current snapshot only'
-                              : 'Timeline from first recorded weigh-in'}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {pigs.map((pig) => (
+                <div
+                  key={pig.id}
+                  className="bg-white/20 backdrop-blur-lg rounded-2xl border border-white/30 p-4 shadow-lg flex flex-col"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="font-semibold text-gray-900">{pig.weight} kg</div>
+                      <div className="text-xs text-gray-600">
+                        Health:{' '}
+                        <span
+                          className={`font-medium ${
+                            pig.health_status === 'Healthy' ? 'text-green-600' : 'text-yellow-600'
+                          }`}
+                        >
+                          {pig.health_status}
                         </span>
-                        <span className="ml-3 font-semibold text-gray-900">Current: {Number(pig.weight).toFixed(2)} kg</span>
-                      </td>
-                    </tr>
-                    {rows.map((row) => (
-                      <tr key={`${row.pigId}-${row.recordId}`} className="text-gray-800 hover:bg-white/30">
-                        <td className="px-4 py-3 pl-8 text-gray-400" aria-hidden="true">↳</td>
-                        <td className="px-4 py-3">
-                          <div>{row.weighInDate || '—'}</div>
-                          {row.isBaseline && <div className="text-xs text-gray-600">Batch start weight baseline</div>}
-                          {row.isSnapshot && !row.isBaseline && <div className="text-xs text-gray-600">Current snapshot</div>}
-                        </td>
-                        <td className="px-4 py-3">{row.ageDays == null ? '—' : `${row.ageDays} days`}</td>
-                        <td className="px-4 py-3 font-semibold text-gray-900">
-                          {Number.isFinite(row.recordedWeight) ? `${row.recordedWeight.toFixed(2)} kg` : '—'}
-                        </td>
-                        <td className="px-4 py-3 font-medium">
-                          {row.dailyChange === null
-                            ? '—'
-                            : `${row.dailyChange > 0 ? '+' : ''}${row.dailyChange.toFixed(2)} kg`}
-                        </td>
-                        <td className="px-4 py-3">
-                          {row.isLatest ? (
-                            <div className="flex justify-end gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleEditPig(row.pig)}
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100/80 hover:bg-blue-200"
-                                aria-label={`Record weight for pig ${row.pigId}`}
-                                title="Record weight"
-                              >
-                                <Pencil className="h-4 w-4 text-blue-600" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeletePig(row.pigId)}
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-red-100/80 hover:bg-red-200"
-                                aria-label={`Delete pig ${row.pigId}`}
-                                title="Delete pig"
-                              >
-                                <Trash2 className="h-4 w-4 text-red-600" />
-                              </button>
-                            </div>
-                          ) : <span className="block text-right text-gray-500">—</span>}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                ))}
-              </table>
+                      </div>
+                      {shouldDisplayRecordNote(pig.notes) && <div className="text-xs text-gray-500 mt-1">📝 {pig.notes}</div>}
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleEditPig(pig)}
+                        className="w-7 h-7 rounded-full bg-blue-100/80 flex items-center justify-center hover:bg-blue-200 transition-all"
+                        title="Edit"
+                      >
+                        <Pencil className="w-3 h-3 text-blue-600" />
+                      </button>
+                      <button
+                        onClick={() => handleDeletePig(pig.id)}
+                        className="w-7 h-7 rounded-full bg-red-100/80 flex items-center justify-center hover:bg-red-200 transition-all"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3 h-3 text-red-600" />
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryPig(pig)}
+                    className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-xl border border-green-700/20 bg-green-100/70 px-3 py-2 text-sm font-semibold text-green-800 hover:bg-green-200/80 transition-colors"
+                  >
+                    <Eye className="w-4 h-4" /> View history
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -493,7 +461,7 @@ export default function BatchPigsScreen() {
         <div className="fixed inset-0 z-50 flex items-center justify-center responsive-modal-overlay bg-black/50 backdrop-blur-sm p-4">
           <div className="responsive-modal bg-white/30 backdrop-blur-xl border border-white/40 rounded-3xl shadow-2xl w-full max-w-sm max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between p-5 border-b border-white/30">
-              <h2 className="text-lg font-bold text-gray-900">Record Weight</h2>
+              <h2 className="text-lg font-bold text-gray-900">Edit Pig</h2>
               <button
                 onClick={() => {
                   setShowEditModal(false);
@@ -529,10 +497,63 @@ export default function BatchPigsScreen() {
                 disabled={isUpdatingPig}
                 className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform"
               >
-                {isUpdatingPig ? 'Saving...' : 'Save Weight'}
+                {isUpdatingPig ? 'Saving...' : 'Update'}
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Per-pig weight history modal */}
+      {historyPig && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center responsive-modal-overlay bg-black/50 backdrop-blur-sm p-4">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pig-history-title"
+            className="responsive-modal bg-white/95 backdrop-blur-xl border border-white/60 rounded-3xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between p-5 border-b border-gray-200">
+              <div>
+                <h2 id="pig-history-title" className="text-lg font-bold text-gray-900">Weight history</h2>
+                <p className="text-sm text-gray-600">Pig · {historyPig.weight} kg current</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHistoryPig(null)}
+                aria-label="Close weight history"
+                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200"
+              >
+                <X className="w-4 h-4 text-gray-700" />
+              </button>
+            </div>
+            <div className="p-5">
+              {historyPig.weight_history_available === false ? (
+                <p className="text-sm text-amber-800">Weight history is not configured yet. Apply the pig weight-history database migrations to enable it.</p>
+              ) : historyRows.length === 0 ? (
+                <p className="text-sm text-gray-600">No recorded weigh-ins yet. A current weight is not shown as historical data.</p>
+              ) : (
+                <ol className="space-y-3">
+                  {historyRows.map((row) => (
+                    <li key={row.recordId} className="rounded-xl border border-gray-200 bg-white p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-gray-900">{row.recordedWeight.toFixed(2)} kg</p>
+                          <p className="text-xs text-gray-600">{row.weighInDate || 'Date unavailable'}{row.ageDays === null ? '' : ` · ${row.ageDays} days old`}</p>
+                          {row.isBaseline && <p className="mt-1 text-xs font-medium text-amber-800">{row.baselineLabel}</p>}
+                        </div>
+                        {row.changeKg !== null && (
+                          <span className={`text-sm font-semibold ${row.changeKg >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                            {row.changeKg > 0 ? '+' : ''}{row.changeKg.toFixed(2)} kg
+                          </span>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          </section>
         </div>
       )}
 

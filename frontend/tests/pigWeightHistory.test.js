@@ -1,61 +1,33 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { toPigWeightHistoryRows } from '../src/utils/pigWeightHistory.js';
+import { getPigWeightHistoryRows } from '../src/utils/pigWeightHistory.js';
 
-test('weight-history rows group each pig chronologically and calculate the change from the previous weigh-in', () => {
-  const pigs = [
-    {
-      id: 'pig-a', weight: 12.9, updated_at: '2026-11-03T10:00:00Z',
-      weight_history: [
-        { id: 'a-3', weigh_in_date: '2026-11-03', age_days: 122, recorded_weight: 12.9 },
-        { id: 'a-1', weigh_in_date: '2026-11-01', age_days: 120, recorded_weight: 12 },
-        { id: 'a-2', weigh_in_date: '2026-11-02', age_days: 121, recorded_weight: 13.1 },
-      ],
-    },
-    {
-      id: 'pig-b', weight: 22, updated_at: '2026-11-01T10:00:00Z',
-      weight_history: [
-        { id: 'b-1', weigh_in_date: '2026-11-01', age_days: 80, recorded_weight: 22 },
-      ],
-    },
-  ];
+test('builds per-pig chronological history with changes from the prior weigh-in', () => {
+  const rows = getPigWeightHistoryRows({
+    id: 'pig-1',
+    weight_history: [
+      { id: 'new', weigh_in_date: '2026-11-20', recorded_weight: 31, age_days: 139 },
+      { id: 'base', weigh_in_date: '2026-11-01', recorded_weight: 25, age_days: 120, is_baseline: true, baseline_source: 'batch_start' },
+    ],
+  });
 
-  assert.deepEqual(toPigWeightHistoryRows(pigs).map(({ pigId, recordId, weighInDate, ageDays, recordedWeight, dailyChange, isLatest }) => ({
-    pigId, recordId, weighInDate, ageDays, recordedWeight, dailyChange, isLatest,
+  assert.deepEqual(rows.map(({ recordId, weighInDate, recordedWeight, changeKg, isBaseline, baselineLabel }) => ({
+    recordId, weighInDate, recordedWeight, changeKg, isBaseline, baselineLabel,
   })), [
-    { pigId: 'pig-a', recordId: 'a-1', weighInDate: '2026-11-01', ageDays: 120, recordedWeight: 12, dailyChange: null, isLatest: false },
-    { pigId: 'pig-a', recordId: 'a-2', weighInDate: '2026-11-02', ageDays: 121, recordedWeight: 13.1, dailyChange: 1.1, isLatest: false },
-    { pigId: 'pig-a', recordId: 'a-3', weighInDate: '2026-11-03', ageDays: 122, recordedWeight: 12.9, dailyChange: -0.2, isLatest: true },
-    { pigId: 'pig-b', recordId: 'b-1', weighInDate: '2026-11-01', ageDays: 80, recordedWeight: 22, dailyChange: null, isLatest: true },
+    { recordId: 'base', weighInDate: '2026-11-01', recordedWeight: 25, changeKg: null, isBaseline: true, baselineLabel: 'Batch start weight baseline' },
+    { recordId: 'new', weighInDate: '2026-11-20', recordedWeight: 31, changeKg: 6, isBaseline: false, baselineLabel: null },
   ]);
 });
 
-test('weight-history rows identify migration baseline snapshots', () => {
-  const [row] = toPigWeightHistoryRows([{
-    id: 'pig-d',
-    weight: 21,
-    weight_history: [{
-      id: 'baseline-1',
-      weigh_in_date: '2026-10-30',
-      age_days: 75,
-      recorded_weight: 21,
-      is_baseline: true,
-    }],
-  }]);
-
-  assert.equal(row.isSnapshot, true);
+test('does not invent a historical row when a pig has no stored weigh-ins', () => {
+  assert.deepEqual(getPigWeightHistoryRows({ id: 'pig-2', weight: 42 }), []);
 });
 
-test('weight-history rows fall back to one current snapshot for stale cached pigs', () => {
-  const rows = toPigWeightHistoryRows([
-    { id: 'pig-c', weight: 19.5, updated_at: '2026-10-30T12:30:00Z' },
-  ]);
+test('does not claim an unknown baseline came from batch acquisition', () => {
+  const [row] = getPigWeightHistoryRows({
+    id: 'pig-3',
+    weight_history: [{ id: 'legacy', weigh_in_date: '2026-11-01', recorded_weight: 24, is_baseline: true }],
+  });
 
-  assert.equal(rows.length, 1);
-  assert.equal(rows[0].pigId, 'pig-c');
-  assert.equal(rows[0].weighInDate, '2026-10-30');
-  assert.equal(rows[0].ageDays, null);
-  assert.equal(rows[0].recordedWeight, 19.5);
-  assert.equal(rows[0].isLatest, true);
-  assert.equal(rows[0].isSnapshot, true);
+  assert.equal(row.baselineLabel, 'Baseline snapshot; provenance unavailable');
 });

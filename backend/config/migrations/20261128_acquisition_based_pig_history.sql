@@ -71,7 +71,7 @@ DECLARE
     v_weigh_in_date date := CURRENT_DATE;
     v_age_days integer;
 BEGIN
-    IF p_owner_id IS NULL OR p_action NOT IN ('create', 'update', 'delete') THEN
+    IF p_owner_id IS NULL OR p_action IS NULL OR p_action NOT IN ('create', 'update', 'delete') THEN
         RAISE EXCEPTION 'Invalid pig mutation';
     END IF;
 
