@@ -224,6 +224,12 @@ export default function BatchPigsScreen() {
   const totalWeight = pigs.reduce((sum, p) => sum + p.weight, 0);
   const avgWeight = pigs.length > 0 ? totalWeight / pigs.length : 0;
   const pigTableRows = toPigWeightHistoryRows(pigs);
+  const pigHistoryGroups = pigs
+    .map((pig) => ({
+      pig,
+      rows: pigTableRows.filter((row) => String(row.pigId) === String(pig.id)),
+    }))
+    .filter((group) => group.rows.length > 0);
 
   const handleSellBatch = async () => {
     const revenue = Number(saleForm.revenue);
@@ -340,56 +346,80 @@ export default function BatchPigsScreen() {
             <div className="text-center py-20 text-gray-500">No pigs in this batch yet.</div>
           ) : (
             <div className="overflow-x-auto rounded-2xl border border-white/50 bg-white/20 shadow-lg backdrop-blur-lg">
-              <table className="w-full min-w-[760px] border-collapse text-left text-sm">
-                <caption className="sr-only">Weight history for individual pigs in {batchName}</caption>
+              <table className="w-full min-w-[900px] border-collapse text-left text-sm">
+                <caption className="sr-only">Individual weight timelines for pigs in {batchName}</caption>
                 <thead className="bg-[#edf1f0] text-xs uppercase tracking-[0.12em] text-[#77818a]">
                   <tr>
                     <th scope="col" className="px-4 py-4 font-semibold">Pig</th>
                     <th scope="col" className="px-4 py-4 font-semibold">Weigh-in date</th>
                     <th scope="col" className="px-4 py-4 font-semibold">Age</th>
                     <th scope="col" className="px-4 py-4 font-semibold">Recorded weight</th>
+                    <th scope="col" className="px-4 py-4 font-semibold">Change</th>
                     <th scope="col" className="px-4 py-4 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/50">
-                  {pigTableRows.map((row) => (
-                    <tr key={`${row.pigId}-${row.recordId}`} className="text-gray-800 hover:bg-white/30">
-                      <th scope="row" className="px-4 py-3 font-medium text-gray-700" title={row.pigId}>
-                        {String(row.pigId).slice(0, 8)}
+                {pigHistoryGroups.map(({ pig, rows }) => (
+                  <tbody key={pig.id} className="divide-y divide-white/50">
+                    <tr className="bg-white/35 text-gray-900">
+                      <th scope="row" className="px-4 py-3 font-semibold" title={pig.id}>
+                        Pig {String(pig.id).slice(0, 8)}
                       </th>
-                      <td className="px-4 py-3">{row.weighInDate || '—'}</td>
-                      <td className="px-4 py-3">{row.ageDays == null ? '—' : `${row.ageDays} days`}</td>
-                      <td className="px-4 py-3 font-semibold text-gray-900">
-                        {Number.isFinite(row.recordedWeight) ? `${row.recordedWeight.toFixed(2)} kg` : '—'}
-                        {row.isSnapshot && <span className="ml-2 text-xs font-normal text-gray-600">Current snapshot</span>}
-                      </td>
-                      <td className="px-4 py-3">
-                        {row.isLatest ? (
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleEditPig(row.pig)}
-                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100/80 hover:bg-blue-200"
-                              aria-label={`Record weight for pig ${row.pigId}`}
-                              title="Record weight"
-                            >
-                              <Pencil className="h-4 w-4 text-blue-600" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeletePig(row.pigId)}
-                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-red-100/80 hover:bg-red-200"
-                              aria-label={`Delete pig ${row.pigId}`}
-                              title="Delete pig"
-                            >
-                              <Trash2 className="h-4 w-4 text-red-600" />
-                            </button>
-                          </div>
-                        ) : <span className="block text-right text-gray-500">—</span>}
+                      <td colSpan="5" className="px-4 py-3 text-sm text-gray-700">
+                        <span>
+                          {rows.length} weigh-in{rows.length === 1 ? '' : 's'} · {rows[0].isBaseline
+                            ? 'Timeline from acquisition · batch start weight'
+                            : rows[0].isSnapshot
+                              ? 'Current snapshot only'
+                              : 'Timeline from first recorded weigh-in'}
+                        </span>
+                        <span className="ml-3 font-semibold text-gray-900">Current: {Number(pig.weight).toFixed(2)} kg</span>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
+                    {rows.map((row) => (
+                      <tr key={`${row.pigId}-${row.recordId}`} className="text-gray-800 hover:bg-white/30">
+                        <td className="px-4 py-3 pl-8 text-gray-400" aria-hidden="true">↳</td>
+                        <td className="px-4 py-3">
+                          <div>{row.weighInDate || '—'}</div>
+                          {row.isBaseline && <div className="text-xs text-gray-600">Batch start weight baseline</div>}
+                          {row.isSnapshot && !row.isBaseline && <div className="text-xs text-gray-600">Current snapshot</div>}
+                        </td>
+                        <td className="px-4 py-3">{row.ageDays == null ? '—' : `${row.ageDays} days`}</td>
+                        <td className="px-4 py-3 font-semibold text-gray-900">
+                          {Number.isFinite(row.recordedWeight) ? `${row.recordedWeight.toFixed(2)} kg` : '—'}
+                        </td>
+                        <td className="px-4 py-3 font-medium">
+                          {row.dailyChange === null
+                            ? '—'
+                            : `${row.dailyChange > 0 ? '+' : ''}${row.dailyChange.toFixed(2)} kg`}
+                        </td>
+                        <td className="px-4 py-3">
+                          {row.isLatest ? (
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleEditPig(row.pig)}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100/80 hover:bg-blue-200"
+                                aria-label={`Record weight for pig ${row.pigId}`}
+                                title="Record weight"
+                              >
+                                <Pencil className="h-4 w-4 text-blue-600" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeletePig(row.pigId)}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-red-100/80 hover:bg-red-200"
+                                aria-label={`Delete pig ${row.pigId}`}
+                                title="Delete pig"
+                              >
+                                <Trash2 className="h-4 w-4 text-red-600" />
+                              </button>
+                            </div>
+                          ) : <span className="block text-right text-gray-500">—</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                ))}
               </table>
             </div>
           )}
