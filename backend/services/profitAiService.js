@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import { getGeminiModel } from './geminiModel.js';
-import { requestOpenAiJson, isOpenAiBaseUrlConfigured } from './openAiEndpoint.js';
 import { requestGeminiApi, runCachedAiAnalysis } from './aiGovernanceService.js';
 
 const getApiKey = () => process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY || '';
@@ -31,10 +30,9 @@ export const getProfitAnalysisGenerationConfig = () => ({
 });
 
 const generateProfitAnalysisUncached = async ({ context, fetchImpl = fetch, apiKey = getApiKey(), model = getGeminiModel(), requestGemini = requestGeminiApi }) => {
-  const useOpenAi = isOpenAiBaseUrlConfigured();
-  const provider = useOpenAi ? 'OpenAI' : 'Gemini';
-  const configuredKey = String(useOpenAi ? process.env.OPENAI_API_KEY || '' : apiKey || '').trim();
-  const configuredModel = useOpenAi ? process.env.OPENAI_MODEL || 'gpt-4.1-mini' : model;
+  const provider = 'Gemini';
+  const configuredKey = String(apiKey || '').trim();
+  const configuredModel = model;
   if (!configuredKey) throw new Error(`${provider} is selected but its API key is not configured.`);
   const prompt = [
     'You are a cautious farm performance advisor. Write in plain language for a pig farmer.',
@@ -48,53 +46,29 @@ const generateProfitAnalysisUncached = async ({ context, fetchImpl = fetch, apiK
     `Deterministic analysis context: ${JSON.stringify(context)}`,
   ].join('\n');
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), useOpenAi ? 30000 : 75_000);
+  const timeout = setTimeout(() => controller.abort(), 75_000);
   let payload;
   let responseStatus = 200;
   try {
-    if (useOpenAi) {
-      try {
-        ({ payload } = await requestOpenAiJson({
-          endpoint: 'chatCompletions',
-          fetchImpl,
-          options: {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${configuredKey}` },
-            body: JSON.stringify({ model: configuredModel, messages: [{ role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0.2, stream: false }),
-            signal: controller.signal,
-          },
-        }));
-      } catch (error) {
-        error.model = error.model || configuredModel;
-        throw error;
-      }
-    } else {
-      const result = await requestGemini({
-        model: configuredModel,
-        feature: 'profit_analysis',
-        apiKey: configuredKey,
-        fetchImpl,
-        signal: controller.signal,
-        timeoutMs: 30000,
-        maxRetries: 1,
-        body: {
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: getProfitAnalysisGenerationConfig(),
-        },
-      });
-      responseStatus = 200;
-      payload = result.payload;
-    }
+    const result = await requestGemini({
+      model: configuredModel,
+      feature: 'profit_analysis',
+      apiKey: configuredKey,
+      fetchImpl,
+      signal: controller.signal,
+      timeoutMs: 30000,
+      maxRetries: 1,
+      body: {
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: getProfitAnalysisGenerationConfig(),
+      },
+    });
+    payload = result.payload;
   } finally {
     clearTimeout(timeout);
   }
-  const finishReason = useOpenAi
-    ? payload?.choices?.[0]?.finish_reason || 'unknown'
-    : payload?.candidates?.[0]?.finishReason || 'unknown';
-  const openAiText = payload?.choices?.[0]?.message?.content;
-  const responseText = useOpenAi
-    ? typeof openAiText === 'string' ? openAiText.trim() : Array.isArray(openAiText) ? openAiText.map((part) => part?.text || '').join('').trim() : ''
-    : extractText(payload);
+  const finishReason = payload?.candidates?.[0]?.finishReason || 'unknown';
+  const responseText = extractText(payload);
   const structured = parseJson(responseText);
   if (!structured || typeof structured.analysis !== 'string' || typeof structured.suggestion !== 'string') {
     const error = new Error(`${provider} returned incomplete structured profit analysis (finish reason: ${finishReason})`);
@@ -109,7 +83,7 @@ const generateProfitAnalysisUncached = async ({ context, fetchImpl = fetch, apiK
   }
   return {
     success: true,
-    provider: useOpenAi ? 'openai' : 'gemini',
+    provider: 'gemini',
     model: configuredModel,
     analysis: structured.analysis,
     suggestion: structured.suggestion,
@@ -122,7 +96,7 @@ const generateProfitAnalysisUncached = async ({ context, fetchImpl = fetch, apiK
 
 export const generateProfitAnalysis = async ({ context, ownerId, cacheScope, fetchImpl = fetch, apiKey = getApiKey(), model = getGeminiModel(), requestGemini = requestGeminiApi }) => {
   if (!ownerId) return generateProfitAnalysisUncached({ context, fetchImpl, apiKey, model, requestGemini });
-  const cacheModel = isOpenAiBaseUrlConfigured() ? `openai:${process.env.OPENAI_MODEL || 'gpt-4.1-mini'}` : model;
+  const cacheModel = model;
   return runCachedAiAnalysis({
     ownerId,
     feature: 'profit_analysis',
