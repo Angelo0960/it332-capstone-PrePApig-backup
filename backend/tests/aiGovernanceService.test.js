@@ -50,9 +50,11 @@ test('classifies daily quota, temporary rate limit, permission, authentication, 
   assert.equal(classifyGeminiFailure({ error: new TypeError('network down') }).category, 'network');
 });
 
-test('uses provider-neutral text for generic AI provider failures', () => {
-  const error = new AiGovernanceError('provider_error');
-  assert.equal(error.message, 'An AI provider rejected the request. Check the sanitized backend error log.');
+test('uses provider-neutral text for generic AI provider and quota failures', () => {
+  const providerError = new AiGovernanceError('provider_error');
+  const quotaError = new AiGovernanceError('quota_unknown');
+  assert.equal(providerError.message, 'An AI provider rejected the request. Check the sanitized backend error log.');
+  assert.equal(quotaError.message, 'AI provider quota is exhausted or unavailable. No automatic retry was made.');
 });
 
 test('persists successful analysis for 24 hours and invalidates it when source input changes', async () => {

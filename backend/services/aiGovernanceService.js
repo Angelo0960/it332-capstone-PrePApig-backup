@@ -13,7 +13,7 @@ const MODEL_BUDGETS = Object.freeze({
 const SAFE_MESSAGES = Object.freeze({
   quota_rpm: 'Gemini is temporarily rate-limited. Please wait before trying again.',
   quota_daily: 'The Gemini daily request budget is exhausted. Try again after the quota window resets.',
-  quota_unknown: 'Gemini rejected the request because of a quota limit. No automatic retry was made.',
+  quota_unknown: 'AI provider quota is exhausted or unavailable. No automatic retry was made.',
   authentication: 'Gemini authentication failed. Check the backend API key configuration.',
   permission: 'The configured Gemini project or model does not have permission for this request.',
   network: 'Gemini could not be reached. Check the backend network and provider status.',
