@@ -37,6 +37,7 @@ import { API_BASE, getAuthHeaders } from '../api.js';
 import { formatCurrency, formatPricePerKg } from '../utils/formatters.js';
 import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 import { buildBatchDisplayNames } from '../utils/batchNames.js';
+import { shouldResetFeedForecastAi } from '../utils/feedForecastAiState.js';
 
 // ────────────────────────────────────────────────────────────────
 
@@ -271,8 +272,6 @@ export default function AnalyticsReportsScreen() {
       if (!response.ok || !json.success) throw new Error(json.message || 'Feed forecast unavailable');
       if (signal?.aborted) return;
       setFeedForecast(json);
-      setFeedForecastAi(null);
-      setFeedForecastAiError(null);
       setFeedForecastError(null);
     } catch (err) {
       if (err.name === 'AbortError' || signal?.aborted) return;
@@ -495,10 +494,6 @@ export default function AnalyticsReportsScreen() {
   }, [dateRange]);
 
   useEffect(() => {
-    feedAiAbortController.current?.abort();
-    setFeedForecastAi(null);
-    setFeedForecastAiLoading(false);
-    setFeedForecastAiError(null);
     const controller = new AbortController();
     void fetchFeedForecast(controller.signal);
     return () => controller.abort();
@@ -1229,6 +1224,12 @@ export default function AnalyticsReportsScreen() {
                     <button
                       key={option}
                       onClick={() => {
+                        if (shouldResetFeedForecastAi(selectedBatch, option)) {
+                          feedAiAbortController.current?.abort();
+                          setFeedForecastAi(null);
+                          setFeedForecastAiLoading(false);
+                          setFeedForecastAiError(null);
+                        }
                         setSelectedBatch(option);
                         setShowBatchDropdown(false);
                       }}
