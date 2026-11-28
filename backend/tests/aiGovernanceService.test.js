@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createAiGovernanceService, classifyGeminiFailure, getGeminiModelBudget } from '../services/aiGovernanceService.js';
+import { AiGovernanceError, createAiGovernanceService, classifyGeminiFailure, getGeminiModelBudget } from '../services/aiGovernanceService.js';
 
 const makeStorage = () => {
   const cache = new Map();
@@ -48,6 +48,13 @@ test('classifies daily quota, temporary rate limit, permission, authentication, 
   assert.equal(classifyGeminiFailure({ status: 403, payload: { error: { status: 'PERMISSION_DENIED', message: 'Forbidden' } } }).category, 'permission');
   assert.equal(classifyGeminiFailure({ status: 401, payload: { error: { status: 'UNAUTHENTICATED', message: 'Invalid API key' } } }).category, 'authentication');
   assert.equal(classifyGeminiFailure({ error: new TypeError('network down') }).category, 'network');
+});
+
+test('uses provider-neutral text for generic AI provider and quota failures', () => {
+  const providerError = new AiGovernanceError('provider_error');
+  const quotaError = new AiGovernanceError('quota_unknown');
+  assert.equal(providerError.message, 'An AI provider rejected the request. Check the sanitized backend error log.');
+  assert.equal(quotaError.message, 'AI provider quota is exhausted or unavailable. No automatic retry was made.');
 });
 
 test('persists successful analysis for 24 hours and invalidates it when source input changes', async () => {
@@ -189,6 +196,54 @@ test('backs off once for a temporary RPM response but never retries a daily quot
     },
   }), (error) => error.category === 'quota_daily');
   assert.equal(dailyFetches, 1);
+});
+
+test('retries one transient Gemini 503 with backoff and records both attempts', async () => {
+  const storage = makeStorage();
+  const waits = [];
+  const service = createAiGovernanceService({ storage, sleep: async (ms) => waits.push(ms), random: () => 0 });
+  let attempts = 0;
+  const result = await service.requestGemini({
+    model: 'gemini-3.8-flash', feature: 'profit_analysis', apiKey: 'test-key', body: {}, maxRetries: 1,
+    fetchImpl: async () => {
+      attempts += 1;
+      if (attempts === 1) return new Response(JSON.stringify({ error: { status: 'UNAVAILABLE', message: 'temporary overload' } }), { status: 503 });
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{}' }] } }] }), { status: 200 });
+    },
+  });
+  assert.equal(result.payload.candidates.length, 1);
+  assert.equal(attempts, 2);
+  assert.equal(waits.length, 1);
+  assert.deepEqual(storage.usage.map((row) => row.status), ['failed', 'success']);
+});
+
+test('retries one provider timeout unless the caller cancelled the request', async () => {
+  const storage = makeStorage();
+  const waits = [];
+  const service = createAiGovernanceService({ storage, sleep: async (ms) => waits.push(ms), random: () => 0 });
+  let attempts = 0;
+  const result = await service.requestGemini({
+    model: 'gemini-3.8-flash', feature: 'profit_analysis', apiKey: 'test-key', body: {}, maxRetries: 1,
+    fetchImpl: async () => {
+      attempts += 1;
+      if (attempts === 1) throw Object.assign(new Error('request timeout'), { name: 'AbortError' });
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{}' }] } }] }), { status: 200 });
+    },
+  });
+
+  assert.equal(result.payload.candidates.length, 1);
+  assert.equal(attempts, 2);
+  assert.equal(waits.length, 1);
+  assert.deepEqual(storage.usage.map((row) => row.status), ['failed', 'success']);
+
+  const cancelled = new AbortController();
+  cancelled.abort();
+  let cancelledAttempts = 0;
+  await assert.rejects(service.requestGemini({
+    model: 'gemini-3.8-flash', feature: 'profit_analysis', apiKey: 'test-key', body: {}, maxRetries: 1, signal: cancelled.signal,
+    fetchImpl: async () => { cancelledAttempts += 1; throw Object.assign(new Error('request aborted'), { name: 'AbortError' }); },
+  }), (error) => error.category === 'network');
+  assert.equal(cancelledAttempts, 1);
 });
 
 test('does not retry before a provider Retry-After that exceeds the bounded wait', async () => {

@@ -13,11 +13,11 @@ const MODEL_BUDGETS = Object.freeze({
 const SAFE_MESSAGES = Object.freeze({
   quota_rpm: 'Gemini is temporarily rate-limited. Please wait before trying again.',
   quota_daily: 'The Gemini daily request budget is exhausted. Try again after the quota window resets.',
-  quota_unknown: 'Gemini rejected the request because of a quota limit. No automatic retry was made.',
+  quota_unknown: 'AI provider quota is exhausted or unavailable. No automatic retry was made.',
   authentication: 'Gemini authentication failed. Check the backend API key configuration.',
   permission: 'The configured Gemini project or model does not have permission for this request.',
   network: 'Gemini could not be reached. Check the backend network and provider status.',
-  provider_error: 'Gemini rejected the request. Check the sanitized backend error log.',
+  provider_error: 'An AI provider rejected the request. Check the sanitized backend error log.',
   budget_unavailable: 'AI usage controls are temporarily unavailable; no Gemini request was sent.',
   request_in_progress: 'An identical AI analysis is already being generated. Try again shortly.',
 });
@@ -85,7 +85,7 @@ export const classifyGeminiFailure = ({ status = null, payload = null, error = n
     ?? parseRetryDelay(payload?.error?.details?.find?.((detail) => detail?.retryDelay)?.retryDelay);
   return {
     category,
-    retryable: category === 'quota_rpm',
+    retryable: category === 'quota_rpm' || status === 503,
     providerStatus: status || null,
     retryAfterSeconds: retrySeconds,
     message: SAFE_MESSAGES[category] || SAFE_MESSAGES.provider_error,
@@ -333,8 +333,8 @@ export const createAiGovernanceService = ({
             status: 'failed', providerStatus: response.status, errorCategory: failure.category, durationMs: now() - startedAt,
           }).catch(() => {});
           safeLog(logger, 'warn', { event: 'gemini_request_failed', feature, model, requestId, attempt: attempt + 1, providerStatus: response.status, category: failure.category, durationMs: now() - startedAt });
-          if (failure.category === 'quota_rpm' && attempt < maxRetries) {
-            const providerDelayMs = (failure.retryAfterSeconds || 0) * 1000;
+          if (failure.retryable && attempt < maxRetries) {
+            const providerDelayMs = failure.category === 'quota_rpm' ? (failure.retryAfterSeconds || 0) * 1000 : 0;
             if (providerDelayMs > MAX_RETRY_DELAY_MS) {
               throw new AiGovernanceError('quota_rpm', { providerStatus: response.status, retryAfterSeconds: failure.retryAfterSeconds, requestId });
             }
@@ -355,6 +355,13 @@ export const createAiGovernanceService = ({
           status: 'failed', providerStatus: status, errorCategory: failure.category, durationMs: now() - startedAt,
         }).catch(() => {});
         safeLog(logger, 'warn', { event: 'gemini_request_failed', feature, model, requestId, attempt: attempt + 1, providerStatus: status, category: failure.category, durationMs: now() - startedAt });
+        const retryableTimeout = error?.name === 'AbortError' && !signal?.aborted;
+        if (retryableTimeout && attempt < maxRetries) {
+          const exponentialMs = Math.min(1000 * (2 ** attempt), MAX_RETRY_DELAY_MS);
+          const jitteredMs = Math.min(MAX_RETRY_DELAY_MS, Math.round(exponentialMs * (0.9 + random() * 0.2)));
+          await sleep(jitteredMs);
+          continue;
+        }
         throw new AiGovernanceError(failure.category, { providerStatus: status, requestId });
       } finally {
         clearTimeout(timeout);
