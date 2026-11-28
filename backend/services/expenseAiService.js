@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { getGeminiModel } from './geminiModel.js';
 import { requestOpenAiJson, isOpenAiBaseUrlConfigured } from './openAiEndpoint.js';
+import { requestGeminiApi, runCachedAiAnalysis } from './aiGovernanceService.js';
 
 const getApiKey = () => process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY || '';
 const extractText = (payload) => payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('').trim() || '';
@@ -12,7 +13,7 @@ const parseJson = (text) => {
   }
 };
 
-export const generateExpenseAnalysis = async ({ summary, fetchImpl = fetch, apiKey = getApiKey(), model = getGeminiModel() }) => {
+const generateExpenseAnalysisUncached = async ({ summary, fetchImpl = fetch, apiKey = getApiKey(), model = getGeminiModel() }) => {
   const useOpenAi = isOpenAiBaseUrlConfigured();
   const provider = useOpenAi ? 'OpenAI' : 'Gemini';
   const configuredKey = String(useOpenAi ? process.env.OPENAI_API_KEY || '' : apiKey || '').trim();
@@ -45,14 +46,16 @@ export const generateExpenseAnalysis = async ({ summary, fetchImpl = fetch, apiK
         },
       }));
     } else {
-      const response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${configuredModel}:generateContent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': configuredKey },
-        body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json' } }),
+      const result = await requestGeminiApi({
+        model: configuredModel,
+        feature: 'expense_analysis',
+        apiKey: configuredKey,
+        fetchImpl,
         signal: controller.signal,
+        timeoutMs: 30000,
+        body: { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json' } },
       });
-      payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error?.message || `${provider} returned HTTP ${response.status}`);
+      payload = result.payload;
     }
   } finally {
     clearTimeout(timeout);
@@ -74,6 +77,20 @@ export const generateExpenseAnalysis = async ({ summary, fetchImpl = fetch, apiK
     limitations: Array.isArray(structured.limitations) ? structured.limitations : [],
     generatedAt: new Date().toISOString(),
   };
+};
+
+export const generateExpenseAnalysis = async ({ summary, ownerId, cacheScope, fetchImpl = fetch, apiKey = getApiKey(), model = getGeminiModel() }) => {
+  if (!ownerId) return generateExpenseAnalysisUncached({ summary, fetchImpl, apiKey, model });
+  const cacheModel = isOpenAiBaseUrlConfigured() ? `openai:${process.env.OPENAI_MODEL || 'gpt-4.1-mini'}` : model;
+  return runCachedAiAnalysis({
+    ownerId,
+    feature: 'expense_analysis',
+    model: cacheModel,
+    cacheScope: cacheScope ?? 'expense-summary',
+    promptVersion: 'expense-analysis-v1',
+    sourceData: summary,
+    generate: () => generateExpenseAnalysisUncached({ summary, fetchImpl, apiKey, model }),
+  });
 };
 
 export { extractText, parseJson };

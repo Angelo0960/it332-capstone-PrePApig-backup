@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { getGeminiModel } from './geminiModel.js';
+import { requestGeminiApi } from './aiGovernanceService.js';
 const LIVE_WEIGHT_SEARCH_QUERIES = [
   'magkano ang presyo ng buhay na baboy sa lemery',
   'magkano ang presyo ng buhay na baboy sa calaca',
@@ -49,6 +50,7 @@ export const generatePigPriceAnalysis = async ({
   fetchImpl = fetch,
   apiKey = getConfiguredApiKey(),
   model = getGeminiModel(),
+  storage,
 }) => {
   const configuredApiKey = String(apiKey || '').trim();
   if (!configuredApiKey) {
@@ -74,31 +76,22 @@ export const generatePigPriceAnalysis = async ({
     `Official and user-provided reference points, including their source, period, scope, and verification status: ${JSON.stringify(localPricePoints)}`,
   ].join('\n');
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
-  const response = await fetchImpl(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': configuredApiKey,
-      },
-      body: JSON.stringify({
+  const result = await requestGeminiApi({
+    model,
+    feature: 'pig_price_analysis',
+    apiKey: configuredApiKey,
+    fetchImpl,
+    storage,
+    timeoutMs: 30000,
+    body: {
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         tools: [{ google_search: {} }],
         generationConfig: {
           responseMimeType: 'application/json',
         },
-      }),
-      signal: controller.signal,
-    }
-  ).finally(() => clearTimeout(timeout));
-
-  const payload = await response.json();
-  if (!response.ok) {
-    throw new Error(payload?.error?.message || `Gemini returned HTTP ${response.status}`);
-  }
+    },
+  });
+  const payload = result.payload;
 
   const analysis = extractText(payload);
   if (!analysis) throw new Error('Gemini returned an empty price analysis');

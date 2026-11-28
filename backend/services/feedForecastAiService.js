@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { FEED_RATION_STAGE_MAP } from './feedForecastService.js';
 import { getGeminiModel } from './geminiModel.js';
 import { requestOpenAiJson, isOpenAiBaseUrlConfigured } from './openAiEndpoint.js';
+import { AiGovernanceError, requestGeminiApi, runCachedAiAnalysis } from './aiGovernanceService.js';
 
 const extractText = (payload) => payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('').trim() || '';
 
@@ -75,14 +76,16 @@ const requestProvider = async ({ provider, model, apiKey, prompt, fetchImpl }) =
   let payload;
   try {
     if (provider === 'gemini') {
-      const response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-        body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json' } }),
+      const result = await requestGeminiApi({
+        model,
+        feature: 'feed_forecast',
+        apiKey,
+        fetchImpl,
         signal: controller.signal,
+        timeoutMs: 25000,
+        body: { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json' } },
       });
-      payload = await response.json();
-      if (!response.ok) throw new Error(`${provider} returned HTTP ${response.status}: ${payload?.error?.message || 'provider request failed'}`);
+      payload = result.payload;
     } else {
       const isOpenRouter = provider === 'openrouter';
       const options = {
@@ -153,7 +156,7 @@ const validateForecastCalculations = (forecast) => {
   });
 };
 
-export const generateFeedForecastAnalysis = async ({ forecast, feedStocks = null, stockContext = null, fetchImpl = fetch }) => {
+const generateFeedForecastAnalysisUncached = async ({ forecast, feedStocks = null, stockContext = null, fetchImpl = fetch }) => {
   validateForecastCalculations(forecast);
   const deterministicStockContext = stockContext || buildStockContext(feedStocks, forecast.forecast || [], forecast.rationForecasts || []);
   const prompt = [
@@ -189,12 +192,11 @@ export const generateFeedForecastAnalysis = async ({ forecast, feedStocks = null
     throw new Error('No AI provider is configured. Set GEMINI_API_KEY, OPENROUTER_API_KEY, or OPENAI_API_KEY in the backend environment.');
   }
 
-  const failures = [];
+  let lastGovernanceError = null;
   for (const entry of providers) {
     try {
       const { structured, provider, model } = await requestProvider({ ...entry, apiKey: String(entry.apiKey).trim(), prompt, fetchImpl });
       if (narrativeContainsNumericFigure(structured)) {
-        failures.push(`${entry.provider}: numeric figure found in narrative`);
         console.warn(`Feed forecast provider ${entry.provider} returned numeric narrative content; trying next configured provider.`);
         continue;
       }
@@ -211,11 +213,29 @@ export const generateFeedForecastAnalysis = async ({ forecast, feedStocks = null
         generatedAt: new Date().toISOString(),
       };
     } catch (error) {
-      failures.push(`${entry.provider}: ${String(error.message || 'request failed').slice(0, 300)}`);
+      if (error instanceof AiGovernanceError) lastGovernanceError = error;
       console.warn(`Feed forecast provider ${entry.provider} failed; trying next configured provider.`);
     }
   }
-  throw new Error(`All configured AI providers failed for feed forecast analysis (${failures.join('; ')})`);
+  if (lastGovernanceError) throw lastGovernanceError;
+  throw new AiGovernanceError('provider_error');
+};
+
+export const generateFeedForecastAnalysis = async ({ ownerId, cacheScope, forecast, feedStocks = null, stockContext = null, fetchImpl = fetch }) => {
+  if (!ownerId) return generateFeedForecastAnalysisUncached({ forecast, feedStocks, stockContext, fetchImpl });
+  const scope = cacheScope ?? [forecast?.source || 'recorded', forecast?.batchId || 'all', forecast?.horizonDays || '', forecast?.horizonWeeks || ''].join(':');
+  const model = isOpenAiBaseUrlConfigured()
+    ? `openai:${process.env.OPENAI_MODEL || 'gpt-4.1-mini'}`
+    : getGeminiModel();
+  return runCachedAiAnalysis({
+    ownerId,
+    feature: 'feed_forecast',
+    model,
+    cacheScope: scope,
+    promptVersion: 'feed-forecast-v2',
+    sourceData: { forecast, feedStocks, stockContext },
+    generate: () => generateFeedForecastAnalysisUncached({ forecast, feedStocks, stockContext, fetchImpl }),
+  });
 };
 
 export { extractText, extractChatText, parseJson, buildStockContext };

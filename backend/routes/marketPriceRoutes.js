@@ -11,6 +11,7 @@ import {
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 import { getGeminiModel } from '../services/geminiModel.js';
 import { isOpenAiBaseUrlConfigured } from '../services/openAiEndpoint.js';
+import { runCachedAiAnalysis } from '../services/aiGovernanceService.js';
 
 import { rateLimit } from '../middlewares/rateLimit.js';
 
@@ -125,20 +126,26 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
 
     let result;
     try {
-      result = await generatePigPriceAnalysis({
-        locations,
-        webSearchAvailable: Boolean(webSearchResult),
-        provincialReference: {
+      const provincialReference = {
           location: priceData.data.location,
           period: priceData.data.period,
           pricePhpPerKg: priceData.data.pricePhpPerKg,
           unit: priceData.data.unit,
-        },
-        localPricePoints: [
+        };
+      const localPricePoints = [
           CALACA_FACEBOOK_PRICE_POINT,
           ...(priceData.provinceBenchmarks || []),
           ...(webSearchResult?.pricePoints || []).filter((point) => point.location !== CALACA_FACEBOOK_PRICE_POINT.location),
-        ],
+        ];
+      const selectedProvider = isOpenAiBaseUrlConfigured() ? 'openai' : process.env.GEMINI_API_KEY ? 'gemini' : process.env.OPENROUTER_API_KEY ? 'openrouter' : 'openai';
+      result = await runCachedAiAnalysis({
+        ownerId: req.user.id,
+        feature: 'pig_price_analysis',
+        model: `${selectedProvider}:${configuredModel}`,
+        cacheScope: [...locations].sort((a, b) => a.localeCompare(b)).join('|'),
+        promptVersion: 'pig-price-analysis-v2',
+        sourceData: { locations, webSearchAvailable: Boolean(webSearchResult), provincialReference, localPricePoints },
+        generate: () => generatePigPriceAnalysis({ locations, webSearchAvailable: Boolean(webSearchResult), provincialReference, localPricePoints }),
       });
     } catch (error) {
       const webFound = webSearchResult?.pricePoints?.some((point) => point.pricePhpPerKg != null);
@@ -171,36 +178,36 @@ marketPriceRouter.post('/pigs/ai-analysis', authMiddleware, rateLimit({ limit: 5
       requestId: req.requestId,
       provider: result.provider,
       model: result.model,
+      cacheState: result.cacheMetadata?.state || 'uncached',
+      errorCategory: result.cacheMetadata?.error?.category || null,
       pricePointCount: result.pricePoints?.length || 0,
       sourceCount: result.sources?.length || 0,
     }));
     res.status(200).json(result);
   } catch (error) {
-    console.error('Error generating AI pig-price analysis:', error);
     const rawMessage = String(error.message || '');
-    const safeMessage = rawMessage.replace(/sk-(?:or-v1|proj|live)-[A-Za-z0-9_-]+/g, '[REDACTED]').slice(0, 300);
     console.error(JSON.stringify({
       event: 'pig_price_ai_failed',
       requestId: req.requestId,
+      category: error.category || 'provider_error',
       provider: error.provider || (isOpenAiBaseUrlConfigured() ? 'openai' : process.env.GEMINI_API_KEY ? 'gemini' : process.env.OPENROUTER_API_KEY ? 'openrouter' : process.env.OPENAI_API_KEY ? 'openai' : 'none'),
       model: error.model || (isOpenAiBaseUrlConfigured() ? process.env.OPENAI_MODEL || 'gpt-4.1-mini' : process.env.GEMINI_API_KEY ? getGeminiModel() : process.env.OPENROUTER_MODEL || process.env.OPENAI_MODEL || 'openrouter/free'),
       providerStatus: error.providerStatus || null,
-      providerContentType: error.providerContentType || null,
-      providerEndpointHost: error.providerEndpointHost || null,
-      providerEndpointPath: error.providerEndpointPath || null,
-      message: safeMessage,
     }));
     const isQuotaError = /quota|rate.?limit|resource.?exhausted|billing|insufficient\s+credits?|credit balance|payment required/i.test(rawMessage);
     const isMissingKey = rawMessage.includes('API key is not configured') || rawMessage.includes('No AI provider is configured');
-    const status = isMissingKey ? 503 : isQuotaError ? 429 : error.providerStatus >= 400 && error.providerStatus < 500 ? error.providerStatus : 502;
+    const category = error.category || (isMissingKey ? 'not_configured' : isQuotaError ? 'quota_unknown' : 'provider_error');
+    const status = ({ quota_rpm: 429, quota_daily: 429, quota_unknown: 429, authentication: 401, permission: 403, budget_unavailable: 503, not_configured: 503 })[category] || (error.providerStatus >= 400 && error.providerStatus < 500 ? error.providerStatus : 502);
     const message = isMissingKey
       ? rawMessage
+      : error.category ? error.message
       : isQuotaError
         ? 'AI provider credits or quota are unavailable. Local reference prices remain available. Configure a funded Gemini, OpenRouter, or OpenAI provider, then retry.'
         : 'AI price analysis is temporarily unavailable. The local reference prices remain available.';
     res.status(status).json({
       success: false,
       message,
+      errorCategory: category,
       requestId: req.requestId,
     });
   }

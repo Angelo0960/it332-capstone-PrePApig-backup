@@ -19,25 +19,28 @@ expensesRouter.post('/ai-analysis', async (req, res) => {
         if (!summary || !Array.isArray(summary.breakdown)) {
             return res.status(400).json({ success: false, message: 'Expense summary is required' });
         }
-        const analysis = await generateExpenseAnalysis({ summary });
+        const analysis = await generateExpenseAnalysis({
+            summary,
+            ownerId: req.user.id,
+            cacheScope: String(req.body?.cache_scope || 'expense-summary').slice(0, 160),
+        });
         res.json(analysis);
     } catch (error) {
-        const safeMessage = String(error.message || 'AI provider request failed')
-            .replace(/sk-(?:or-v1|proj|live)-[A-Za-z0-9_-]+/g, '[REDACTED]')
-            .slice(0, 300);
         const missingKey = String(error.message || '').includes('API key is not configured');
+        const category = error.category || (missingKey ? 'not_configured' : 'provider_error');
+        const status = ({ quota_rpm: 429, quota_daily: 429, quota_unknown: 429, authentication: 401, permission: 403, budget_unavailable: 503, not_configured: 503 })[category] || 502;
         console.error(JSON.stringify({
             event: 'expense_ai_analysis_failed',
             requestId: req.requestId || null,
+            category,
             providerStatus: error.providerStatus || null,
-            providerContentType: error.providerContentType || null,
-            providerEndpointHost: error.providerEndpointHost || null,
-            providerEndpointPath: error.providerEndpointPath || null,
-            message: safeMessage,
+            model: error.model || null,
         }));
-        res.status(missingKey ? 503 : 502).json({
+        res.status(status).json({
             success: false,
-            message: missingKey ? 'Expense AI analysis is not configured' : 'Expense AI analysis is temporarily unavailable',
+            message: error.category ? error.message : missingKey ? 'Expense AI analysis is not configured' : 'Expense AI analysis is temporarily unavailable',
+            errorCategory: category,
+            requestId: req.requestId || null,
         });
     }
 });

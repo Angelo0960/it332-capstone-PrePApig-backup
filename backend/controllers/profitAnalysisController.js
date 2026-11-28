@@ -191,32 +191,30 @@ export const generateAiProfitAnalysis = async (req, res) => {
     };
     let aiAnalysis = null;
     let aiAnalysisError = null;
+    let aiAnalysisErrorCategory = null;
     try {
-      aiAnalysis = await generateProfitAnalysis({ context });
+      aiAnalysis = await generateProfitAnalysis({
+        context,
+        ownerId: req.user.id,
+        cacheScope: `${from}:${to}:${batchId || 'active'}`,
+      });
+      aiAnalysisError = aiAnalysis?.cacheMetadata?.error?.message || null;
+      aiAnalysisErrorCategory = aiAnalysis?.cacheMetadata?.error?.category || null;
     } catch (aiError) {
-      const safeMessage = String(aiError.message || 'AI provider request failed')
-        .replace(/AIza[0-9A-Za-z_-]+/g, '[REDACTED]')
-        .slice(0, 300);
       console.error(JSON.stringify({
         event: 'profit_ai_analysis_failed',
         timestamp: new Date().toISOString(),
         requestId: req.requestId || null,
+        category: aiError.category || 'provider_error',
         model: aiError.model || null,
-        modelVersion: aiError.modelVersion || null,
         providerStatus: aiError.providerStatus || null,
-        providerContentType: aiError.providerContentType || null,
-        providerEndpointHost: aiError.providerEndpointHost || null,
-        providerEndpointPath: aiError.providerEndpointPath || null,
-        providerCode: aiError.providerCode || null,
-        responseId: aiError.responseId || null,
-        usageMetadata: aiError.usageMetadata || null,
-        message: safeMessage,
       }));
+      aiAnalysisErrorCategory = aiError.category || null;
       aiAnalysisError = String(aiError.message || '').includes('not configured')
         ? 'AI profit analysis is not configured.'
-        : 'AI interpretation is temporarily unavailable.';
+        : aiError.category ? aiError.message : 'AI interpretation is temporarily unavailable.';
     }
-    res.json({ success: true, available: true, deterministic: context, aiAnalysis, aiAnalysisError });
+    res.json({ success: true, available: true, deterministic: context, aiAnalysis, aiAnalysisError, aiAnalysisErrorCategory });
   } catch (error) {
     const missingKey = String(error.message || '').includes('not configured');
     const missingMigration = error.code === '42703' || error.code === 'PGRST204';

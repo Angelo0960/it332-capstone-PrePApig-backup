@@ -26,25 +26,6 @@ feedRouter.get('/forecast', async (req, res) => {
       windowDays: req.query.window_days,
       source: req.query.source || 'recorded',
     });
-    if (String(req.query.include_ai).toLowerCase() === 'true' && result.status === 'forecasted') {
-      try {
-        const { data: feedStocks, error: stockError } = await supabase
-          .from('feed_stocks')
-          .select('feed_type,stock_quantity,unit_price,last_updated')
-          .eq('owner_id', req.user.id)
-          .order('feed_type');
-        const stocks = stockError?.code === '42P01' ? null : (feedStocks || []);
-        if (stockError && stockError.code !== '42P01') throw stockError;
-        result.feedStockSnapshot = buildStockContext(stocks, result.forecast || [], result.rationForecasts || []);
-        result.aiAnalysis = await generateFeedForecastAnalysis({ forecast: result, feedStocks: stocks, stockContext: result.feedStockSnapshot });
-      } catch (error) {
-        const message = String(error.message || '');
-        console.error(JSON.stringify({ event: 'feed_forecast_ai_failed', requestId: req.requestId, message: message.slice(0, 1000) }));
-        result.aiAnalysisError = message.includes('No AI provider is configured') || message.includes('API key is not configured')
-          ? 'Feed forecast AI analysis is not configured'
-          : 'Feed forecast AI analysis is temporarily unavailable';
-      }
-    }
     res.json(result);
   } catch (error) {
     console.error(JSON.stringify({ event: 'feed_forecast_failed', requestId: req.requestId, message: error.message }));
@@ -55,8 +36,30 @@ feedRouter.get('/forecast', async (req, res) => {
 feedRouter.post('/forecast/ai-analysis', rateLimit({ limit: 5, windowMs: 600000, key: (req) => req.user.id }), async (req, res) => {
   try {
     const forecast = await getFeedConsumptionForecast({ ownerId: req.user.id, batchId: req.body?.batch_id || 'all', horizonWeeks: req.body?.horizon_weeks || 1, source: 'uploaded_historical' });
-    const analysis = await generateFeedForecastAnalysis({ forecast });
-    res.json({ ...analysis, forecast: { status: forecast.status, granularity: forecast.granularity, historicalSummary: forecast.historicalSummary, evaluation: forecast.evaluation, provenance: forecast.provenance } });
+    if (forecast.status !== 'forecasted') {
+      return res.json({ success: true, available: false, forecast, aiAnalysis: null, aiAnalysisError: 'A statistical feed forecast is not available for this selection.' });
+    }
+    const { data: feedStocks, error: stockError } = await supabase
+      .from('feed_stocks')
+      .select('feed_type,stock_quantity,unit_price,last_updated')
+      .eq('owner_id', req.user.id)
+      .order('feed_type');
+    if (stockError && stockError.code !== '42P01') throw stockError;
+    const stocks = stockError?.code === '42P01' ? null : (feedStocks || []);
+    forecast.feedStockSnapshot = buildStockContext(stocks, forecast.forecast || [], forecast.rationForecasts || []);
+    try {
+      const analysis = await generateFeedForecastAnalysis({
+        ownerId: req.user.id,
+        cacheScope: [req.body?.batch_id || 'all', req.body?.horizon_weeks || 1, 'uploaded_historical'].join(':'),
+        forecast,
+        feedStocks: stocks,
+        stockContext: forecast.feedStockSnapshot,
+      });
+      res.json({ success: true, available: true, aiAnalysis: analysis, aiAnalysisError: analysis.cacheMetadata?.error?.message || null, errorCategory: analysis.cacheMetadata?.error?.category || null, forecast });
+    } catch (error) {
+      console.error(JSON.stringify({ event: 'feed_forecast_ai_failed', requestId: req.requestId, category: error.category || 'provider_error' }));
+      res.json({ success: true, available: true, aiAnalysis: null, aiAnalysisError: error.message || 'Feed forecast AI analysis is temporarily unavailable', errorCategory: error.category || 'provider_error', forecast });
+    }
   } catch (error) {
     console.error(JSON.stringify({ event: 'feed_forecast_ai_failed', requestId: req.requestId, message: String(error.message || '').slice(0, 300) }));
     const message = String(error.message || '');
