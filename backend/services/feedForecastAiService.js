@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { FEED_RATION_STAGE_MAP } from './feedForecastService.js';
 import { getGeminiModel } from './geminiModel.js';
-import { requestOpenAiJson, isOpenAiBaseUrlConfigured } from './openAiEndpoint.js';
+import { requestOpenAiJson } from './openAiEndpoint.js';
 import { AiGovernanceError, requestGeminiApi, runCachedAiAnalysis } from './aiGovernanceService.js';
 
 const extractText = (payload) => payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('').trim() || '';
@@ -116,6 +116,12 @@ const requestProvider = async ({ provider, model, apiKey, prompt, fetchImpl }) =
   return { structured, provider, model };
 };
 
+const getConfiguredProviders = () => [
+  { provider: 'gemini', apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY, model: getGeminiModel() },
+  { provider: 'openrouter', apiKey: process.env.OPENROUTER_API_KEY, model: process.env.OPENROUTER_MODEL || 'openrouter/free' },
+  { provider: 'openai', apiKey: process.env.OPENAI_API_KEY, model: process.env.OPENAI_MODEL || 'gpt-4.1-mini' },
+].filter((item) => String(item.apiKey || '').trim());
+
 const narrativeContainsNumericFigure = (structured = {}) => {
   const fields = [structured.analysis, structured.suggestion, ...(Array.isArray(structured.actions) ? structured.actions : []), ...(Array.isArray(structured.limitations) ? structured.limitations : [])].filter((value) => value != null);
   return fields.some((value) => typeof value !== 'string' || /[0-9₀-₉]|[₱$€£]/u.test(value));
@@ -156,7 +162,7 @@ const validateForecastCalculations = (forecast) => {
   });
 };
 
-const generateFeedForecastAnalysisUncached = async ({ forecast, feedStocks = null, stockContext = null, fetchImpl = fetch }) => {
+const generateFeedForecastAnalysisUncached = async ({ forecast, feedStocks = null, stockContext = null, fetchImpl = fetch, requestProviderImpl = requestProvider }) => {
   validateForecastCalculations(forecast);
   const deterministicStockContext = stockContext || buildStockContext(feedStocks, forecast.forecast || [], forecast.rationForecasts || []);
   const prompt = [
@@ -178,24 +184,16 @@ const generateFeedForecastAnalysisUncached = async ({ forecast, feedStocks = nul
     `Authoritative forecast and calculation data: ${JSON.stringify({ dataType: forecast.dataType, reconciliationStatus: forecast.reconciliationStatus, historicalSummary: forecast.historicalSummary, history: forecast.history, forecast: forecast.forecast, rationForecasts: forecast.rationForecasts, calculatedMetrics: forecast.calculatedMetrics, evaluation: forecast.evaluation, provenance: forecast.provenance, stockContext: deterministicStockContext })}`,
   ].join('\n');
 
-  const configuredProviders = [
-    { provider: 'gemini', apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY, model: getGeminiModel() },
-    { provider: 'openrouter', apiKey: process.env.OPENROUTER_API_KEY, model: process.env.OPENROUTER_MODEL || 'openrouter/free' },
-    { provider: 'openai', apiKey: process.env.OPENAI_API_KEY, model: process.env.OPENAI_MODEL || 'gpt-4.1-mini' },
-  ];
-  const useOpenAi = isOpenAiBaseUrlConfigured();
-  const providers = useOpenAi
-    ? configuredProviders.filter((item) => item.provider === 'openai' && String(item.apiKey || '').trim())
-    : configuredProviders.filter((item) => String(item.apiKey || '').trim());
+  const providers = getConfiguredProviders();
   if (!providers.length) {
-    if (useOpenAi) throw new Error('OPENAI_BASE_URL is set; OPENAI_API_KEY is required to use the selected OpenAI endpoint.');
+    if (String(process.env.OPENAI_BASE_URL || '').trim()) throw new Error('OPENAI_BASE_URL is set; OPENAI_API_KEY is required to use the configured OpenAI endpoint.');
     throw new Error('No AI provider is configured. Set GEMINI_API_KEY, OPENROUTER_API_KEY, or OPENAI_API_KEY in the backend environment.');
   }
 
   let lastGovernanceError = null;
   for (const entry of providers) {
     try {
-      const { structured, provider, model } = await requestProvider({ ...entry, apiKey: String(entry.apiKey).trim(), prompt, fetchImpl });
+      const { structured, provider, model } = await requestProviderImpl({ ...entry, apiKey: String(entry.apiKey).trim(), prompt, fetchImpl });
       if (narrativeContainsNumericFigure(structured)) {
         console.warn(`Feed forecast provider ${entry.provider} returned numeric narrative content; trying next configured provider.`);
         continue;
@@ -221,20 +219,19 @@ const generateFeedForecastAnalysisUncached = async ({ forecast, feedStocks = nul
   throw new AiGovernanceError('provider_error');
 };
 
-export const generateFeedForecastAnalysis = async ({ ownerId, cacheScope, forecast, feedStocks = null, stockContext = null, fetchImpl = fetch }) => {
-  if (!ownerId) return generateFeedForecastAnalysisUncached({ forecast, feedStocks, stockContext, fetchImpl });
+export const generateFeedForecastAnalysis = async ({ ownerId, cacheScope, forecast, feedStocks = null, stockContext = null, fetchImpl = fetch, requestProviderImpl = requestProvider }) => {
+  if (!ownerId) return generateFeedForecastAnalysisUncached({ forecast, feedStocks, stockContext, fetchImpl, requestProviderImpl });
   const scope = cacheScope ?? [forecast?.source || 'recorded', forecast?.batchId || 'all', forecast?.horizonDays || '', forecast?.horizonWeeks || ''].join(':');
-  const model = isOpenAiBaseUrlConfigured()
-    ? `openai:${process.env.OPENAI_MODEL || 'gpt-4.1-mini'}`
-    : getGeminiModel();
+  const providers = getConfiguredProviders();
+  const cacheModel = providers.map((item) => `${item.provider}:${item.model}`).join('>') || 'no-configured-provider';
   return runCachedAiAnalysis({
     ownerId,
     feature: 'feed_forecast',
-    model,
+    model: cacheModel,
     cacheScope: scope,
-    promptVersion: 'feed-forecast-v2',
+    promptVersion: 'feed-forecast-v3-gemini-first',
     sourceData: { forecast, feedStocks, stockContext },
-    generate: () => generateFeedForecastAnalysisUncached({ forecast, feedStocks, stockContext, fetchImpl }),
+    generate: () => generateFeedForecastAnalysisUncached({ forecast, feedStocks, stockContext, fetchImpl, requestProviderImpl }),
   });
 };
 

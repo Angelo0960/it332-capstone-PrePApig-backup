@@ -17,7 +17,7 @@ const SAFE_MESSAGES = Object.freeze({
   authentication: 'Gemini authentication failed. Check the backend API key configuration.',
   permission: 'The configured Gemini project or model does not have permission for this request.',
   network: 'Gemini could not be reached. Check the backend network and provider status.',
-  provider_error: 'Gemini rejected the request. Check the sanitized backend error log.',
+  provider_error: 'An AI provider rejected the request. Check the sanitized backend error log.',
   budget_unavailable: 'AI usage controls are temporarily unavailable; no Gemini request was sent.',
   request_in_progress: 'An identical AI analysis is already being generated. Try again shortly.',
 });
