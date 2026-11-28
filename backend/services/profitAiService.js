@@ -13,7 +13,24 @@ const parseJson = (text) => {
   }
 };
 
-const generateProfitAnalysisUncached = async ({ context, fetchImpl = fetch, apiKey = getApiKey(), model = getGeminiModel() }) => {
+export const getProfitAnalysisGenerationConfig = () => ({
+  responseMimeType: 'application/json',
+  responseJsonSchema: {
+    type: 'object',
+    properties: {
+      analysis: { type: 'string' },
+      suggestion: { type: 'string' },
+      riskLevel: { type: 'string', enum: ['low', 'medium', 'high', 'unknown'] },
+      actions: { type: 'array', items: { type: 'string' } },
+      limitations: { type: 'array', items: { type: 'string' } },
+    },
+    required: ['analysis', 'suggestion', 'riskLevel', 'actions', 'limitations'],
+  },
+  thinkingConfig: { thinkingLevel: 'LOW' },
+  maxOutputTokens: 65_536,
+});
+
+const generateProfitAnalysisUncached = async ({ context, fetchImpl = fetch, apiKey = getApiKey(), model = getGeminiModel(), requestGemini = requestGeminiApi }) => {
   const useOpenAi = isOpenAiBaseUrlConfigured();
   const provider = useOpenAi ? 'OpenAI' : 'Gemini';
   const configuredKey = String(useOpenAi ? process.env.OPENAI_API_KEY || '' : apiKey || '').trim();
@@ -31,7 +48,7 @@ const generateProfitAnalysisUncached = async ({ context, fetchImpl = fetch, apiK
     `Deterministic analysis context: ${JSON.stringify(context)}`,
   ].join('\n');
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const timeout = setTimeout(() => controller.abort(), useOpenAi ? 30000 : 75_000);
   let payload;
   let responseStatus = 200;
   try {
@@ -52,20 +69,17 @@ const generateProfitAnalysisUncached = async ({ context, fetchImpl = fetch, apiK
         throw error;
       }
     } else {
-      const result = await requestGeminiApi({
+      const result = await requestGemini({
         model: configuredModel,
         feature: 'profit_analysis',
         apiKey: configuredKey,
         fetchImpl,
         signal: controller.signal,
         timeoutMs: 30000,
+        maxRetries: 1,
         body: {
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            thinkingConfig: { thinkingLevel: 'MINIMAL' },
-            maxOutputTokens: 4096,
-          },
+          generationConfig: getProfitAnalysisGenerationConfig(),
         },
       });
       responseStatus = 200;
@@ -86,6 +100,7 @@ const generateProfitAnalysisUncached = async ({ context, fetchImpl = fetch, apiK
     const error = new Error(`${provider} returned incomplete structured profit analysis (finish reason: ${finishReason})`);
     error.providerStatus = responseStatus;
     error.providerCode = finishReason;
+    error.category = 'provider_error';
     error.model = payload?.modelVersion || configuredModel;
     error.responseId = payload?.responseId || null;
     error.modelVersion = payload?.modelVersion || null;
@@ -105,8 +120,8 @@ const generateProfitAnalysisUncached = async ({ context, fetchImpl = fetch, apiK
   };
 };
 
-export const generateProfitAnalysis = async ({ context, ownerId, cacheScope, fetchImpl = fetch, apiKey = getApiKey(), model = getGeminiModel() }) => {
-  if (!ownerId) return generateProfitAnalysisUncached({ context, fetchImpl, apiKey, model });
+export const generateProfitAnalysis = async ({ context, ownerId, cacheScope, fetchImpl = fetch, apiKey = getApiKey(), model = getGeminiModel(), requestGemini = requestGeminiApi }) => {
+  if (!ownerId) return generateProfitAnalysisUncached({ context, fetchImpl, apiKey, model, requestGemini });
   const cacheModel = isOpenAiBaseUrlConfigured() ? `openai:${process.env.OPENAI_MODEL || 'gpt-4.1-mini'}` : model;
   return runCachedAiAnalysis({
     ownerId,
@@ -115,6 +130,6 @@ export const generateProfitAnalysis = async ({ context, ownerId, cacheScope, fet
     cacheScope: cacheScope ?? 'profit-analysis',
     promptVersion: 'profit-analysis-v1',
     sourceData: context,
-    generate: () => generateProfitAnalysisUncached({ context, fetchImpl, apiKey, model }),
+    generate: () => generateProfitAnalysisUncached({ context, fetchImpl, apiKey, model, requestGemini }),
   });
 };

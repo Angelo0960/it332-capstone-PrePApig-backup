@@ -191,6 +191,54 @@ test('backs off once for a temporary RPM response but never retries a daily quot
   assert.equal(dailyFetches, 1);
 });
 
+test('retries one transient Gemini 503 with backoff and records both attempts', async () => {
+  const storage = makeStorage();
+  const waits = [];
+  const service = createAiGovernanceService({ storage, sleep: async (ms) => waits.push(ms), random: () => 0 });
+  let attempts = 0;
+  const result = await service.requestGemini({
+    model: 'gemini-3.8-flash', feature: 'profit_analysis', apiKey: 'test-key', body: {}, maxRetries: 1,
+    fetchImpl: async () => {
+      attempts += 1;
+      if (attempts === 1) return new Response(JSON.stringify({ error: { status: 'UNAVAILABLE', message: 'temporary overload' } }), { status: 503 });
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{}' }] } }] }), { status: 200 });
+    },
+  });
+  assert.equal(result.payload.candidates.length, 1);
+  assert.equal(attempts, 2);
+  assert.equal(waits.length, 1);
+  assert.deepEqual(storage.usage.map((row) => row.status), ['failed', 'success']);
+});
+
+test('retries one provider timeout unless the caller cancelled the request', async () => {
+  const storage = makeStorage();
+  const waits = [];
+  const service = createAiGovernanceService({ storage, sleep: async (ms) => waits.push(ms), random: () => 0 });
+  let attempts = 0;
+  const result = await service.requestGemini({
+    model: 'gemini-3.8-flash', feature: 'profit_analysis', apiKey: 'test-key', body: {}, maxRetries: 1,
+    fetchImpl: async () => {
+      attempts += 1;
+      if (attempts === 1) throw Object.assign(new Error('request timeout'), { name: 'AbortError' });
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{}' }] } }] }), { status: 200 });
+    },
+  });
+
+  assert.equal(result.payload.candidates.length, 1);
+  assert.equal(attempts, 2);
+  assert.equal(waits.length, 1);
+  assert.deepEqual(storage.usage.map((row) => row.status), ['failed', 'success']);
+
+  const cancelled = new AbortController();
+  cancelled.abort();
+  let cancelledAttempts = 0;
+  await assert.rejects(service.requestGemini({
+    model: 'gemini-3.8-flash', feature: 'profit_analysis', apiKey: 'test-key', body: {}, maxRetries: 1, signal: cancelled.signal,
+    fetchImpl: async () => { cancelledAttempts += 1; throw Object.assign(new Error('request aborted'), { name: 'AbortError' }); },
+  }), (error) => error.category === 'network');
+  assert.equal(cancelledAttempts, 1);
+});
+
 test('does not retry before a provider Retry-After that exceeds the bounded wait', async () => {
   const storage = makeStorage();
   const service = createAiGovernanceService({ storage, sleep: async () => {} });

@@ -208,6 +208,7 @@ export const generateAiProfitAnalysis = async (req, res) => {
         category: aiError.category || 'provider_error',
         model: aiError.model || null,
         providerStatus: aiError.providerStatus || null,
+        providerCode: aiError.providerCode || null,
       }));
       aiAnalysisErrorCategory = aiError.category || null;
       aiAnalysisError = String(aiError.message || '').includes('not configured')

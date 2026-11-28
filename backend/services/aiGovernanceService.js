@@ -85,7 +85,7 @@ export const classifyGeminiFailure = ({ status = null, payload = null, error = n
     ?? parseRetryDelay(payload?.error?.details?.find?.((detail) => detail?.retryDelay)?.retryDelay);
   return {
     category,
-    retryable: category === 'quota_rpm',
+    retryable: category === 'quota_rpm' || status === 503,
     providerStatus: status || null,
     retryAfterSeconds: retrySeconds,
     message: SAFE_MESSAGES[category] || SAFE_MESSAGES.provider_error,
@@ -333,8 +333,8 @@ export const createAiGovernanceService = ({
             status: 'failed', providerStatus: response.status, errorCategory: failure.category, durationMs: now() - startedAt,
           }).catch(() => {});
           safeLog(logger, 'warn', { event: 'gemini_request_failed', feature, model, requestId, attempt: attempt + 1, providerStatus: response.status, category: failure.category, durationMs: now() - startedAt });
-          if (failure.category === 'quota_rpm' && attempt < maxRetries) {
-            const providerDelayMs = (failure.retryAfterSeconds || 0) * 1000;
+          if (failure.retryable && attempt < maxRetries) {
+            const providerDelayMs = failure.category === 'quota_rpm' ? (failure.retryAfterSeconds || 0) * 1000 : 0;
             if (providerDelayMs > MAX_RETRY_DELAY_MS) {
               throw new AiGovernanceError('quota_rpm', { providerStatus: response.status, retryAfterSeconds: failure.retryAfterSeconds, requestId });
             }
@@ -355,6 +355,13 @@ export const createAiGovernanceService = ({
           status: 'failed', providerStatus: status, errorCategory: failure.category, durationMs: now() - startedAt,
         }).catch(() => {});
         safeLog(logger, 'warn', { event: 'gemini_request_failed', feature, model, requestId, attempt: attempt + 1, providerStatus: status, category: failure.category, durationMs: now() - startedAt });
+        const retryableTimeout = error?.name === 'AbortError' && !signal?.aborted;
+        if (retryableTimeout && attempt < maxRetries) {
+          const exponentialMs = Math.min(1000 * (2 ** attempt), MAX_RETRY_DELAY_MS);
+          const jitteredMs = Math.min(MAX_RETRY_DELAY_MS, Math.round(exponentialMs * (0.9 + random() * 0.2)));
+          await sleep(jitteredMs);
+          continue;
+        }
         throw new AiGovernanceError(failure.category, { providerStatus: status, requestId });
       } finally {
         clearTimeout(timeout);
