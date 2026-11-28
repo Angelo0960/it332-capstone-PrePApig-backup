@@ -7,7 +7,7 @@ test('preserves an explicitly configured Gemini model so its quota budget is sel
   assert.equal(getGeminiModel('gemini-3.5-flash-lite'), 'gemini-3.5-flash-lite');
 });
 
-test('uses Flash Lite only when no Gemini model is configured', () => {
-  assert.equal(getGeminiModel(''), 'gemini-3.5-flash-lite');
-  assert.equal(getGeminiModel(undefined), 'gemini-3.5-flash-lite');
+test('defaults to the current Gemini 3 Flash model when no model is configured', () => {
+  assert.equal(getGeminiModel(''), 'gemini-3.8-flash');
+  assert.equal(getGeminiModel(undefined), 'gemini-3.8-flash');
 });
