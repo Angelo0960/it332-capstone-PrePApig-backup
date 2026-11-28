@@ -1,4 +1,5 @@
 import { collectPages, pagination } from '../services/pagination.js';
+import { attachWeightHistoryToPigs } from '../services/pigWeightHistory.js';
 import supabase from '../config/supabase.js';
 
 const mutatePig = async (ownerId, action, pigId, pig) => {
@@ -420,10 +421,34 @@ export const getPigsByBatch = async (req, res) => {
             throw pigsError;
         }
 
+        const pigRows = pigs || [];
+        let weightHistory = [];
+        let historyAvailable = true;
+        if (pigRows.length > 0) {
+            try {
+                const pigIds = pigRows.map((pig) => pig.id);
+                weightHistory = await collectPages(() => supabase
+                    .from('pig_weight_history')
+                    .select('id,pig_id,weigh_in_date,age_days,recorded_weight,is_baseline,baseline_source,created_at')
+                    .eq('owner_id', req.user.id)
+                    .in('pig_id', pigIds)
+                    .order('weigh_in_date', { ascending: false })
+                    .order('created_at', { ascending: false }));
+            } catch (historyError) {
+                if (historyError.code === 'PGRST205' || historyError.code === '42P01'
+                    || historyError.code === 'PGRST204' || historyError.code === '42703') {
+                    historyAvailable = false;
+                    console.warn('[pig-history] table or provenance column unavailable; apply the pig weight-history migrations.');
+                } else {
+                    throw historyError;
+                }
+            }
+        }
+
         res.status(200).json({
             success: true,
             batch,
-            data: pigs || [],
+            data: attachWeightHistoryToPigs(pigRows, weightHistory, historyAvailable),
         });
     } catch (error) {
         console.error('Error fetching pigs:', error);
