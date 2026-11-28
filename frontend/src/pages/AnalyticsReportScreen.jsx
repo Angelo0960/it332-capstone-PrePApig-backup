@@ -38,6 +38,7 @@ import { formatCurrency, formatPricePerKg } from '../utils/formatters.js';
 import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 import { buildBatchDisplayNames } from '../utils/batchNames.js';
 import { shouldResetFeedForecastAi } from '../utils/feedForecastAiState.js';
+import { calculateTotalRecordedCosts } from '../utils/financialSummary.js';
 
 // ────────────────────────────────────────────────────────────────
 
@@ -611,9 +612,12 @@ export default function AnalyticsReportsScreen() {
     return { total: missingCount ? null : Math.round(total * 100) / 100, missingCount };
   }, [filteredVaccinationRecords]);
   const totalVaccineCost = vaccineCostSummary.total;
-  const totalRecordedCosts = financial && totalVaccineCost != null
-    ? Math.round((Number(financial.recordedExpenses || 0) + totalFeedCost + totalVaccineCost) * 100) / 100
-    : null;
+  const totalRecordedCosts = calculateTotalRecordedCosts({
+    expenses: filteredExpenses,
+    feedCost: totalFeedCost,
+    vaccineCost: totalVaccineCost,
+    recordsReady: !loading && !error,
+  });
   const selectedBatches = selectedBatch === 'All Batches'
     ? batches.filter((b) => b.status?.toLowerCase() === 'active')
     : batches.filter((b) => b.batch_code === selectedBatch && b.status?.toLowerCase() === 'active');
@@ -633,6 +637,7 @@ export default function AnalyticsReportsScreen() {
     return price > 0 ? sum + getEstimatedBatchTotalWeightKg(batch, batchTotalWeights) * price : sum;
   }, 0);
   const estimateAvailable = !loading && !error && !batchWeightLoading && !batchWeightError && selectedBatches.length > 0 && selectedBatches.every((batch) => getEstimatedBatchTotalWeightKg(batch, batchTotalWeights) > 0 && (selectedPrice > 0 || Number(batch.sale_price_per_kg) > 0 || referencePrice > 0));
+  const estimateLoading = loading || batchWeightLoading || !pigPriceBasisLoaded;
   const hasRecordedSalePrice = selectedBatches.some((batch) => Number(batch.sale_price_per_kg) > 0);
   const usesSelectedPrice = selectedPrice > 0 && selectedBatches.length > 0;
   const usesProvincialEstimate = !usesSelectedPrice && !hasRecordedSalePrice && referencePrice > 0 && selectedBatches.length > 0;
@@ -1282,7 +1287,7 @@ export default function AnalyticsReportsScreen() {
             <div className="analytics-summary-card bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
               <div className="analytics-summary-label mb-2 text-xs text-gray-700 font-semibold uppercase tracking-wide">Total recorded costs (period)</div>
               <div className="analytics-summary-value font-bold text-gray-900">
-                {totalRecordedCosts == null ? 'Unavailable' : formatCurrency(totalRecordedCosts)}
+                {totalRecordedCosts == null ? (loading ? 'Loading…' : 'Unavailable') : formatCurrency(totalRecordedCosts)}
               </div>
             </div>
             <div className="analytics-summary-card bg-white/20 backdrop-blur-lg rounded-2xl p-4 border border-white/30 shadow-lg">
@@ -1611,7 +1616,9 @@ export default function AnalyticsReportsScreen() {
                 <span className="analytics-net-summary-label font-bold text-gray-900">Estimated value less recorded costs</span>
                 <div className="analytics-net-summary-details text-right">
                   <div className="analytics-net-summary-amount text-2xl font-bold text-green-600">
-                    {estimateAvailable && totalRecordedCosts != null ? formatCurrency(salesRevenue - totalRecordedCosts) : 'Unavailable'}
+                    {estimateAvailable && totalRecordedCosts != null
+                      ? formatCurrency(salesRevenue - totalRecordedCosts)
+                      : estimateLoading ? 'Calculating…' : 'Unavailable'}
                   </div>
                   <span className="analytics-net-summary-badge px-2 py-0.5 bg-green-500 text-white rounded-full text-xs font-semibold">
                     {estimateAvailable
