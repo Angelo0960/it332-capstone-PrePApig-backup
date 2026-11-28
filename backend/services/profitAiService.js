@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { getGeminiModel } from './geminiModel.js';
 import { requestOpenAiJson, isOpenAiBaseUrlConfigured } from './openAiEndpoint.js';
+import { requestGeminiApi, runCachedAiAnalysis } from './aiGovernanceService.js';
 
 const getApiKey = () => process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY || '';
 const extractText = (payload) => payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('').trim() || '';
@@ -12,7 +13,7 @@ const parseJson = (text) => {
   }
 };
 
-export const generateProfitAnalysis = async ({ context, fetchImpl = fetch, apiKey = getApiKey(), model = getGeminiModel() }) => {
+const generateProfitAnalysisUncached = async ({ context, fetchImpl = fetch, apiKey = getApiKey(), model = getGeminiModel() }) => {
   const useOpenAi = isOpenAiBaseUrlConfigured();
   const provider = useOpenAi ? 'OpenAI' : 'Gemini';
   const configuredKey = String(useOpenAi ? process.env.OPENAI_API_KEY || '' : apiKey || '').trim();
@@ -51,28 +52,24 @@ export const generateProfitAnalysis = async ({ context, fetchImpl = fetch, apiKe
         throw error;
       }
     } else {
-      const response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${configuredModel}:generateContent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': configuredKey },
-        body: JSON.stringify({
+      const result = await requestGeminiApi({
+        model: configuredModel,
+        feature: 'profit_analysis',
+        apiKey: configuredKey,
+        fetchImpl,
+        signal: controller.signal,
+        timeoutMs: 30000,
+        body: {
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
             responseMimeType: 'application/json',
             thinkingConfig: { thinkingLevel: 'MINIMAL' },
             maxOutputTokens: 4096,
           },
-        }),
-        signal: controller.signal,
+        },
       });
-      responseStatus = response.status;
-      payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        const error = new Error(payload?.error?.message || `${provider} returned HTTP ${response.status}`);
-        error.providerStatus = responseStatus;
-        error.providerCode = payload?.error?.status || payload?.error?.code || null;
-        error.model = configuredModel;
-        throw error;
-      }
+      responseStatus = 200;
+      payload = result.payload;
     }
   } finally {
     clearTimeout(timeout);
@@ -106,4 +103,18 @@ export const generateProfitAnalysis = async ({ context, fetchImpl = fetch, apiKe
     limitations: Array.isArray(structured.limitations) ? structured.limitations.filter((item) => typeof item === 'string').slice(0, 6) : [],
     generatedAt: new Date().toISOString(),
   };
+};
+
+export const generateProfitAnalysis = async ({ context, ownerId, cacheScope, fetchImpl = fetch, apiKey = getApiKey(), model = getGeminiModel() }) => {
+  if (!ownerId) return generateProfitAnalysisUncached({ context, fetchImpl, apiKey, model });
+  const cacheModel = isOpenAiBaseUrlConfigured() ? `openai:${process.env.OPENAI_MODEL || 'gpt-4.1-mini'}` : model;
+  return runCachedAiAnalysis({
+    ownerId,
+    feature: 'profit_analysis',
+    model: cacheModel,
+    cacheScope: cacheScope ?? 'profit-analysis',
+    promptVersion: 'profit-analysis-v1',
+    sourceData: context,
+    generate: () => generateProfitAnalysisUncached({ context, fetchImpl, apiKey, model }),
+  });
 };

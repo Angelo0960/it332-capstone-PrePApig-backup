@@ -16,21 +16,33 @@ test('CSV parser handles quoted fields and commas', () => {
 
 test('scraper selects the newest non-empty Batangas record', async () => {
   clearPigPriceCache();
+  const metadata = {
+    variables: [
+      { code: 'Geolocation', values: [BATANGAS_PSGC, '0402100000'], valueTexts: ['Batangas', 'Cavite'] },
+      { code: 'Type', values: ['hog'], valueTexts: ['Hog for Slaughter'] },
+      { code: 'Year', values: ['2026'], valueTexts: ['2026'] },
+      { code: 'Month', values: ['04', '05', '06', 'annual'], valueTexts: ['April', 'May', 'June', 'Annual'] },
+    ],
+  };
   const csv = [
-    'series,date,period,value,unit,geo,accessed_on',
-    'hog-farmgate-household-regional,2026-04-30,2026-04,160,PHP/kg liveweight,0401000000,2026-08-20',
-    'hog-farmgate-household-regional,2026-05-31,2026-05,164.58,PHP/kg liveweight,0401000000,2026-08-20',
-    'hog-farmgate-household-regional,2026-06-30,2026-06,167.9,PHP/kg liveweight,0401000000,2026-08-20',
-    'hog-farmgate-average-regional,2026-06-30,2026-06,NA,PHP/kg liveweight,0401000000,2026-08-20',
+    'Geolocation,Type,2026 April,2026 May,2026 June',
+    'Batangas,Hog for Slaughter,160,164.58,167.9',
+    'Cavite,Hog for Slaughter,155,159,162',
   ].join('\n');
+  let requests = 0;
   const result = await fetchBatangasPigPrice({
     now: Date.parse('2026-10-08T00:00:00.000Z'),
-    fetchImpl: async () => ({ ok: true, text: async () => csv }),
+    fetchImpl: async () => {
+      requests += 1;
+      return requests === 1
+        ? { ok: true, json: async () => metadata }
+        : { ok: true, text: async () => csv };
+    },
   });
   assert.equal(result.success, true);
   assert.equal(result.data.period, '2026-06');
   assert.equal(result.data.pricePhpPerKg, 167.9);
-  assert.equal(result.data.location, 'Calaca, Batangas (province-level source)');
+  assert.equal(result.data.location, 'Batangas province');
   assert.equal(result.basis.length, 3);
   assert.equal(result.basisSummary.averagePricePhpPerKg, 164.16);
 });

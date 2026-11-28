@@ -6,6 +6,10 @@ test('Gemini price analysis sends nearby locations and search grounding', async 
   let request;
   const result = await generatePigPriceAnalysis({
     apiKey: 'test-key',
+    storage: {
+      async reserveGeminiRequest() { return { allowed: true, usageId: 1, minuteCount: 1, dailyCount: 1 }; },
+      async finishGeminiRequest() {},
+    },
     locations: ['Calaca', 'Lemery', 'Balayan', 'Tuy'],
     provincialReference: { pricePhpPerKg: 172.73, period: '2026-06' },
     fetchImpl: async (_url, options) => {

@@ -37,7 +37,7 @@ import { API_BASE, getAuthHeaders } from '../api.js';
 import { formatCurrency, formatPricePerKg } from '../utils/formatters.js';
 import { getUserCacheKey, readCache, writeCache } from '../utils/cache.js';
 import { buildBatchDisplayNames } from '../utils/batchNames.js';
-import { shouldFetchFeedForecast } from '../utils/feedForecastCache.js';
+
 // ────────────────────────────────────────────────────────────────
 
 const DEFAULT_PRICE_LOCATIONS = ['Lemery', 'Calaca', 'Tuy', 'Balayan', 'Lian', 'Nasugbu', 'Taal'];
@@ -59,8 +59,17 @@ const getEstimatedBatchTotalWeightKg = (batch, weightTotals) => {
 };
 
 const getAnalysisText = (value) => (typeof value === 'string' ? value.trim() : '');
-const AI_ANALYSIS_CACHE_TTL_MS = 5 * 60 * 1000;
-const AI_ANALYSIS_RETRY_COOLDOWN_MS = 30 * 1000;
+const getAiErrorMessage = (category, fallback) => ({
+  quota_rpm: 'AI provider rate limit reached. Wait briefly before retrying.',
+  quota_daily: 'AI provider daily quota is exhausted. Retry after the quota resets.',
+  quota_unknown: 'AI provider quota is exhausted or unavailable. No automatic retry was made.',
+  permission: 'AI provider permission denied. Check the configured project and model access.',
+  authentication: 'AI provider authentication failed. Check the backend key configuration.',
+  network: 'AI provider could not be reached. Check the backend network connection.',
+  budget_unavailable: 'AI usage controls are unavailable, so no new provider request was sent.',
+  request_in_progress: 'The same analysis is already being generated. Try again shortly.',
+  not_configured: 'AI analysis is not configured on the backend.',
+}[category] || fallback || 'AI analysis is temporarily unavailable.');
 const hashAnalysisInputs = (inputs) => {
   const serialized = JSON.stringify(inputs);
   let hash = 0xcbf29ce484222325n;
@@ -70,20 +79,7 @@ const hashAnalysisInputs = (inputs) => {
   }
   return hash.toString(36);
 };
-const inFlightAiAnalysisRequests = new Map();
-const requestAiAnalysisOnce = (cacheKey, request) => {
-  const existingRequest = inFlightAiAnalysisRequests.get(cacheKey);
-  if (existingRequest) return existingRequest;
-  const pendingRequest = Promise.resolve()
-    .then(request)
-    .finally(() => {
-      if (inFlightAiAnalysisRequests.get(cacheKey) === pendingRequest) {
-        inFlightAiAnalysisRequests.delete(cacheKey);
-      }
-    });
-  inFlightAiAnalysisRequests.set(cacheKey, pendingRequest);
-  return pendingRequest;
-};
+
 
 export default function AnalyticsReportsScreen() {
   const navigate = useNavigate();
@@ -106,8 +102,10 @@ export default function AnalyticsReportsScreen() {
   const [feedForecast, setFeedForecast] = useState(null);
   const [feedForecastError, setFeedForecastError] = useState(null);
   const [feedForecastAi, setFeedForecastAi] = useState(null);
+  const [feedForecastAiLoading, setFeedForecastAiLoading] = useState(false);
   const [feedForecastAiError, setFeedForecastAiError] = useState(null);
   const [expenseAiAnalysis, setExpenseAiAnalysis] = useState(null);
+  const [expenseAiRequest, setExpenseAiRequest] = useState(null);
   const [expenseAiLoading, setExpenseAiLoading] = useState(false);
   const [expenseAiError, setExpenseAiError] = useState(null);
   const [profitAiResult, setProfitAiResult] = useState(null);
@@ -141,7 +139,10 @@ export default function AnalyticsReportsScreen() {
     ? selectedBatch
     : batchDisplayNames.get(String(batches.find((batch) => batch.batch_code === selectedBatch)?.id)) || 'Batch';
   const aiAbortController = useRef(null);
-  const autoAiAnalysisRequested = useRef(false);
+  const feedAiAbortController = useRef(null);
+  const expenseAiAbortController = useRef(null);
+  const profitAiAbortController = useRef(null);
+
 
   const getDateQuery = () => {
     const end = new Date();
@@ -151,6 +152,13 @@ export default function AnalyticsReportsScreen() {
     else start.setDate(start.getDate() - 29);
     return `from=${start.toISOString().slice(0, 10)}&to=${end.toISOString().slice(0, 10)}`;
   };
+
+  useEffect(() => () => {
+    aiAbortController.current?.abort();
+    feedAiAbortController.current?.abort();
+    expenseAiAbortController.current?.abort();
+    profitAiAbortController.current?.abort();
+  }, []);
 
   // ---------- Fetch report data and supporting records ----------
   const fetchAllData = async (signal) => {
@@ -251,53 +259,65 @@ export default function AnalyticsReportsScreen() {
   }, [batches]);
 
   const fetchFeedForecast = async (signal) => {
-    let hasCachedForecast = false;
     try {
       const batch = selectedBatch !== 'All Batches' ? batches.find((row) => row.batch_code === selectedBatch) : null;
       const batchId = batch?.batch_code || 'all';
-      const cacheKey = `feed-ai-analysis-v4:${getUserCacheKey()}:${batchId}:1`;
-      const cached = readCache(cacheKey, Number.POSITIVE_INFINITY);
-      const freshCached = readCache(cacheKey, AI_ANALYSIS_CACHE_TTL_MS);
-      const recentCached = readCache(cacheKey, AI_ANALYSIS_RETRY_COOLDOWN_MS);
-      hasCachedForecast = Boolean(cached && typeof cached === 'object');
-      if (cached && typeof cached === 'object') {
-        setFeedForecast(cached);
-        setFeedForecastAi(cached.aiAnalysis || null);
-        setFeedForecastAiError(cached.aiAnalysisError || null);
-        setFeedForecastError(null);
-      }
-      if (!shouldFetchFeedForecast({
-        cached,
-        isFresh: Boolean(freshCached),
-        isRetrySuppressed: Boolean(recentCached),
-      })) return;
-
-      const json = await requestAiAnalysisOnce(cacheKey, async () => {
-        const response = await fetch(`${API_BASE}/feeds/forecast?source=uploaded_historical&batch_id=${encodeURIComponent(batchId)}&horizon_weeks=1&include_ai=true`, {
-          cache: 'no-store',
-          headers: getAuthHeaders(),
-        });
-        const result = await response.json();
-        if (!response.ok || !result.success) throw new Error(result.message || 'Feed forecast unavailable');
-        writeCache(cacheKey, result);
-        return result;
+      const response = await fetch(`${API_BASE}/feeds/forecast?source=uploaded_historical&batch_id=${encodeURIComponent(batchId)}&horizon_weeks=1`, {
+        cache: 'no-store',
+        headers: getAuthHeaders(),
+        signal,
       });
+      const json = await response.json();
+      if (!response.ok || !json.success) throw new Error(json.message || 'Feed forecast unavailable');
       if (signal?.aborted) return;
       setFeedForecast(json);
-      setFeedForecastAi(json.aiAnalysis || null);
-      setFeedForecastAiError(json.aiAnalysisError || null);
+      setFeedForecastAi(null);
+      setFeedForecastAiError(null);
       setFeedForecastError(null);
     } catch (err) {
       if (err.name === 'AbortError' || signal?.aborted) return;
-      if (!hasCachedForecast) {
-        setFeedForecast(null);
-        setFeedForecastError(err.message || 'Uploaded feed forecast unavailable');
+      setFeedForecast(null);
+      setFeedForecastError(err.message || 'Uploaded feed forecast unavailable');
+    }
+  };
+
+  const generateFeedAiAnalysis = async () => {
+    const batch = selectedBatch !== 'All Batches' ? batches.find((row) => row.batch_code === selectedBatch) : null;
+    const batchId = batch?.id || 'all';
+    setFeedForecastAiLoading(true);
+    setFeedForecastAiError(null);
+    feedAiAbortController.current?.abort();
+    const controller = new AbortController();
+    feedAiAbortController.current = controller;
+    try {
+      const response = await fetch(`${API_BASE}/feeds/forecast/ai-analysis`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ batch_id: batchId, horizon_weeks: 1 }),
+        signal: controller.signal,
+      });
+      const result = await response.json();
+      if (controller.signal.aborted) return;
+      if (!response.ok || !result.success) {
+        const error = new Error(getAiErrorMessage(result.errorCategory, result.message));
+        error.category = result.errorCategory;
+        throw error;
       }
+      if (result.forecast) setFeedForecast(result.forecast);
+      setFeedForecastAi(result.aiAnalysis || null);
+      setFeedForecastAiError(result.aiAnalysisError ? getAiErrorMessage(result.errorCategory, result.aiAnalysisError) : null);
+    } catch (err) {
+      if (err.name === 'AbortError' || controller.signal.aborted) return;
+      setFeedForecastAiError(getAiErrorMessage(err.category, err.message));
+    } finally {
+      if (feedAiAbortController.current === controller) setFeedForecastAiLoading(false);
     }
   };
 
   // ---------- Fetch pig price basis for analysis ----------
   const fetchPigPriceBasis = async (signal) => {
+    aiAbortController.current?.abort();
     const cacheKey = `pig-price-basis-v3:${getUserCacheKey()}`;
     // Render the last successful price basis immediately, then refresh it in the background.
     // The live request below still runs on every mount/date-range refresh.
@@ -327,6 +347,8 @@ export default function AnalyticsReportsScreen() {
       setPigPriceLocations(nextBasis.priceSourceLocations);
       setPigPriceReference(nextBasis.data);
       setPricePoints(nextBasis.pricePoints);
+      setAiAnalysis(null);
+      setAiAnalysisError(null);
       setPigPriceBasisLoaded(true);
 
       setPigPriceError(null);
@@ -348,7 +370,7 @@ export default function AnalyticsReportsScreen() {
   const requestAiPriceAnalysis = async (locations = pigPriceLocations, { bypassCache = false } = {}) => {
     if (!Array.isArray(locations) || locations.length < 3) return;
 
-    const cacheKey = `price-ai-analysis-v7:${getUserCacheKey()}:${locations.join('|')}`;
+    const cacheKey = `price-ai-analysis-v8:${getUserCacheKey()}:${hashAnalysisInputs({ locations, pricePoints, pigPriceReference })}`;
     const cachedAnalysis = readCache(cacheKey, Number.POSITIVE_INFINITY);
     const hasCachedPriceAnalysis = Boolean(cachedAnalysis && !bypassCache);
     if (cachedAnalysis && !bypassCache) {
@@ -377,34 +399,23 @@ export default function AnalyticsReportsScreen() {
       if (!response.ok || !json.success) {
         const requestId = response.headers.get('x-request-id') || json.requestId || 'unavailable';
         console.error('Pig-price AI request failed', { status: response.status, requestId, message: json.message });
-        if (response.status === 402 || response.status === 429) {
-          throw new Error('AI provider credits or quota are unavailable. Local reference prices remain available; add credits to the configured OpenRouter account, use a funded key, or configure an OpenAI fallback.');
-        }
-        throw new Error(json.message || 'AI price analysis unavailable');
+        const error = new Error(getAiErrorMessage(json.errorCategory, json.message));
+        error.category = json.errorCategory;
+        throw error;
       }
       setAiAnalysis(json);
+      setAiAnalysisError(json.cacheMetadata?.error
+        ? getAiErrorMessage(json.cacheMetadata.error.category, json.cacheMetadata.error.message)
+        : null);
       setPricePoints(availablePricePoints(json.pricePoints));
       writeCache(cacheKey, json);
     } catch (err) {
       if (err.name === 'AbortError') return;
       if (hasCachedPriceAnalysis) {
-        setAiAnalysisError('Using the previous live hog price analysis; a fresh update was unavailable.');
+        setAiAnalysisError(`Showing the last successful analysis. ${getAiErrorMessage(err.category, err.message)}`);
         return;
       }
-      const fallbackPoints = availablePricePoints(pricePoints)
-        .filter((point) => locations.includes(point.location) || !locations.length);
-      setAiAnalysis({
-        success: true,
-        provider: 'local-reference-fallback',
-        model: null,
-        locations,
-        pricePoints: fallbackPoints,
-        analysis: 'AI analysis is temporarily unavailable. No hardcoded local price is being used; available values will appear only after the configured search provider returns a verified result.',
-        suggestion: '',
-        limitations: ['Gemini could not be reached from the deployed application.', 'No local price is displayed without a search result or verified source.'],
-        generatedAt: new Date().toISOString(),
-      });
-      setAiAnalysisError(null);
+      setAiAnalysisError(getAiErrorMessage(err.category, err.message));
     } finally {
       setAiAnalysisLoading(false);
     }
@@ -431,6 +442,7 @@ export default function AnalyticsReportsScreen() {
   };
 
   const refreshMarketPrices = async () => {
+    aiAbortController.current?.abort();
     setMarketRefreshLoading(true);
     setMarketRefreshError(null);
     try {
@@ -449,7 +461,8 @@ export default function AnalyticsReportsScreen() {
         ...(json.pricePoints || []).filter((point) => !retainedReferencePoints.some((reference) => reference.location === point.location)),
         ...retainedReferencePoints,
       ]));
-      await requestAiPriceAnalysis(pigPriceLocations, { bypassCache: true });
+      setAiAnalysis(null);
+      setAiAnalysisError(null);
       await fetchMarketHistory(pigPriceLocations);
     } catch (err) {
       setMarketRefreshError(err.message || 'Market price refresh failed');
@@ -482,16 +495,15 @@ export default function AnalyticsReportsScreen() {
   }, [dateRange]);
 
   useEffect(() => {
+    feedAiAbortController.current?.abort();
+    setFeedForecastAi(null);
+    setFeedForecastAiLoading(false);
+    setFeedForecastAiError(null);
     const controller = new AbortController();
     void fetchFeedForecast(controller.signal);
     return () => controller.abort();
   }, [selectedBatch, batches]);
 
-  useEffect(() => {
-    if (autoAiAnalysisRequested.current || !pigPriceReference || pigPriceLocations.length < 3) return;
-    autoAiAnalysisRequested.current = true;
-    void requestAiPriceAnalysis(pigPriceLocations, { bypassCache: true });
-  }, [pigPriceReference, pigPriceLocations]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -725,6 +737,7 @@ export default function AnalyticsReportsScreen() {
   }, [financial, filteredExpenses]);
   const vaccinationSummary = useMemo(() => getVaccinationSummary(), [filteredVaccinationRecords]);
   useEffect(() => {
+    expenseAiAbortController.current?.abort();
     const totalRecordedExpenses = Number.isFinite(Number(financial?.recordedExpenses))
       ? Number(financial.recordedExpenses)
       : filteredExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
@@ -732,6 +745,7 @@ export default function AnalyticsReportsScreen() {
       ? financial.expenseCount
       : filteredExpenses.length;
     if (recordCount === 0 || expenseBreakdown.length === 0) {
+      setExpenseAiRequest(null);
       setExpenseAiAnalysis(null);
       setExpenseAiError(null);
       setExpenseAiLoading(false);
@@ -750,42 +764,56 @@ export default function AnalyticsReportsScreen() {
       recordCount,
     };
     const cacheKey = `expense-ai-analysis-v6:${getUserCacheKey()}:${dateRange}:${selectedBatch}:${summary.totalRecordedExpenses}:${summary.recordCount}:${JSON.stringify(breakdown)}`;
-    const cached = readCache(cacheKey, AI_ANALYSIS_CACHE_TTL_MS);
+    setExpenseAiRequest({ summary, cacheKey });
+    const cached = readCache(cacheKey, Number.POSITIVE_INFINITY);
     if (cached?.success === true) {
       setExpenseAiAnalysis(cached);
       setExpenseAiError(null);
-      setExpenseAiLoading(false);
-      return undefined;
+    } else {
+      setExpenseAiAnalysis(null);
     }
-    let active = true;
+    setExpenseAiError(null);
+    setExpenseAiLoading(false);
+    return undefined;
+  }, [financial, filteredExpenses, expenseBreakdown, dateRange, selectedBatch]);
+
+  const generateExpenseAiAnalysis = async () => {
+    if (!expenseAiRequest) return;
     setExpenseAiLoading(true);
     setExpenseAiError(null);
-    requestAiAnalysisOnce(cacheKey, async () => {
+    expenseAiAbortController.current?.abort();
+    const controller = new AbortController();
+    expenseAiAbortController.current = controller;
+    try {
       const response = await fetch(`${API_BASE}/expenses/ai-analysis`, {
         method: 'POST',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         cache: 'no-store',
-        body: JSON.stringify({ summary }),
+        body: JSON.stringify({ summary: expenseAiRequest.summary, cache_scope: `${dateRange}:${selectedBatch}` }),
+        signal: controller.signal,
       });
       const json = await response.json();
-      if (!response.ok || !json.success) throw new Error(json.message || 'Expense AI analysis unavailable');
-      writeCache(cacheKey, json);
-      return json;
-    }).then((json) => {
-      if (!active) return;
-      setExpenseAiAnalysis(json);
-    }).catch((err) => {
-      if (active) {
-        setExpenseAiAnalysis(null);
-        setExpenseAiError(err.message || 'Expense AI analysis unavailable');
+      if (controller.signal.aborted) return;
+      if (!response.ok || !json.success) {
+        const error = new Error(getAiErrorMessage(json.errorCategory, json.message));
+        error.category = json.errorCategory;
+        throw error;
       }
-    }).finally(() => {
-      if (active) setExpenseAiLoading(false);
-    });
-    return () => { active = false; };
-  }, [financial, filteredExpenses, expenseBreakdown, dateRange, selectedBatch]);
+      setExpenseAiAnalysis(json);
+      setExpenseAiError(json.cacheMetadata?.error
+        ? getAiErrorMessage(json.cacheMetadata.error.category, json.cacheMetadata.error.message)
+        : null);
+      writeCache(expenseAiRequest.cacheKey, json);
+    } catch (err) {
+      if (err.name === 'AbortError' || controller.signal.aborted) return;
+      setExpenseAiError(getAiErrorMessage(err.category, err.message));
+    } finally {
+      if (expenseAiAbortController.current === controller) setExpenseAiLoading(false);
+    }
+  };
 
   useEffect(() => {
+    profitAiAbortController.current?.abort();
     if (loading || error || batchWeightLoading) {
       setProfitAiResult(null);
       setProfitAiLoading(false);
@@ -825,46 +853,68 @@ export default function AnalyticsReportsScreen() {
       feedRecords: filteredFeedRecords,
       vaccinationRecords: filteredVaccinationRecords,
     })}`;
-    const cachedProfitResult = readCache(cacheKey, AI_ANALYSIS_CACHE_TTL_MS);
-    if (cachedProfitResult?.success === true && cachedProfitResult.aiAnalysis && !cachedProfitResult.aiAnalysisError) {
+    const cachedProfitResult = readCache(cacheKey, Number.POSITIVE_INFINITY);
+    if (cachedProfitResult?.success === true && cachedProfitResult.aiAnalysis) {
       setProfitAiResult(cachedProfitResult);
-      setProfitAiError(null);
-      setProfitAiLoading(false);
-      return undefined;
+    } else {
+      setProfitAiResult(null);
     }
-    setProfitAiResult(null);
     setProfitAiError(null);
+    setProfitAiLoading(false);
+    return undefined;
+  }, [loading, error, batchWeightLoading, batches, selectedBatch, dateRange, selectedPrice, selectedPriceLocation, referencePrice]);
+
+  const generateProfitAiAnalysis = async () => {
+    const selectedBatchRow = selectedBatch === 'All Batches' ? null : batches.find((row) => row.batch_code === selectedBatch);
+    if (selectedBatch !== 'All Batches' && !selectedBatchRow) return;
+    const query = new URLSearchParams(getDateQuery());
+    if (selectedBatchRow?.id) query.set('batch_id', selectedBatchRow.id);
+    const from = query.get('from');
+    const to = query.get('to');
+    const selectedPriceForAnalysis = Number(selectedPrice) > 0 ? Number(selectedPrice) : null;
+    const referencePriceForAnalysis = Number(referencePrice) > 0 ? Number(referencePrice) : null;
+    const priceSourceForAnalysis = selectedPriceForAnalysis ? selectedPriceLocation : referencePriceForAnalysis ? 'Batangas provincial farmgate reference' : null;
+    const requestBody = {
+      from,
+      to,
+      batch_id: selectedBatchRow?.id || null,
+      selected_price_per_kg: selectedPriceForAnalysis,
+      reference_price_per_kg: referencePriceForAnalysis,
+      price_source: priceSourceForAnalysis,
+    };
+    const cacheKey = `profit-ai-analysis-v3:${getUserCacheKey()}:${hashAnalysisInputs({ request: requestBody, batches, batchTotalWeights, expenses: filteredExpenses, feedRecords: filteredFeedRecords, vaccinationRecords: filteredVaccinationRecords })}`;
     setProfitAiLoading(true);
-    let active = true;
-    requestAiAnalysisOnce(cacheKey, async () => {
+    setProfitAiError(null);
+    profitAiAbortController.current?.abort();
+    const controller = new AbortController();
+    profitAiAbortController.current = controller;
+    try {
       const response = await fetch(`${API_BASE}/reports/ai-profit-analysis`, {
         method: 'POST',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         cache: 'no-store',
-        body: JSON.stringify({
-          from,
-          to,
-          batch_id: selectedBatchRow?.id || null,
-          selected_price_per_kg: selectedPriceForAnalysis,
-          reference_price_per_kg: referencePriceForAnalysis,
-          price_source: priceSourceForAnalysis,
-        }),
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
       });
       const result = await response.json();
-      if (!response.ok || !result.success) throw new Error(result.message || 'AI estimated-profit analysis unavailable');
-      if (result.aiAnalysis && !result.aiAnalysisError) writeCache(cacheKey, result);
-      return result;
-    }).then((result) => {
-      if (!active) return;
+      if (controller.signal.aborted) return;
+      if (!response.ok || !result.success) {
+        const error = new Error(getAiErrorMessage(result.errorCategory, result.message));
+        error.category = result.errorCategory;
+        throw error;
+      }
       setProfitAiResult(result);
-      setProfitAiError(result.aiAnalysisError || null);
-    }).catch((requestError) => {
-      if (active) setProfitAiError(requestError.message || 'AI estimated-profit analysis unavailable');
-    }).finally(() => {
-      if (active) setProfitAiLoading(false);
-    });
-    return () => { active = false; };
-  }, [loading, error, batchWeightLoading, batches, selectedBatch, dateRange, selectedPrice, selectedPriceLocation, referencePrice]);
+      setProfitAiError(result.aiAnalysisError
+        ? getAiErrorMessage(result.aiAnalysisErrorCategory, result.aiAnalysisError)
+        : null);
+      if (result.aiAnalysis) writeCache(cacheKey, result);
+    } catch (requestError) {
+      if (requestError.name === 'AbortError' || controller.signal.aborted) return;
+      setProfitAiError(getAiErrorMessage(requestError.category, requestError.message));
+    } finally {
+      if (profitAiAbortController.current === controller) setProfitAiLoading(false);
+    }
+  };
 
   const pricingActionSuggestion = getAnalysisText(aiAnalysis?.suggestion)
     || 'Before selling, compare a current local buyer offer with the dated official benchmarks and confirm the liveweight basis, location, and price date.';
@@ -1237,15 +1287,14 @@ export default function AnalyticsReportsScreen() {
                   <h3 className="font-semibold text-gray-900">Hog Prices</h3>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={refreshMarketPrices}
-                disabled={marketRefreshLoading || aiAnalysisLoading}
-                className="inline-flex items-center gap-1 rounded-xl bg-pink-600 px-3 py-2 text-[10px] font-bold text-white shadow-md transition hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <RefreshCw size={13} className={marketRefreshLoading ? 'animate-spin' : ''} />
-                {marketRefreshLoading ? 'Refreshing' : 'Refresh prices'}
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => void requestAiPriceAnalysis(pigPriceLocations)} disabled={marketRefreshLoading || aiAnalysisLoading} className="inline-flex items-center gap-1 rounded-xl bg-[#ad1457] px-3 py-2 text-[10px] font-bold text-white shadow-md transition hover:bg-[#8f1048] disabled:cursor-not-allowed disabled:opacity-60">
+                  <Sparkles size={13} />{aiAnalysisLoading ? 'Generating…' : 'Generate AI analysis'}
+                </button>
+                <button type="button" onClick={refreshMarketPrices} disabled={marketRefreshLoading || aiAnalysisLoading} className="inline-flex items-center gap-1 rounded-xl bg-pink-600 px-3 py-2 text-[10px] font-bold text-white shadow-md transition hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-60">
+                  <RefreshCw size={13} className={marketRefreshLoading ? 'animate-spin' : ''} />{marketRefreshLoading ? 'Refreshing' : 'Refresh prices'}
+                </button>
+              </div>
             </div>
             <div className="space-y-2">
               {marketPriceObservations.length === 0 && !loading && (
@@ -1303,6 +1352,7 @@ export default function AnalyticsReportsScreen() {
             {pigPriceError && <div className="mt-2 text-xs text-red-600">{pigPriceError}</div>}
             {marketRefreshError && <div className="mt-2 text-xs text-red-600">{marketRefreshError}</div>}
             {aiAnalysisError && <div className="mt-2 text-xs text-red-600">{aiAnalysisError}</div>}
+            {aiAnalysis?.generatedAt && <div className="mt-2 text-[10px] text-gray-500">Last successful analysis: {new Date(aiAnalysis.generatedAt).toLocaleString()}</div>}
             {aiAnalysis && (
               <div className="mt-4 rounded-[1.5rem] border border-[#ffd1df] bg-white/90 p-5 shadow-[0_12px_28px_rgba(255, 47, 114, 0.12)]">
                 <div className="mb-4 flex items-center justify-between gap-3">
@@ -1422,6 +1472,13 @@ export default function AnalyticsReportsScreen() {
             </div>
             {feedForecastError && <p className="text-[10px] text-red-700 mb-2">{feedForecastError}</p>}
 
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[10px] text-gray-600">Statistical forecast remains available without AI.</span>
+              <button type="button" onClick={() => void generateFeedAiAnalysis()} disabled={!feedForecast || feedForecast.status !== 'forecasted' || feedForecastAiLoading} className="inline-flex items-center gap-1 rounded-xl bg-[#ad1457] px-3 py-2 text-[10px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">
+                <Sparkles size={13} />{feedForecastAiLoading ? 'Generating…' : 'Generate AI analysis'}
+              </button>
+            </div>
+
             {feedForecastMetrics && (
               <div className="bg-white/90 border border-[#dbeafe] rounded-xl p-4 mb-3 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
@@ -1464,6 +1521,7 @@ export default function AnalyticsReportsScreen() {
             {feedForecastAi && (
               <div className="bg-white/90 border border-[#ffd1df] rounded-xl p-4 mb-3 shadow-sm">
                 <div className="flex items-center justify-between gap-2 mb-2"><span className="text-sm font-bold text-[#ad1457]">AI Interpretation</span><span className="text-[10px] uppercase font-bold text-[#f5125d]">{feedForecastAi.riskLevel || 'unknown'} risk</span></div>
+                {feedForecastAi.generatedAt && <p className="mb-2 text-[10px] text-gray-500">Generated {new Date(feedForecastAi.generatedAt).toLocaleString()}</p>}
                 <p className="text-left text-sm leading-6 text-[#252838] mb-3">{feedForecastAi.analysis}</p>
                 <p className="text-left text-sm leading-6 text-[#252838]"><strong className="text-[#ad1457]">Suggestion:</strong> {feedForecastAi.suggestion}</p>
                 {feedForecastAi.actions?.length > 0 && <ul className="list-disc pl-4 mt-3 text-[10px] text-[#555B6E]">{feedForecastAi.actions.map((action) => <li key={action}>{action}</li>)}</ul>}
@@ -1550,6 +1608,7 @@ export default function AnalyticsReportsScreen() {
             <div className="bg-white/55 border border-[#ffd1df] rounded-xl p-4 mt-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                 <h4 className="text-sm font-bold text-[#ad1457]">AI Estimated Profit Analysis</h4>
+                <button type="button" onClick={() => void generateProfitAiAnalysis()} disabled={profitAiLoading || loading || batchWeightLoading || (!financial && !batches.length)} className="rounded-lg bg-[#ad1457] px-3 py-2 text-[10px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{profitAiLoading ? 'Generating…' : 'Generate AI analysis'}</button>
                 {['low', 'medium', 'high'].includes(String(profitAiResult?.aiAnalysis?.riskLevel || '').toLowerCase()) && (
                   <span className="text-[10px] uppercase font-bold text-[#f5125d]">
                     {String(profitAiResult.aiAnalysis.riskLevel).toLowerCase()} risk
@@ -1559,6 +1618,7 @@ export default function AnalyticsReportsScreen() {
               <p className="text-[10px] text-[#6B7280] mb-3">AI interprets recorded weight and expense data. Amounts below are calculated from records and labeled price assumptions; this is not realized or full lifecycle profit.</p>
               {profitAiLoading && <p className="text-sm text-gray-600">Analyzing recorded growth and expenses…</p>}
               {profitAiError && <p className="text-sm text-amber-800">AI estimated-profit analysis unavailable: {profitAiError}</p>}
+              {profitAiResult?.aiAnalysis?.generatedAt && <p className="mb-2 text-[10px] text-gray-500">Last successful analysis: {new Date(profitAiResult.aiAnalysis.generatedAt).toLocaleString()}</p>}
               {profitAiResult?.available === false && <p className="text-sm text-gray-600">{profitAiResult.message}</p>}
               {profitAiResult?.available && (() => {
                 const context = profitAiResult.deterministic;
@@ -1656,10 +1716,14 @@ export default function AnalyticsReportsScreen() {
             </div>
 
             <div className="rounded-xl border border-[#ffd1df] bg-white/90 p-4 mb-3 shadow-sm">
-              <div className="flex items-center gap-2 text-sm font-bold text-[#ad1457] mb-2"><Sparkles size={14} /> AI Expense Analysis</div>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-sm font-bold text-[#ad1457]"><Sparkles size={14} /> AI Expense Analysis</div>
+                <button type="button" onClick={() => void generateExpenseAiAnalysis()} disabled={!expenseAiRequest || expenseAiLoading} className="rounded-lg bg-[#ad1457] px-3 py-2 text-[10px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{expenseAiLoading ? 'Generating…' : 'Generate AI analysis'}</button>
+              </div>
               {expenseAiLoading && <p className="text-sm text-[#555B6E]">Analyzing recorded expense categories...</p>}
               {expenseAiError && <p className="text-xs text-red-700">{expenseAiError}</p>}
-              {!expenseAiLoading && !expenseAiError && expenseAiAnalysis && (
+              {expenseAiAnalysis?.generatedAt && <p className="mb-2 text-[10px] text-gray-500">Last successful analysis: {new Date(expenseAiAnalysis.generatedAt).toLocaleString()}</p>}
+              {!expenseAiLoading && expenseAiAnalysis && (
                 <>
                   <p className="text-left text-sm leading-6 text-[#252838]">{expenseAiAnalysis.analysis}</p>
                   <p className="text-left text-sm leading-6 text-[#252838] mt-3"><strong className="text-[#ad1457]">Suggestion:</strong> {expenseAiAnalysis.suggestion}</p>
